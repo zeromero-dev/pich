@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'motion/react'
 import { ArrowLeft, Check, Plus } from 'lucide-react'
@@ -42,13 +41,11 @@ export function ProductDetail({ product }: { product: Product }) {
         {/* Gallery */}
         <div className="flex flex-col gap-4">
           <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-surface-alt">
-            <Image
+            <img
               src={product.images[active] || '/placeholder.svg'}
               alt={product.name}
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-contain p-4"
+              fetchPriority="high"
+              className="absolute inset-0 h-full w-full object-contain p-4"
             />
           </div>
           {product.images.length > 1 && (
@@ -65,7 +62,12 @@ export function ProductDetail({ product }: { product: Product }) {
                     i === active ? 'ring-ink' : 'ring-transparent hover:ring-ink/20',
                   )}
                 >
-                  <Image src={img} alt="" fill sizes="80px" className="object-contain p-1.5" />
+                  <img
+                    src={img}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-contain p-1.5"
+                  />
                 </button>
               ))}
             </div>

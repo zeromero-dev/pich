@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowRight } from 'lucide-react'
 import { useLocale } from '@/components/providers'
@@ -46,13 +45,11 @@ export function Hero() {
             animate={reduced ? undefined : { scale: [1, 1.05] }}
             transition={{ duration: 24, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
           >
-            <Image
+            <img
               src="/images/hero-space.png"
               alt="Виставкова зала арт-центру Плай Піч із картинами на білих стінах"
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
+              fetchPriority="high"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           </motion.div>
         </motion.div>

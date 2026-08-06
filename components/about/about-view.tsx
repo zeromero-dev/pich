@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { useLocale } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
@@ -21,12 +20,10 @@ export function AboutView() {
       </Reveal>
 
       <Reveal className="relative mt-10 aspect-[16/9] overflow-hidden rounded-3xl bg-surface-alt md:mt-14">
-        <Image
+        <img
           src="/images/about-space.png"
           alt="Затишний куточок арт-центру Плай Піч із книжками та роботами на стінах"
-          fill
-          sizes="(max-width: 1152px) 100vw, 1152px"
-          className="object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
       </Reveal>
 

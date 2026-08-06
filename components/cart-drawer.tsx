@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
@@ -80,12 +79,11 @@ export function CartDrawer() {
                         onClick={close}
                         className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-alt"
                       >
-                        <Image
+                        <img
                           src={product.images[0] || '/placeholder.svg'}
                           alt={product.name}
-                          fill
-                          sizes="80px"
-                          className="object-contain p-1"
+                          loading="lazy"
+                          className="absolute inset-0 h-full w-full object-contain p-1"
                         />
                       </Link>
                       <div className="flex flex-1 flex-col">

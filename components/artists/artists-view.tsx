@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { artists, productsByArtist } from '@/lib/data'
@@ -13,12 +12,11 @@ function Portrait({ artist }: { artist: Artist }) {
   if (artist.portrait) {
     return (
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-surface-alt">
-        <Image
+        <img
           src={artist.portrait}
           alt={artist.name}
-          fill
-          sizes="(max-width: 768px) 100vw, 280px"
-          className="object-cover"
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
         />
       </div>
     )

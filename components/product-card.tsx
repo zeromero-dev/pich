@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'motion/react'
 import { spring } from '@/lib/motion'
@@ -29,12 +28,11 @@ export function ProductCard({ product }: { product: Product }) {
             whileHover={reduced ? undefined : { scale: 1.03 }}
             transition={spring.settle}
           >
-            <Image
+            <img
               src={product.images[0] || '/placeholder.svg'}
               alt={product.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-contain p-3"
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-contain p-3"
             />
           </motion.div>
           {!product.inStock && (

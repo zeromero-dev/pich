@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'motion/react'
 import { Check, ArrowLeft } from 'lucide-react'
@@ -125,12 +124,11 @@ export function CheckoutView() {
           {items.map(({ product, qty }) => (
             <li key={product.id} className="flex items-center gap-4 py-3">
               <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-lg bg-surface">
-                <Image
+                <img
                   src={product.images[0] || '/placeholder.svg'}
                   alt={product.name}
-                  fill
-                  sizes="56px"
-                  className="object-contain p-1"
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-contain p-1"
                 />
               </div>
               <div className="min-w-0 flex-1">

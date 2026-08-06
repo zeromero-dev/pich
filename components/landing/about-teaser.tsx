@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { useLocale } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
@@ -13,12 +12,11 @@ export function AboutTeaser() {
     <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
       <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
         <Reveal className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-surface-alt md:order-last">
-          <Image
+          <img
             src="/images/about-space.png"
             alt="Затишний куточок арт-центру Плай Піч із книжками та роботами на стінах"
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         </Reveal>
         <Reveal delay={0.05}>
