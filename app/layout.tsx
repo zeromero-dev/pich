@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { SITE_URL } from '@/lib/site'
 import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
@@ -14,9 +15,22 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Плай Піч — арт-центр',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Плай Піч — арт-центр',
+    template: '%s — Плай Піч',
+  },
   description:
     'Плай Піч — арт-центр і крамничка сучасного українського мистецтва. Купуйте роботи митців, відвідуйте події.',
+  openGraph: {
+    siteName: 'Плай Піч',
+    locale: 'uk_UA',
+    type: 'website',
+    images: ['/images/hero-space-1600.webp'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },

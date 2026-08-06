@@ -53,7 +53,11 @@ export function ArtistsView() {
         {artists.map((artist) => {
           const works = productsByArtist(artist.name).slice(0, 3)
           return (
-            <section key={artist.id} className="grid gap-8 md:grid-cols-[280px_1fr] md:gap-12">
+            <section
+              key={artist.id}
+              id={artist.slug}
+              className="grid scroll-mt-24 gap-8 md:grid-cols-[280px_1fr] md:gap-12"
+            >
               <Reveal>
                 <Portrait artist={artist} />
               </Reveal>

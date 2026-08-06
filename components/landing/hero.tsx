@@ -46,7 +46,9 @@ export function Hero() {
             transition={{ duration: 24, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
           >
             <img
-              src="/images/hero-space.png"
+              src="/images/hero-space-1600.webp"
+              srcSet="/images/hero-space-800.webp 800w, /images/hero-space-1600.webp 1600w"
+              sizes="(min-width: 768px) 50vw, 100vw"
               alt="Виставкова зала арт-центру Плай Піч із картинами на білих стінах"
               fetchPriority="high"
               className="absolute inset-0 h-full w-full object-cover"

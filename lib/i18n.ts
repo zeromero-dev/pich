@@ -41,6 +41,10 @@ export const dictionaries = {
       backToShop: 'До крамнички',
       description: 'Опис',
       details: 'Деталі',
+      medium: 'Техніка',
+      size: 'Розмір',
+      year: 'Рік',
+      moreByArtist: 'Інші роботи митця',
     },
     events: {
       title: 'Події',
@@ -71,7 +75,8 @@ export const dictionaries = {
       checkout: 'Оформити',
       continue: 'Далі до крамнички',
       remove: 'Прибрати',
-      qty: 'Кількість',
+      increase: 'Збільшити кількість',
+      decrease: 'Зменшити кількість',
     },
     checkout: {
       title: 'Оформлення',
@@ -90,6 +95,16 @@ export const dictionaries = {
       invalidEmail: 'Некоректний email',
       successTitle: 'Дякуємо!',
       successBody: 'Ваше замовлення прийнято. Ми звʼяжемося з вами найближчим часом.',
+    },
+    notFound: {
+      title: 'Сторінку не знайдено',
+      body: 'Такої сторінки не існує або її було переміщено.',
+      home: 'На головну',
+    },
+    errorPage: {
+      title: 'Щось пішло не так',
+      body: 'Сталася помилка. Спробуйте оновити сторінку.',
+      retry: 'Спробувати знову',
     },
     footer: {
       tagline: 'Арт-центр і крамничка сучасного українського мистецтва.',
@@ -141,6 +156,10 @@ export const dictionaries = {
       backToShop: 'Back to shop',
       description: 'Description',
       details: 'Details',
+      medium: 'Medium',
+      size: 'Size',
+      year: 'Year',
+      moreByArtist: 'More by this artist',
     },
     events: {
       title: 'Events',
@@ -171,7 +190,8 @@ export const dictionaries = {
       checkout: 'Checkout',
       continue: 'Continue to shop',
       remove: 'Remove',
-      qty: 'Quantity',
+      increase: 'Increase quantity',
+      decrease: 'Decrease quantity',
     },
     checkout: {
       title: 'Checkout',
@@ -190,6 +210,16 @@ export const dictionaries = {
       invalidEmail: 'Invalid email',
       successTitle: 'Thank you!',
       successBody: 'Your order has been received. We will be in touch shortly.',
+    },
+    notFound: {
+      title: 'Page not found',
+      body: 'This page does not exist or has been moved.',
+      home: 'Back home',
+    },
+    errorPage: {
+      title: 'Something went wrong',
+      body: 'An error occurred. Try reloading the page.',
+      retry: 'Try again',
     },
     footer: {
       tagline: 'An art center and shop for contemporary Ukrainian art.',

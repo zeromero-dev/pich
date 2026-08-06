@@ -32,7 +32,7 @@ export function EventCard({ event }: { event: PlaiEvent }) {
     <motion.article
       whileHover={reduced ? undefined : { y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
       transition={spring.settle}
-      className="flex gap-5 rounded-2xl border border-hairline bg-surface p-5"
+      className="flex h-full gap-5 rounded-2xl border border-hairline bg-surface p-5"
     >
       <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-surface-alt">
         <span className="text-2xl font-semibold leading-none text-ink tabular-nums">{day}</span>
@@ -52,7 +52,10 @@ export function EventCard({ event }: { event: PlaiEvent }) {
             {event.location}
           </span>
         </div>
-        <div className="mt-4">
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft text-pretty">
+          {event.description}
+        </p>
+        <div className="mt-auto pt-4">
           <PillButton
             variant="secondary"
             size="sm"

@@ -1,18 +1,36 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
+
+/* Mirrors Tailwind's max-sm breakpoint — the drawer is a bottom sheet below it. */
+function useIsBottomSheet() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia('(max-width: 639px)')
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(max-width: 639px)').matches,
+    () => false,
+  )
+}
 
 export function CartDrawer() {
   const { items, subtotal, isOpen, close, remove, setQty } = useCart()
   const { t } = useLocale()
   const reduced = useReducedMotion()
+  const bottomSheet = useIsBottomSheet()
+  const trapRef = useFocusTrap<HTMLElement>(isOpen, close)
+  const offscreen = bottomSheet ? { y: '100%' } : { x: '100%' }
+  const onscreen = bottomSheet ? { y: 0 } : { x: 0 }
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : ''
@@ -20,12 +38,6 @@ export function CartDrawer() {
       document.body.style.overflow = ''
     }
   }, [isOpen])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [close])
 
   return (
     <AnimatePresence>
@@ -40,9 +52,11 @@ export function CartDrawer() {
             className="absolute inset-0 bg-ink/25"
           />
           <motion.aside
-            initial={reduced ? { opacity: 0 } : { x: '100%' }}
-            animate={reduced ? { opacity: 1 } : { x: 0 }}
-            exit={reduced ? { opacity: 0 } : { x: '100%' }}
+            ref={trapRef}
+            tabIndex={-1}
+            initial={reduced ? { opacity: 0 } : offscreen}
+            animate={reduced ? { opacity: 1 } : onscreen}
+            exit={reduced ? { opacity: 0 } : offscreen}
             transition={reduced ? { duration: 0.2 } : spring.settle}
             className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col rounded-l-3xl bg-surface shadow-[0_8px_30px_rgba(0,0,0,0.12)] max-sm:inset-x-0 max-sm:top-auto max-sm:h-[85vh] max-sm:w-full max-sm:max-w-none max-sm:rounded-l-none max-sm:rounded-t-3xl"
           >
@@ -105,7 +119,7 @@ export function CartDrawer() {
                             <button
                               type="button"
                               onClick={() => setQty(product.id, qty - 1)}
-                              aria-label={t.cart.qty}
+                              aria-label={t.cart.decrease}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt"
                             >
                               <Minus className="size-3.5" aria-hidden="true" />
@@ -114,7 +128,7 @@ export function CartDrawer() {
                             <button
                               type="button"
                               onClick={() => setQty(product.id, qty + 1)}
-                              aria-label={t.cart.qty}
+                              aria-label={t.cart.increase}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt"
                             >
                               <Plus className="size-3.5" aria-hidden="true" />

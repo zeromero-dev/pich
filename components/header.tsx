@@ -7,6 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Menu, ShoppingBag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { spring } from '@/lib/motion'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { useCart, useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 import type { Locale } from '@/lib/i18n'
@@ -87,6 +88,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
+  const menuRef = useFocusTrap<HTMLDivElement>(menuOpen, () => setMenuOpen(false))
 
   const nav = [
     { href: '/shop', label: t.nav.shop },
@@ -156,6 +158,11 @@ export function Header() {
       <AnimatePresence>
         {menuOpen && (
           <motion.div
+            ref={menuRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.nav.menu}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

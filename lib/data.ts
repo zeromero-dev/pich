@@ -48,7 +48,7 @@ export const products: Product[] = [
     price: 12400,
     category: 'abstract',
     inStock: true,
-    images: ['/images/art-01.png'],
+    images: ['/images/art-01.webp'],
     description:
       'Абстрактна робота у глибоких синіх і вохристих тонах. Густе накладання фарби створює відчуття руху хвиль у темряві. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -63,7 +63,7 @@ export const products: Product[] = [
     price: 9800,
     category: 'landscape',
     inStock: true,
-    images: ['/images/art-02.png'],
+    images: ['/images/art-02.webp'],
     description:
       'Мінімалістичний пейзаж пшеничного поля під широким небом. Тепла золота палітра й спокійний горизонт. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -78,7 +78,7 @@ export const products: Product[] = [
     price: 15600,
     category: 'painting',
     inStock: true,
-    images: ['/images/art-03.png'],
+    images: ['/images/art-03.webp'],
     description:
       'Фігуративний портрет жінки у вишиванці. Приглушені земляні тони з одним червоним акцентом. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -93,7 +93,7 @@ export const products: Product[] = [
     price: 8200,
     category: 'abstract',
     inStock: true,
-    images: ['/images/art-04.png'],
+    images: ['/images/art-04.webp'],
     description:
       'Геометрична композиція з напівпрозорих форм у теракотових, шавлієвих і теплих сірих тонах. Акрил, полотно.',
     medium: 'Акрил, полотно',
@@ -108,7 +108,7 @@ export const products: Product[] = [
     price: 6400,
     category: 'painting',
     inStock: false,
-    images: ['/images/art-05.png'],
+    images: ['/images/art-05.webp'],
     description:
       'Натюрморт із польовими квітами у керамічній вазі. Вільний живописний мазок і мʼяке денне світло. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -123,7 +123,7 @@ export const products: Product[] = [
     price: 11200,
     category: 'landscape',
     inStock: true,
-    images: ['/images/art-06.png'],
+    images: ['/images/art-06.webp'],
     description:
       'Атмосферний морський пейзаж, де море зустрічається з небом. Мʼякі градієнти сіро-блакитного й блідо-рожевого. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -138,7 +138,7 @@ export const products: Product[] = [
     price: 13800,
     category: 'abstract',
     inStock: true,
-    images: ['/images/art-07.png'],
+    images: ['/images/art-07.webp'],
     description:
       'Яскрава абстрактна квіткова робота. Енергійні мазки мадженти, помаранчевого й зеленого на світлому тлі. Акрил, полотно.',
     medium: 'Акрил, полотно',
@@ -153,7 +153,7 @@ export const products: Product[] = [
     price: 10600,
     category: 'graphics',
     inStock: true,
-    images: ['/images/art-08.png'],
+    images: ['/images/art-08.webp'],
     description:
       'Тихі міські дахи в сутінках. Живописний міський пейзаж у теплих бурштинових і глибоких індигових тонах. Олія, полотно.',
     medium: 'Олія, полотно',
@@ -179,7 +179,7 @@ export const artists: Artist[] = [
     id: 'a1',
     slug: 'oksana-melnyk',
     name: 'Оксана Мельник',
-    portrait: '/images/artist-portrait.png',
+    portrait: '/images/artist-portrait.webp',
     bio: 'Живописиця з Львова. Працює з абстракцією та фігуративом, досліджує памʼять і тілесність через густу фактуру олійної фарби. Учасниця групових виставок у Львові, Києві та Кракові.',
   },
   {

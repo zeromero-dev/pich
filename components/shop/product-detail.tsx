@@ -8,14 +8,22 @@ import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton } from '@/components/pill-button'
+import { ProductCard } from '@/components/product-card'
+import { StaggerGroup, StaggerItem } from '@/components/reveal'
 import { cn } from '@/lib/utils'
-import type { Product } from '@/lib/data'
+import { artists, productsByArtist, type Product } from '@/lib/data'
 
 export function ProductDetail({ product }: { product: Product }) {
   const { t } = useLocale()
   const { add, open } = useCart()
   const [active, setActive] = useState(0)
   const [added, setAdded] = useState(false)
+
+  // Name join to the artists content — fragile by design, see artists.md.
+  const artistEntry = artists.find((a) => a.name === product.artist)
+  const related = productsByArtist(product.artist)
+    .filter((p) => p.id !== product.id)
+    .slice(0, 4)
 
   const handleAdd = () => {
     add(product)
@@ -76,7 +84,16 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* Info */}
         <div className="md:pt-2">
-          <p className="text-sm text-ink-soft">{product.artist}</p>
+          {artistEntry ? (
+            <Link
+              href={`/artists#${artistEntry.slug}`}
+              className="text-sm text-ink-soft transition-colors hover:text-ink"
+            >
+              {product.artist}
+            </Link>
+          ) : (
+            <p className="text-sm text-ink-soft">{product.artist}</p>
+          )}
           <h1 className="mt-1 text-3xl font-semibold tracking-[-0.02em] text-ink text-balance md:text-4xl">
             {product.name}
           </h1>
@@ -134,16 +151,31 @@ export function ProductDetail({ product }: { product: Product }) {
           <div className="mt-6 border-t border-hairline pt-6">
             <h2 className="text-sm font-semibold text-ink">{t.shop.details}</h2>
             <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-              <dt className="text-ink-faint">Техніка</dt>
+              <dt className="text-ink-faint">{t.shop.medium}</dt>
               <dd className="text-ink">{product.medium}</dd>
-              <dt className="text-ink-faint">Розмір</dt>
+              <dt className="text-ink-faint">{t.shop.size}</dt>
               <dd className="text-ink tabular-nums">{product.size}</dd>
-              <dt className="text-ink-faint">Рік</dt>
+              <dt className="text-ink-faint">{t.shop.year}</dt>
               <dd className="text-ink tabular-nums">{product.year}</dd>
             </dl>
           </div>
         </div>
       </div>
+
+      {related.length > 0 && (
+        <section className="mt-16 border-t border-hairline pt-10 md:mt-24">
+          <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink md:text-3xl">
+            {t.shop.moreByArtist}
+          </h2>
+          <StaggerGroup className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+            {related.map((p) => (
+              <StaggerItem key={p.id}>
+                <ProductCard product={p} />
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+        </section>
+      )}
     </main>
   )
 }
