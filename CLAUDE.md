@@ -67,9 +67,24 @@ app/api/checkout/    # PLANNED: Route Handler → validate stock → payment (st
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
 - **Events**: read-only fetch from a public Google Calendar; scheduling happens in Google Calendar itself, the site only displays.
 
-## UI/UX
+## Knowledge Base
 
-Design direction, code-ready tokens (Tailwind 4 `@theme`), motion rules (Motion library), and page blueprints live in `.claude/docs/ui-ux-guidelines.md`. Read it before building or styling any page. AI-facing context docs belong under `.claude/docs/` — don't scatter `.md` files elsewhere in the repo.
+All AI context docs live under `.claude/docs/` — don't scatter `.md` files elsewhere in the repo.
+
+```
+.claude/docs/
+├── ui-ux-guidelines.md   # design tokens, motion rules, page blueprints — read before styling anything
+└── domain/               # spec-driven domain docs — read the relevant one before working in a context
+    ├── README.md         # context map + ubiquitous language — start here
+    ├── catalog.md        # Work entity, pricing rules, net_price rule, CRM mapping spec
+    ├── cart.md           # draft-order semantics, snapshot staleness, never-authoritative policy
+    ├── checkout.md       # ordering flow spec, payment-before-order rule, PaymentProvider interface
+    ├── events.md         # Google Calendar projection, "registration" caveat
+    ├── artists.md        # content-as-code policy, fragile name join to catalog
+    └── i18n.md           # UI-bilingual/content-single-language rule, formatting rules
+```
+
+Domain docs record **what is built** vs **what is spec** — when you build something specified there, move it to fact. Doc style: business rules and use cases, boundaries named by real module paths; no invented interfaces (the payment provider is the one deliberate exception).
 
 ## HUGEPROFIT CRM API
 
