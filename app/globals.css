@@ -1,26 +1,91 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ==========================================================================
+   Plai Pich — monochrome, light-only design system.
+   Token values from the UI/UX guidelines (v1) are the source of truth.
+   ========================================================================== */
+
+@theme {
+  /* Palette — monochrome only. The only color on any page is photography. */
+  --color-surface: #ffffff; /* page background */
+  --color-surface-alt: #f7f7f7; /* alternating sections, card backdrops, skeletons */
+  --color-ink: #111111; /* primary text, primary buttons */
+  --color-ink-soft: #555555; /* secondary text */
+  --color-ink-faint: #a3a3a3; /* placeholders, disabled */
+  --color-hairline: #11111114; /* borders — 8% ink, never solid gray lines */
+
+  /* Semantic states — function over purity. */
+  --color-error: #dc2626; /* red-600 */
+  --color-success: #15803d; /* green-700 */
+
+  /* Fonts — Inter for full Cyrillic coverage (Ukrainian-first, §2). */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Radius — soft, Switch-like. */
+  --radius: 1rem;
+
+  /* Type scale (§2) */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 600;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  * {
+    border-color: var(--color-hairline);
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Focus ring — ink, 2px offset, visible even on the black button. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-surface);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Slow shimmer for content skeletons (never spinners for content, §4). */
+@keyframes plai-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.plai-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-alt) 0%,
+    #efefef 50%,
+    var(--color-surface-alt) 100%
+  );
+  background-size: 200% 100%;
+  animation: plai-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plai-skeleton {
+    animation: none;
+  }
 }
