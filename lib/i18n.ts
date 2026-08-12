@@ -1,5 +1,15 @@
 export type Locale = 'uk' | 'en'
 
+/** Ukrainian counts take three forms: 1 робота, 2–4 роботи, 5+ робіт. */
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod100 = n % 100
+  if (mod100 >= 11 && mod100 <= 14) return many
+  const mod10 = n % 10
+  if (mod10 === 1) return one
+  if (mod10 >= 2 && mod10 <= 4) return few
+  return many
+}
+
 export const dictionaries = {
   uk: {
     nav: {
@@ -41,10 +51,17 @@ export const dictionaries = {
       backToShop: 'До крамнички',
       description: 'Опис',
       details: 'Деталі',
-      medium: 'Техніка',
       size: 'Розмір',
-      year: 'Рік',
       moreByArtist: 'Інші роботи митця',
+      lastOne: 'Остання',
+      availableOnly: 'Лише в наявності',
+      sortLabel: 'Сортування',
+      sort: {
+        default: 'Спочатку нові',
+        priceAsc: 'Спочатку дешевші',
+        priceDesc: 'Спочатку дорожчі',
+      },
+      resultCount: (n: number) => `${n} ${plural(n, 'робота', 'роботи', 'робіт')}`,
     },
     events: {
       title: 'Події',
@@ -66,6 +83,10 @@ export const dictionaries = {
       artistsLead: 'Люди, чиї роботи живуть у нашому просторі.',
       selectedWorks: 'Вибрані роботи',
       viewInShop: 'Дивитися в крамничці',
+      allArtists: 'Усі митці',
+      backToArtists: 'До митців',
+      worksCount: (n: number) => `${n} ${plural(n, 'робота', 'роботи', 'робіт')}`,
+      artistWorks: 'Роботи',
     },
     cart: {
       title: 'Кошик',
@@ -156,10 +177,17 @@ export const dictionaries = {
       backToShop: 'Back to shop',
       description: 'Description',
       details: 'Details',
-      medium: 'Medium',
       size: 'Size',
-      year: 'Year',
       moreByArtist: 'More by this artist',
+      lastOne: 'Last one',
+      availableOnly: 'In stock only',
+      sortLabel: 'Sort',
+      sort: {
+        default: 'Newest first',
+        priceAsc: 'Price: low to high',
+        priceDesc: 'Price: high to low',
+      },
+      resultCount: (n: number) => `${n} ${n === 1 ? 'work' : 'works'}`,
     },
     events: {
       title: 'Events',
@@ -181,6 +209,10 @@ export const dictionaries = {
       artistsLead: 'The people whose works live in our space.',
       selectedWorks: 'Selected works',
       viewInShop: 'View in shop',
+      allArtists: 'All artists',
+      backToArtists: 'Back to artists',
+      worksCount: (n: number) => `${n} ${n === 1 ? 'work' : 'works'}`,
+      artistWorks: 'Works',
     },
     cart: {
       title: 'Cart',
@@ -233,7 +265,14 @@ export const dictionaries = {
   },
 } as const
 
-type DeepString<T> = { [K in keyof T]: T[K] extends string ? string : DeepString<T[K]> }
+type DeepString<T> = {
+  [K in keyof T]: T[K] extends string
+    ? string
+    : // Counters are functions, not leaves — keep their signature callable.
+      T[K] extends (...args: never[]) => string
+      ? T[K]
+      : DeepString<T[K]>
+}
 
 /** Structural shape of the uk dictionary — both locales must match it. */
 export type Dictionary = DeepString<(typeof dictionaries)['uk']>

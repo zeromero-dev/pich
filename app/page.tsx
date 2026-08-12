@@ -1,14 +1,16 @@
+import { getCatalog } from '@/lib/hugeprofit'
 import { Hero } from '@/components/landing/hero'
 import { EventsPreview } from '@/components/landing/events-preview'
 import { FeaturedWorks } from '@/components/landing/featured-works'
 import { AboutTeaser } from '@/components/landing/about-teaser'
 
-export default function Page() {
+export default async function Page() {
+  const products = await getCatalog()
   return (
     <main>
       <Hero />
       <EventsPreview />
-      <FeaturedWorks />
+      <FeaturedWorks products={products} />
       <AboutTeaser />
     </main>
   )

@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getProduct, products } from '@/lib/data'
+import { getCatalog, getProductBySlug, worksByArtistSlug } from '@/lib/hugeprofit'
 import { SITE_URL } from '@/lib/site'
 import { ProductDetail } from '@/components/shop/product-detail'
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const products = await getCatalog()
   return products.map((p) => ({ slug: p.slug }))
+}
+
+function heading(name: string, artist: string | null): string {
+  return artist ? `${name} — ${artist}` : name
 }
 
 export async function generateMetadata({
@@ -14,14 +19,14 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const product = getProduct(slug)
+  const product = await getProductBySlug(slug)
   if (!product) return { title: 'Робота не знайдена' }
+
+  const title = heading(product.name, product.artist)
   return {
-    title: `${product.name} — ${product.artist}`,
-    description: product.description,
+    title,
     openGraph: {
-      title: `${product.name} — ${product.artist}`,
-      description: product.description,
+      title,
       images: product.images[0] ? [product.images[0]] : undefined,
     },
   }
@@ -33,16 +38,21 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = getProduct(slug)
+  const product = await getProductBySlug(slug)
   if (!product) notFound()
+
+  const related = product.artistSlug
+    ? worksByArtistSlug(await getCatalog(), product.artistSlug)
+        .filter((p) => p.id !== product.id)
+        .slice(0, 4)
+    : []
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    description: product.description,
-    image: product.images[0] ? new URL(product.images[0], SITE_URL).toString() : undefined,
-    brand: { '@type': 'Person', name: product.artist },
+    image: product.images[0],
+    brand: product.artist ? { '@type': 'Person', name: product.artist } : undefined,
     offers: {
       '@type': 'Offer',
       url: `${SITE_URL}/shop/${product.slug}`,
@@ -60,7 +70,7 @@ export default async function ProductPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ProductDetail product={product} />
+      <ProductDetail product={product} related={related} />
     </>
   )
 }

@@ -1,27 +1,54 @@
 /**
- * Mock catalog + events. In production these come from the CRM (products) and
- * Google Calendar (events). Content is single-language (as the CRM provides it),
- * per the i18n note — we don't promise a translated catalog.
+ * Domain types + mock events. Works and artists come from the CRM via
+ * `lib/hugeprofit/`; events will come from Google Calendar. Content is
+ * single-language (as the CRM provides it), per the i18n note — we don't
+ * promise a translated catalog.
  */
 
 export type Category = {
+  /** CRM category id as a string — stable, unlike the Ukrainian label. */
   slug: string
   label: string
 }
 
+/** A category as shown in the shop filter bar. */
+export type CategoryFilter = Category & {
+  /** Works in this category *including its descendants* — see catalog.md. */
+  count: number
+}
+
+/**
+ * A work in the shop. No `medium`/`year` — the CRM has no source for them
+ * (`attr[]` is filled on 2 of 258 products).
+ */
 export type Product = {
   id: string
   slug: string
   name: string
-  artist: string
+  /** `null` when the CRM brand is unset — 22 of the 252 live works today. */
+  artist: string | null
+  /** CRM brand id — the stable half of the Artists join. */
+  artistId: string | null
+  artistSlug: string | null
   price: number
-  category: string // category slug
+  /**
+   * Leaf category first, then its ancestors. Filtering matches anywhere in
+   * this chain, so picking a parent finds works filed under its children.
+   */
+  categories: Category[]
   inStock: boolean
+  /** Exactly one left. Drives the "остання" marker; availability stays boolean. */
+  isLast: boolean
   images: string[]
-  description: string
-  medium: string
-  size: string
-  year: number
+  /**
+   * CRM description, rendered verbatim. Decided 2026-08-12: the owners clean
+   * the field in the CRM — see catalog.md rule 3 for what is in there today.
+   */
+  description: string | null
+  /** Decoded from the CRM `size` field, e.g. "30 × 21 см". */
+  size: string | null
+  /** CRM article. Not displayed — it is an internal code — but orders need it. */
+  sku: string | null
 }
 
 export type PlaiEvent = {
@@ -32,173 +59,28 @@ export type PlaiEvent = {
   description: string
 }
 
-export const categories: Category[] = [
-  { slug: 'painting', label: 'Живопис' },
-  { slug: 'graphics', label: 'Графіка' },
-  { slug: 'abstract', label: 'Абстракція' },
-  { slug: 'landscape', label: 'Пейзаж' },
-]
-
-export const products: Product[] = [
-  {
-    id: 'p1',
-    slug: 'nichnyi-priplyv',
-    name: 'Нічний приплив',
-    artist: 'Оксана Мельник',
-    price: 12400,
-    category: 'abstract',
-    inStock: true,
-    images: ['/images/art-01.webp'],
-    description:
-      'Абстрактна робота у глибоких синіх і вохристих тонах. Густе накладання фарби створює відчуття руху хвиль у темряві. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '80 × 100 см',
-    year: 2024,
-  },
-  {
-    id: 'p2',
-    slug: 'zolote-pole',
-    name: 'Золоте поле',
-    artist: 'Андрій Ковальчук',
-    price: 9800,
-    category: 'landscape',
-    inStock: true,
-    images: ['/images/art-02.webp'],
-    description:
-      'Мінімалістичний пейзаж пшеничного поля під широким небом. Тепла золота палітра й спокійний горизонт. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '70 × 90 см',
-    year: 2023,
-  },
-  {
-    id: 'p3',
-    slug: 'vyshyta',
-    name: 'Вишита',
-    artist: 'Оксана Мельник',
-    price: 15600,
-    category: 'painting',
-    inStock: true,
-    images: ['/images/art-03.webp'],
-    description:
-      'Фігуративний портрет жінки у вишиванці. Приглушені земляні тони з одним червоним акцентом. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '60 × 80 см',
-    year: 2024,
-  },
-  {
-    id: 'p4',
-    slug: 'rivnovaha',
-    name: 'Рівновага',
-    artist: 'Ірина Гнатюк',
-    price: 8200,
-    category: 'abstract',
-    inStock: true,
-    images: ['/images/art-04.webp'],
-    description:
-      'Геометрична композиція з напівпрозорих форм у теракотових, шавлієвих і теплих сірих тонах. Акрил, полотно.',
-    medium: 'Акрил, полотно',
-    size: '50 × 70 см',
-    year: 2024,
-  },
-  {
-    id: 'p5',
-    slug: 'polovi-kvity',
-    name: 'Польові квіти',
-    artist: 'Андрій Ковальчук',
-    price: 6400,
-    category: 'painting',
-    inStock: false,
-    images: ['/images/art-05.webp'],
-    description:
-      'Натюрморт із польовими квітами у керамічній вазі. Вільний живописний мазок і мʼяке денне світло. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '40 × 50 см',
-    year: 2022,
-  },
-  {
-    id: 'p6',
-    slug: 'tumannyi-obrii',
-    name: 'Туманний обрій',
-    artist: 'Ірина Гнатюк',
-    price: 11200,
-    category: 'landscape',
-    inStock: true,
-    images: ['/images/art-06.webp'],
-    description:
-      'Атмосферний морський пейзаж, де море зустрічається з небом. Мʼякі градієнти сіро-блакитного й блідо-рожевого. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '80 × 80 см',
-    year: 2023,
-  },
-  {
-    id: 'p7',
-    slug: 'kvitnevyi-vybukh',
-    name: 'Квітневий вибух',
-    artist: 'Оксана Мельник',
-    price: 13800,
-    category: 'abstract',
-    inStock: true,
-    images: ['/images/art-07.webp'],
-    description:
-      'Яскрава абстрактна квіткова робота. Енергійні мазки мадженти, помаранчевого й зеленого на світлому тлі. Акрил, полотно.',
-    medium: 'Акрил, полотно',
-    size: '90 × 120 см',
-    year: 2024,
-  },
-  {
-    id: 'p8',
-    slug: 'dahy-na-svitanku',
-    name: 'Дахи на світанку',
-    artist: 'Андрій Ковальчук',
-    price: 10600,
-    category: 'graphics',
-    inStock: true,
-    images: ['/images/art-08.webp'],
-    description:
-      'Тихі міські дахи в сутінках. Живописний міський пейзаж у теплих бурштинових і глибоких індигових тонах. Олія, полотно.',
-    medium: 'Олія, полотно',
-    size: '60 × 90 см',
-    year: 2023,
-  },
-]
-
-export function getProduct(slug: string): Product | undefined {
-  return products.find((p) => p.slug === slug)
-}
-
+/**
+ * An artist, derived from the CRM brand on their works. Bios and portraits are
+ * repo content (content-as-code) keyed by slug — see `artistProfiles`.
+ */
 export type Artist = {
+  /** CRM brand id. */
   id: string
   slug: string
   name: string
+  workCount: number
+  /** First image of one of their works, used as the roster thumbnail. */
+  cover: string | null
   portrait?: string
-  bio: string
+  bio?: string
 }
 
-export const artists: Artist[] = [
-  {
-    id: 'a1',
-    slug: 'oksana-melnyk',
-    name: 'Оксана Мельник',
-    portrait: '/images/artist-portrait.webp',
-    bio: 'Живописиця з Львова. Працює з абстракцією та фігуративом, досліджує памʼять і тілесність через густу фактуру олійної фарби. Учасниця групових виставок у Львові, Києві та Кракові.',
-  },
-  {
-    id: 'a2',
-    slug: 'andrii-kovalchuk',
-    name: 'Андрій Ковальчук',
-    bio: 'Пейзажист і графік. Малює українські краєвиди з натури — від карпатських полонин до міських дахів. Його роботи є у приватних колекціях в Україні, Польщі та Канаді.',
-  },
-  {
-    id: 'a3',
-    slug: 'iryna-hnatiuk',
-    name: 'Ірина Гнатюк',
-    bio: 'Художниця-абстракціоністка. Через геометрію та напівпрозорі шари шукає рівновагу між кольором і тишею. Викладає живопис у студії Плай Піч.',
-  },
-]
-
-export function productsByArtist(name: string): Product[] {
-  return products.filter((p) => p.artist === name)
-}
+/**
+ * Hand-written artist content, keyed by artist slug. Empty until the owners
+ * decide who gets a bio — an artist with no entry still gets a roster card and
+ * a page listing their works.
+ */
+export const artistProfiles: Record<string, { portrait?: string; bio: string }> = {}
 
 /** Upcoming events, sorted by start date. Stand-in for Google Calendar. */
 function daysFromNow(days: number, hour: number, minute = 0): string {

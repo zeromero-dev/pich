@@ -1,46 +1,54 @@
 'use client'
 
-import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import { artists, productsByArtist } from '@/lib/data'
 import { useLocale } from '@/components/providers'
-import { ProductCard } from '@/components/product-card'
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/reveal'
 import type { Artist } from '@/lib/data'
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+}
+
 function Portrait({ artist }: { artist: Artist }) {
-  if (artist.portrait) {
+  const image = artist.portrait ?? artist.cover
+  if (image) {
     return (
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-surface-alt">
         <img
-          src={artist.portrait}
-          alt={artist.name}
+          src={image}
+          alt=""
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover"
+          className={
+            artist.portrait
+              ? 'absolute inset-0 h-full w-full object-cover'
+              : 'absolute inset-0 h-full w-full object-contain p-3'
+          }
         />
       </div>
     )
   }
-  const initials = artist.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
   return (
     <div
       aria-hidden="true"
       className="flex aspect-[4/5] items-center justify-center rounded-2xl bg-surface-alt"
     >
-      <span className="text-5xl font-semibold tracking-[-0.02em] text-ink-faint">{initials}</span>
+      <span className="text-4xl font-semibold tracking-[-0.02em] text-ink-faint">
+        {initials(artist.name)}
+      </span>
     </div>
   )
 }
 
-export function ArtistsView() {
+export function ArtistsView({ artists }: { artists: Artist[] }) {
   const { t } = useLocale()
 
   return (
     <main className="mx-auto max-w-6xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
-      <Reveal className="mb-12">
+      <Reveal className="mb-10">
         <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink md:text-5xl">
           {t.about.artistsTitle}
         </h1>
@@ -49,56 +57,21 @@ export function ArtistsView() {
         </p>
       </Reveal>
 
-      <div className="flex flex-col gap-16 md:gap-24">
-        {artists.map((artist) => {
-          const works = productsByArtist(artist.name).slice(0, 3)
-          return (
-            <section
-              key={artist.id}
-              id={artist.slug}
-              className="grid scroll-mt-24 gap-8 md:grid-cols-[280px_1fr] md:gap-12"
-            >
-              <Reveal>
-                <Portrait artist={artist} />
-              </Reveal>
-              <div>
-                <Reveal>
-                  <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink md:text-3xl">
-                    {artist.name}
-                  </h2>
-                  <p className="mt-3 max-w-prose text-base leading-relaxed text-ink-soft text-pretty">
-                    {artist.bio}
-                  </p>
-                </Reveal>
-                {works.length > 0 && (
-                  <>
-                    <Reveal className="mt-8 flex items-center justify-between gap-4">
-                      <h3 className="text-sm font-semibold text-ink">{t.about.selectedWorks}</h3>
-                      <Link
-                        href="/shop"
-                        className="group inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
-                      >
-                        {t.about.viewInShop}
-                        <ArrowRight
-                          className="size-4 transition-transform group-hover:translate-x-0.5"
-                          aria-hidden="true"
-                        />
-                      </Link>
-                    </Reveal>
-                    <StaggerGroup className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">
-                      {works.map((product) => (
-                        <StaggerItem key={product.id}>
-                          <ProductCard product={product} />
-                        </StaggerItem>
-                      ))}
-                    </StaggerGroup>
-                  </>
-                )}
-              </div>
-            </section>
-          )
-        })}
-      </div>
+      <StaggerGroup className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+        {artists.map((artist) => (
+          <StaggerItem key={artist.slug}>
+            <Link href={`/artists/${artist.slug}`} className="group block">
+              <Portrait artist={artist} />
+              <h2 className="mt-3 text-base font-semibold leading-snug text-ink text-pretty transition-colors group-hover:text-ink-soft">
+                {artist.name}
+              </h2>
+              <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
+                {t.about.worksCount(artist.workCount)}
+              </p>
+            </Link>
+          </StaggerItem>
+        ))}
+      </StaggerGroup>
     </main>
   )
 }

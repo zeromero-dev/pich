@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { categoriesOf, getCatalog } from '@/lib/hugeprofit'
 import { ShopView } from '@/components/shop/shop-view'
 
 export const metadata: Metadata = {
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   description: 'Оригінальні роботи сучасних українських митців у крамничці Плай Піч.',
 }
 
-export default function ShopPage() {
-  return <ShopView />
+export default async function ShopPage() {
+  const products = await getCatalog()
+  return <ShopView products={products} categories={categoriesOf(products)} />
 }

@@ -1,12 +1,12 @@
 'use client'
 
-import { products } from '@/lib/data'
+import type { Product } from '@/lib/data'
 import { useLocale } from '@/components/providers'
 import { ProductCard } from '@/components/product-card'
 import { SectionHeading } from '@/components/section-heading'
 import { StaggerGroup, StaggerItem } from '@/components/reveal'
 
-export function FeaturedWorks() {
+export function FeaturedWorks({ products }: { products: Product[] }) {
   const { t } = useLocale()
   const featured = products.slice(0, 8)
 

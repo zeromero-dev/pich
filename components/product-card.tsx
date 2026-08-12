@@ -35,10 +35,16 @@ export function ProductCard({ product }: { product: Product }) {
               className="absolute inset-0 h-full w-full object-contain p-3"
             />
           </motion.div>
-          {!product.inStock && (
+          {!product.inStock ? (
             <span className="absolute left-3 top-3 rounded-full bg-ink px-2.5 py-1 text-[11px] font-medium text-surface">
               {t.shop.soldOut}
             </span>
+          ) : (
+            product.isLast && (
+              <span className="absolute left-3 top-3 rounded-full bg-surface/85 px-2.5 py-1 text-[11px] font-medium text-ink backdrop-blur-sm">
+                {t.shop.lastOne}
+              </span>
+            )
           )}
         </motion.div>
         <div className="mt-3">

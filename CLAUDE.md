@@ -4,7 +4,7 @@
 
 Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events calendar, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events come from Google Calendar.
 
-**Current state (2026-08-06): full v1 frontend on mock data.** All pages exist and build clean: landing, shop (client-side search + category filters), product detail, events, about, artists, cart drawer, checkout (validation + payment stub). Catalog/events/artists live in `lib/data.ts` as mocks shaped for the CRM/Calendar — backend wiring is the open work. UI conventions: `lib/motion.ts` (motion tokens), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Still mock or stubbed: events (`lib/data.ts` → Google Calendar), artist bios (`artistProfiles`, empty), and checkout submit (a `setTimeout` — no payment, no order creation). UI conventions: `lib/motion.ts` (motion tokens), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
 
 ## Stack
 
@@ -19,7 +19,7 @@ Plai Pich is a local art center — a place for people to gather and display the
 2. **Крамничка (Shop)** — catalog from CRM, product pages, cart, checkout that creates an order in the CRM
 3. **Product search** — implemented in-app (the CRM API has no search endpoint)
 4. **Events calendar** — Google Calendar integration to schedule and display events
-5. **Artist pages** — information about the artist(s); content lives in the repo (markdown/TSX), edited via code changes
+5. **Artist pages** — BUILT: roster derived from CRM brands, per-artist pages at `/artists/[slug]`. Bios/portraits are repo content (`artistProfiles`), still unwritten
 6. **Online payment** — a Ukrainian payment provider (LiqPay / monobank / Fondy / WayForPay — which one is not decided yet). Checkout must be structured so the payment step runs before order creation in the CRM.
 
 ## Principles
@@ -43,7 +43,7 @@ npm run lint       # eslint
 Secrets live in `.env.local` (gitignored via `.env*`):
 
 ```bash
-HUGEPROFIT_API_TOKEN=...        # server-only — no NEXT_PUBLIC_ prefix, ever
+HUGEPROFIT_API_KEY=...          # server-only — no NEXT_PUBLIC_ prefix, ever
 GOOGLE_CALENDAR_API_KEY=...     # server-only
 GOOGLE_CALENDAR_ID=...
 ```
@@ -53,10 +53,11 @@ GOOGLE_CALENDAR_ID=...
 Server-first for backends: all CRM and Google Calendar calls happen in Server Components / Route Handlers so tokens never reach the browser.
 
 ```
-app/                 # BUILT: /, /shop, /shop/[slug], /events, /about, /artists, /checkout
+app/                 # BUILT: /, /shop, /shop/[slug], /events, /about, /artists, /artists/[slug], /checkout
 components/          # BUILT: header, footer, cart-drawer, per-page views, motion primitives (reveal.tsx)
-lib/data.ts          # BUILT: mock catalog/events/artists — replace with the two clients below
-lib/hugeprofit/      # PLANNED: thin typed CRM client (products, categories, orders, reference_info)
+lib/data.ts          # BUILT: domain types + mock events (catalog and artist mocks are gone)
+lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
+lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/calendar/        # PLANNED: Google Calendar fetch (public events, API-key access)
 app/api/checkout/    # PLANNED: Route Handler → validate stock → payment (stub) → POST /bapi/remote_orders
 ```
@@ -102,14 +103,20 @@ Endpoints we care about:
 
 ## Key Gotchas
 
-- **`net_price` is the cost price.** It arrives inside every product's `stock[]` entry. Strip it in `lib/hugeprofit/` before data ever reaches a component or API response — leaking merchant margins to shoppers is the worst realistic bug this site can have. Customer price is `price` / `sale_price`.
+- **The CRM `description` renders verbatim — and 171 of 258 descriptions are internal notes** (bank cards, IBANs, tax ids, legal names, phones, cost prices, pasted chat messages). Owners' decision 2026-08-12: they clean the field in the CRM, the site just displays it. So **anything typed into that field is published.** Don't add a sanitiser — it can't be done reliably and would read as safety it doesn't provide. It is kept out of `<meta description>`/JSON-LD deliberately. See `.claude/docs/domain/catalog.md` rule 3.
+- **`net_price` is the cost price.** It arrives inside every product's `stock[]` entry. Strip it in `lib/hugeprofit/` before data ever reaches a component or API response — leaking merchant margins to shoppers is the second-worst realistic bug this site can have. Customer price is `price` / `sale_price`.
 - **The CRM API has no text search and no webhooks.** Search is ours (over the cached catalog). Freshness is time-based revalidation only — treat displayed stock as advisory and re-check stock server-side at checkout.
 - **CRM token is server-only.** Any `fetch` to `crm.h-profit.com` from client code is a bug by definition.
 - **Use plain `<img>`, never `next/image`** — decided 2026-08-06 (no Vercel image optimizer). The `@next/next/no-img-element` ESLint rule is disabled for this. Keep the habits `next/image` gave for free: fixed `aspect-ratio` containers (no layout shift), `loading="lazy"` below the fold, `fetchPriority="high"` on hero/LCP images. Product images are CRM-hosted (`https://crm.h-profit.com/bimages/get/...`) and load directly from there.
 - **`AGENTS.md` is auto-(re)generated by `next dev`.** Commit it alongside your work; deleting it from a diff just recreates an uncommitted change.
 - **Rate limits are undocumented.** Don't hammer the CRM per-request — the catalog cache is also our politeness layer.
+- **Next 16 makes fetch caching opt-in**, and a request carrying an `Authorization` header needs `cache: 'force-cache'` explicitly — `next.revalidate` alone is not enough. See `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md`.
+- **The API docs site mirrors cleanly.** `https://api-doc.h-profit.com/search/search_index.json` is the whole documentation (EN + UA + Types + Changelog) in one JSON — faster and more complete than scraping pages.
+- **Live-account quirks** (verified 2026-08-12): the product field is `category` (singular), not `categories`; `brand` is an object that is `{}` when unset; `product_id` accepts one id only (a comma list errors); `warehouse_id` is ignored when `count=1`; product images are public and need no auth header.
 
 ## Open Decisions (do not build these without confirming)
 
 - **Payment provider**: online payment via a Ukrainian provider is decided; *which* provider (LiqPay / monobank / Fondy / WayForPay) is not. Until then, build checkout with a payment interface + a stub, not a concrete integration.
-- **Sales channel**: should shop orders be tagged to a dedicated sales channel / warehouse in the CRM? (Needs values from `reference_info` on the live account.)
+- **Artist roster**: `lib/data.ts` still has 3 invented artists while the CRM has 71 real brand names, so `/artists` currently shows fiction. Needs owner input on who gets a page.
+
+Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres.
