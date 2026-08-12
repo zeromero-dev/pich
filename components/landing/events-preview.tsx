@@ -8,7 +8,10 @@ import { StaggerGroup, StaggerItem } from '@/components/reveal'
 
 export function EventsPreview() {
   const { t } = useLocale()
-  const upcoming = events.slice(0, 3)
+  // Soonest-first (events.md rule 2) — don't rely on source order.
+  const upcoming = [...events]
+    .sort((a, b) => +new Date(a.start) - +new Date(b.start))
+    .slice(0, 3)
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">

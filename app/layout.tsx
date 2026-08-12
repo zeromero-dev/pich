@@ -53,10 +53,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uk" className={`${inter.variable} bg-surface`}>
-      <body className="font-sans antialiased">
+      <body className="flex min-h-dvh flex-col font-sans antialiased">
         <Providers>
           <Header />
-          {children}
+          {/* Pins the footer to the viewport bottom on short pages (404, empty cart). */}
+          <div className="flex flex-1 flex-col [&>main]:flex-1">{children}</div>
           <Footer />
           <CartDrawer />
         </Providers>

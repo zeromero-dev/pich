@@ -112,6 +112,7 @@ export function Header() {
   }, [menuOpen])
 
   return (
+    <>
     <header
       className={cn(
         'sticky top-0 z-50 bg-surface/80 backdrop-blur-md transition-[border-color,box-shadow] duration-300',
@@ -154,8 +155,11 @@ export function Header() {
           </button>
         </div>
       </div>
+    </header>
 
-      <AnimatePresence>
+    {/* Outside <header>: its backdrop-filter would become the containing block
+        for this fixed overlay, shrinking inset-0 to the 64px header bar. */}
+    <AnimatePresence>
         {menuOpen && (
           <motion.div
             ref={menuRef}
@@ -183,7 +187,7 @@ export function Header() {
               </button>
             </div>
             <motion.nav
-              className="flex flex-1 flex-col justify-center gap-2 px-6"
+              className="flex flex-1 flex-col gap-2 px-6 pt-6"
               aria-label="Мобільна навігація"
               initial="hidden"
               animate="visible"
@@ -212,7 +216,7 @@ export function Header() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
-    </header>
+    </AnimatePresence>
+    </>
   )
 }

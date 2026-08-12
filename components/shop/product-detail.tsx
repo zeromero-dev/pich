@@ -33,7 +33,7 @@ export function ProductDetail({ product }: { product: Product }) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-6 pb-8 md:px-6 md:pt-10">
+    <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
       <Link
         href="/shop"
         className="group inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"

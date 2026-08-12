@@ -7,7 +7,7 @@ export default function NotFound() {
   const { t } = useLocale()
 
   return (
-    <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center md:px-6">
+    <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
       <p className="text-sm font-medium text-ink-faint tabular-nums">404</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink">
         {t.notFound.title}

@@ -18,7 +18,7 @@ export default function Error({
   }, [error])
 
   return (
-    <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center md:px-6">
+    <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
       <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
         {t.errorPage.title}
       </h1>

@@ -69,7 +69,7 @@ export function CheckoutView() {
 
   if (done) {
     return (
-      <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center md:px-6">
+      <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
         <motion.div
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -93,7 +93,7 @@ export function CheckoutView() {
 
   if (items.length === 0) {
     return (
-      <main className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center md:px-6">
+      <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
         <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">{t.cart.empty}</h1>
         <p className="mt-3 text-base text-ink-soft">{t.cart.emptyBody}</p>
         <PillLink href="/shop" className="mt-8">
@@ -104,7 +104,7 @@ export function CheckoutView() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 pt-6 pb-8 md:px-6 md:pt-10">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
       <Link
         href="/shop"
         className="group inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
