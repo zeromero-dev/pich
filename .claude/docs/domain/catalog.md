@@ -47,7 +47,7 @@ Category { slug (CRM category id), label }
 
 ## Use cases
 
-- **Browse** — whole catalog, category filters with counts, sort (newest / price ascending / price descending), and an "лише в наявності" toggle. Sold works stay last under every sort — they are not offers.
+- **Browse** — whole catalog, category filters with counts, sort (newest / price ascending / price descending), and an "лише в наявності" toggle. Sold works stay last under every sort — they are not offers. The grid pages 24 at a time behind "показати ще": CRM images are full-size (~133 KB median, ~33 MB for all 252), and paging is the only lever available while images bypass any optimizer (see CLAUDE.md).
 - **Search** — the CRM has no search endpoint, so it is this app's logic: case-insensitive substring match over `name` + `artist` + **every category label in the work's chain**, composable with the filters above, over the already-loaded catalog. Confirmed viable: 252 products is one page.
 - **View work** — lookup by slug; drives per-work SEO metadata.
 
@@ -67,10 +67,10 @@ CRM → domain mapping (verified against live data):
 | `slug` | — none | `toSlug()`: transliterated name + `-{id}`. The id is not decoration: names repeat ("Чокер" ×3) and the owners rename products. |
 | `artist` | `brand.name` | **Confirmed**: all 71 brands are personal names. `brand` is `{}` on 23 products → `null`. |
 | `price` | `stock[].sale_price` \|\| `stock[].price` | rule 2 |
-| `inStock` | `stock[].quantity > 0` | `instock` and `quantity` are identical on all 258 rows |
+| `inStock` | `stock[].instock > 0` | **Not `quantity`.** `instock` is what is available to sell; `quantity` is physical stock on hand. They read identically until an order reserves a unit — verified live 2026-08-13, one reservation moved `instock` 29 → 28 while `quantity` stayed 29. Reading `quantity` re-offers works that are already spoken for, which is how you double-sell a one-off. |
 | `categories` | `category[]` | the whole chain, leaf first — see category filtering above |
 | `artistId`, `artistSlug` | `brand.id`, `brand.name` | the Artists join ([artists.md](artists.md)) |
-| `isLast` | `stock[].quantity === 1` | rule 1 |
+| `isLast` | `stock[].instock === 1` | rule 1; same reasoning as `inStock` |
 | `size` | `size` | packed as `"AxBxC"` with blanks for unset (`"30xx21x"` → 30 × 21, `"xxx"` → none). Unit is **centimetres**, confirmed 2026-08-12. 195 of 258 have no dimensions at all. |
 | `description` | `description` | verbatim, trimmed; rule 3 |
 | `images` | `images` | full CRM-hosted URLs; all of them render (main image + thumbnails, up to 8) |

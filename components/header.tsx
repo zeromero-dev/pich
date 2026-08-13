@@ -70,8 +70,11 @@ function CartButton() {
         {count > 0 && (
           <motion.span
             key={bump}
-            initial={reduced ? false : { scale: 0.6 }}
-            animate={reduced ? {} : { scale: [1, 1.3, 1] }}
+            // Two keyframes only — springs reject a 1 → 1.3 → 1 sequence. The
+            // `key={bump}` remount replays this on every add, so overshooting
+            // from 1.3 down to 1 still reads as the pop the guidelines ask for.
+            initial={reduced ? false : { scale: 1.3 }}
+            animate={reduced ? {} : { scale: 1 }}
             transition={spring.snap}
             className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold text-surface tabular-nums"
           >

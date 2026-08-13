@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { SITE_URL } from '@/lib/site'
+import { WEBSITE_URL } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: '/checkout',
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${WEBSITE_URL}/sitemap.xml`,
   }
 }

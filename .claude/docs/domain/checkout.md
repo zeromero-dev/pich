@@ -1,6 +1,18 @@
 # Ordering (Checkout)
 
-Turning a cart draft into a paid order in the CRM. The CRM is the order system of record; this app owns the *process*: validation → payment → order creation. **Current state: the UI flow is built; submit is a fake `setTimeout` in `components/checkout/checkout-view.tsx`. Everything below "Spec" is not built.**
+Turning a cart draft into an order in the CRM. The CRM is the order system of record; this app owns the *process*: validation → order creation (payment, when it exists, slots in front).
+
+**Current state: built, unpaid, and proven end-to-end.** `app/api/checkout/route.ts` validates against fresh CRM data and creates the order; `components/checkout/checkout-view.tsx` posts to it and shows the order number.
+
+**Verified against the live CRM 2026-08-13** with one test order (`order_id` 1786609352566, CRM id 266591108). What the CRM did with it:
+
+- Stored every field as sent — `status: "pending"`, `info.is_paid: false`, `currency: "UAH"`, the `address_1` object, and `order_data[].local_product_id` with `product_id: null`.
+- **Reserved the stock itself**, adding `is_reserved: true`, `reserved_pids` and `mid: "34998"` to the line. The reservation warehouse comes from the token's integration settings, not from us.
+- **Auto-created a client record** (id 2980993) carrying first/last name, phone, email, city and address. Contact details land in the CRM's Клієнти section without us calling `POST /bapi/clients`.
+- **Did not create a sale.** The sales ledger stayed at 9 rows, so web orders never touch the cash accounts the owners' walk-in sales post to.
+- Returned `order_id` as a *string* even though we send an int, and assigned `integration_id: 12452`.
+
+Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders) **released the reservation** — `instock` went back to 29 — but **left the auto-created client record in place**. So every web order permanently adds a row to Клієнти, and cancelling an order does not clean it up. Whether the CRM de-duplicates a returning buyer by phone or email is untested.
 
 ## Model
 
@@ -23,20 +35,25 @@ Order {                               // what we create in the CRM
 
 1. **The client sends intent, not facts.** Only work ids and quantities cross the boundary. Prices, names, and totals are re-derived from fresh CRM data server-side. A price mismatch between what the buyer saw and current CRM data is a *decision point* (reject vs honor), not something to silently absorb — see open decisions.
 2. **Stock validation is checkout-time truth.** Each work must be currently available; qty > 1 of any work is rejected (boolean-availability rule, [catalog.md](catalog.md)). Displayed stock was advisory; this check is authoritative. Re-fetch is one uncached call per line — `getFreshProduct()` — because `product_id` takes a single id only.
-3. **Payment strictly precedes order creation.** Decided 2026-08-06. An unpaid order must never appear in the CRM; a failed payment produces nothing. (Consequence: a paid-but-order-creation-failed state is possible — it must be loud: log + surface to the buyer with a reference, never swallowed.)
+3. **Orders are created unpaid, and the owners follow up.** Decided 2026-08-12, replacing the 2026-08-06 rule that payment must strictly precede order creation. There is no payment step at all yet: the order goes to the CRM with `info.is_paid: false`, `payment_type: "Не оплачено"` and `status: "pending"`, and the buyer is told the center will contact them to arrange payment and delivery. The CRM reserves the stock on creation, so nothing double-sells while that happens.
+
+   This inverts the old failure mode in the buyer's favour — a failed submit costs them a retry, not money. When a payment provider does land, it moves *in front* of order creation and this rule reverts; at that point the paid-but-order-creation-failed state becomes possible again and must be loud (log + a reference shown to the buyer, never swallowed).
 4. Validation UX rule: validate on blur, re-validate on change after first error ("reward early, punish late"). Required: name, email (format-checked), phone, city, address.
 
-## Spec: the flow (`app/api/checkout/`, planned)
+## The flow (`app/api/checkout/route.ts` — BUILT)
 
 ```
-1. Receive OrderRequest
-2. Fetch fresh works from lib/hugeprofit/ (bypass cache or accept ≤5-min window? — open decision)
-3. Validate: all works exist, available, qty == 1, contact fields present
-4. Compute total server-side
-5. PaymentProvider.pay(...) — see below
-6. On success: POST /bapi/remote_orders
-7. Return confirmation (order_id) → UI success state, cart cleared
+1. Receive { items: [{workId, qty, price}], contact }   — price is for comparison only
+2. Shape-validate; reject qty != 1, duplicate work ids, >20 items, bad email, blank fields
+3. getFreshProduct() per line — uncached, one call each (product_id takes a single id)
+4. Reject 409 "unavailable" if any work is missing or sold
+5. Reject 409 "repriced" if any CRM price != the price the buyer saw, echoing was/now
+6. Compute the total server-side from fresh data
+7. POST /bapi/remote_orders  (no payment step — rule 3)
+8. 201 { orderId, total } → success screen shows the number, cart cleared
 ```
+
+`lib/hugeprofit/orders.ts` owns the payload; `crmPost()` in `client.ts` is `no-store` and **never retries** — a retry could double-create an order.
 
 ### Payment provider — the one deliberate interface
 
@@ -76,7 +93,8 @@ The API token is bound in the HugeProfit UI to a sales channel and to the wareho
 
 ## Open decisions
 
-- **Payment provider** — the last real blocker. Until it's chosen, step 5 is a stub.
-- Stale-price policy at validation (reject and re-show vs honor CRM price silently). Recommendation: reject with a clear message — art prices are significant sums.
+- **Payment provider** — undecided. When it lands it goes *before* step 7 and rule 3 reverts.
+- **No rate limiting.** `/api/checkout` is public, unauthenticated, and writes to the owners' CRM while reserving stock. With no database there is nowhere to keep a counter, so a script could flood the CRM with junk orders and lock up inventory. Shape validation and the 20-item cap are the only brakes today. Worth solving before the shop is publicised.
+- **Duplicate submits** are not deduplicated: `order_id` is `Date.now()`, so a double-click that survives the disabled button would create two orders. Low risk (the button disables on submit), no fix without storage.
 
 Resolved 2026-08-12: fetch fresh per work at validation (`getFreshProduct()`); `order_id` is an integer, not a UUID; `delivery_cost` is always 0; status stays `"pending"` with `info.is_paid` carrying payment; no sales channel.

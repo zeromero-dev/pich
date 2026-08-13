@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 149.4 900 900" role="img" aria-label="Плай Піч">
+  <style>
+    /* Favicons render against browser chrome, not the page — so this follows the
+       OS theme regardless of the site's own colorScheme: 'light'. */
+    .mark { fill: #000; fill-opacity: .949 }
+    .word { fill: #000306; fill-opacity: .8 }
+    @media (prefers-color-scheme: dark) {
+      .mark, .word { fill: #fff }
+    }
+  </style>
+  <path class="mark" d="M400.1 181H799.9V590.3H679.4V282.3H519.9V590.3H400.1Z"/>
+  <path class="mark" d="M400.1 605.8H519.9V756H679.4V605.8H799.9V1017.8H681.3V864.9H400.1Z"/>
+  <path class="word" d="M538.4 439.2H658.2V480H617.2V555.4H538.4V514.7H578.7V480H538.4Z"/>
+  <path class="word" d="M538.4 567.3H575.3V611.2H538.4Z"/>
+  <path class="word" d="M581.2 567.3H658.2V611.2H581.2Z"/>
+  <path class="word" d="M538.4 624H658.2V665.4H575.5V700.2H658.2V742.7H538.4Z"/>
+</svg>

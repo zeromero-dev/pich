@@ -2,7 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { SITE_URL } from '@/lib/site'
+import { BRAND, WEBSITE_URL } from '@/lib/site'
 import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
@@ -15,30 +15,23 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(WEBSITE_URL),
   title: {
     default: 'Плай Піч — арт-центр',
     template: '%s — Плай Піч',
   },
   description:
     'Плай Піч — арт-центр і крамничка сучасного українського мистецтва. Купуйте роботи митців, відвідуйте події.',
+  // No `images` here — app/opengraph-image.tsx supplies the branded card.
   openGraph: {
-    siteName: 'Плай Піч',
+    siteName: BRAND.name,
     locale: 'uk_UA',
     type: 'website',
-    images: ['/images/hero-space-1600.webp'],
   },
   twitter: {
     card: 'summary_large_image',
   },
-  icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-    ],
-    apple: '/apple-icon.png',
-  },
+  // Icons come from the app/ file convention (icon.svg, favicon.ico, apple-icon.png).
 }
 
 export const viewport: Viewport = {

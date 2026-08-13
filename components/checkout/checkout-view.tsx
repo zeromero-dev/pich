@@ -8,6 +8,7 @@ import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
+import { LogoMark } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
 type Fields = 'name' | 'email' | 'phone' | 'city' | 'address'
@@ -24,8 +25,9 @@ export function CheckoutView() {
   })
   const [errors, setErrors] = useState<Partial<Record<Fields, string>>>({})
   const [touched, setTouched] = useState<Partial<Record<Fields, boolean>>>({})
-  const [done, setDone] = useState(false)
+  const [orderId, setOrderId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const validateField = (field: Fields, value: string): string | undefined => {
     if (!value.trim()) return t.checkout.required
@@ -48,7 +50,7 @@ export function CheckoutView() {
     setErrors((e) => ({ ...e, [field]: validateField(field, values[field]) }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const fields: Fields[] = ['name', 'email', 'phone', 'city', 'address']
     const nextErrors: Partial<Record<Fields, string>> = {}
@@ -59,15 +61,46 @@ export function CheckoutView() {
     setErrors(nextErrors)
     setTouched(Object.fromEntries(fields.map((f) => [f, true])))
     if (Object.keys(nextErrors).length > 0) return
+
     setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
-      setDone(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Prices travel for comparison only — the server re-derives the total.
+          items: items.map(({ product, qty }) => ({
+            workId: product.id,
+            qty,
+            price: product.price,
+          })),
+          contact: values,
+        }),
+      })
+      const body = await res.json()
+
+      if (!res.ok) {
+        setSubmitError(
+          body?.error === 'unavailable'
+            ? t.checkout.errorUnavailable
+            : body?.error === 'repriced'
+              ? t.checkout.errorRepriced
+              : t.checkout.errorGeneric,
+        )
+        return
+      }
+
+      setOrderId(body.orderId)
       clear()
-    }, 700)
+    } catch {
+      setSubmitError(t.checkout.errorGeneric)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  if (done) {
+  if (orderId !== null) {
     return (
       <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
         <motion.div
@@ -84,9 +117,13 @@ export function CheckoutView() {
         <p className="mt-3 text-base leading-relaxed text-ink-soft text-pretty">
           {t.checkout.successBody}
         </p>
+        <p className="mt-4 text-sm text-ink-faint tabular-nums">
+          {t.checkout.orderNumber} #{orderId}
+        </p>
         <PillLink href="/shop" className="mt-8">
           {t.cart.continue}
         </PillLink>
+        <LogoMark className="mt-16 h-9 w-auto text-ink-faint" />
       </main>
     )
   }
@@ -177,6 +214,15 @@ export function CheckoutView() {
             {t.checkout.paymentStub}
           </div>
         </fieldset>
+
+        {submitError && (
+          <p
+            role="alert"
+            className="rounded-2xl border border-ink/15 bg-surface-alt px-5 py-4 text-sm leading-relaxed text-ink"
+          >
+            {submitError}
+          </p>
+        )}
 
         <PillButton type="submit" size="hero" disabled={submitting} className="w-full">
           {submitting ? (

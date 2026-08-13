@@ -14,6 +14,13 @@ export type SortKey = 'default' | 'priceAsc' | 'priceDesc'
 
 const SORT_KEYS: SortKey[] = ['default', 'priceAsc', 'priceDesc']
 
+/**
+ * Works rendered before "показати ще". Images come straight from the CRM at
+ * full size (~133 KB each), so this caps what a scroll can pull: the whole
+ * 252-work grid is ~33 MB. Keep it a multiple of 4 — the widest grid.
+ */
+const PAGE_SIZE = 24
+
 export function ShopView({
   products,
   categories,
@@ -28,10 +35,14 @@ export function ShopView({
   const [category, setCategory] = useState<string>('all')
   const [sort, setSort] = useState<SortKey>('default')
   const [availableOnly, setAvailableOnly] = useState(false)
+  const [visible, setVisible] = useState(PAGE_SIZE)
 
   // Debounce the search input ~150ms.
   useEffect(() => {
-    const id = setTimeout(() => setQuery(rawQuery), 150)
+    const id = setTimeout(() => {
+      setQuery(rawQuery)
+      setVisible(PAGE_SIZE)
+    }, 150)
     return () => clearTimeout(id)
   }, [rawQuery])
 
@@ -62,12 +73,21 @@ export function ShopView({
   const hasFilters =
     query.trim() !== '' || category !== 'all' || availableOnly || sort !== 'default'
 
+  const shown = filtered.slice(0, visible)
+
   const clearFilters = () => {
     setRawQuery('')
     setQuery('')
     setCategory('all')
     setSort('default')
     setAvailableOnly(false)
+    setVisible(PAGE_SIZE)
+  }
+
+  /** Any filter change restarts paging — otherwise a narrow result set inherits a deep page. */
+  const applyFilter = (change: () => void) => {
+    change()
+    setVisible(PAGE_SIZE)
   }
 
   return (
@@ -106,7 +126,7 @@ export function ShopView({
             <select
               id="shop-sort"
               value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
+              onChange={(e) => applyFilter(() => setSort(e.target.value as SortKey))}
               className="h-11 rounded-full border border-ink/15 bg-surface px-4 text-sm text-ink outline-none focus:border-ink"
             >
               {SORT_KEYS.map((key) => (
@@ -118,7 +138,7 @@ export function ShopView({
 
             <button
               type="button"
-              onClick={() => setAvailableOnly((v) => !v)}
+              onClick={() => applyFilter(() => setAvailableOnly((v) => !v))}
               aria-pressed={availableOnly}
               className={cn(
                 'h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors',
@@ -140,7 +160,7 @@ export function ShopView({
                 <button
                   key={cat.slug}
                   type="button"
-                  onClick={() => setCategory(cat.slug)}
+                  onClick={() => applyFilter(() => setCategory(cat.slug))}
                   aria-pressed={active}
                   className={cn(
                     'shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
@@ -176,7 +196,7 @@ export function ShopView({
             className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
           >
             <AnimatePresence mode="popLayout">
-              {filtered.map((product) => (
+              {shown.map((product) => (
                 <motion.div
                   key={product.id}
                   layout={!reduced}
@@ -190,6 +210,17 @@ export function ShopView({
               ))}
             </AnimatePresence>
           </motion.div>
+
+          {filtered.length > shown.length && (
+            <div className="mt-12 flex justify-center">
+              <PillButton
+                variant="secondary"
+                onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              >
+                {t.shop.showMore}
+              </PillButton>
+            </div>
+          )}
         </>
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 rounded-3xl bg-surface-alt py-20 text-center">

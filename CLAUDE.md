@@ -4,7 +4,7 @@
 
 Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events calendar, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events come from Google Calendar.
 
-**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Still mock or stubbed: events (`lib/data.ts` → Google Calendar), artist bios (`artistProfiles`, empty), and checkout submit (a `setTimeout` — no payment, no order creation). UI conventions: `lib/motion.ts` (motion tokens), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Still mock or missing: events (`lib/data.ts` → Google Calendar), artist bios (`artistProfiles`, empty), and online payment. UI conventions: `lib/motion.ts` (motion tokens), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
 
 ## Stack
 
@@ -40,13 +40,22 @@ npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
 ```
 
-Secrets live in `.env.local` (gitignored via `.env*`):
+Config and secrets live in `.env.local` (gitignored via `.env*`, so there is no
+`.env.example` — this block is the reference):
 
 ```bash
-HUGEPROFIT_API_KEY=...          # server-only — no NEXT_PUBLIC_ prefix, ever
-GOOGLE_CALENDAR_API_KEY=...     # server-only
+WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
+HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
+GOOGLE_CALENDAR_API_KEY=...       # server-only
 GOOGLE_CALENDAR_ID=...
 ```
+
+`WEBSITE_URL` is the absolute origin baked into `metadataBase`, the sitemap, the
+Organization JSON-LD `logo` and the OG card (`lib/site.ts`). Every consumer is
+server-side, so it takes no `NEXT_PUBLIC_` prefix. It falls back to
+`http://localhost:3000` in dev and **throws at build time in production** — a
+wrong origin ships dead logo and preview URLs to Google rather than failing
+visibly. **It must be set in the Vercel project settings, not just locally.**
 
 ## Architecture
 
@@ -59,12 +68,13 @@ lib/data.ts          # BUILT: domain types + mock events (catalog and artist moc
 lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/calendar/        # PLANNED: Google Calendar fetch (public events, API-key access)
-app/api/checkout/    # PLANNED: Route Handler → validate stock → payment (stub) → POST /bapi/remote_orders
+app/api/checkout/    # BUILT: validate fresh stock + price → POST /bapi/remote_orders (unpaid; no payment step yet)
+lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost
 ```
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
 - **Cart**: client-side only (localStorage / context). No server session.
-- **Checkout**: our Route Handler validates the cart against fresh CRM stock, runs the payment step (provider TBD — keep it behind an interface so the choice slots in), then creates a remote order. We generate `order_id` ourselves (no DB — use a UUID/timestamp scheme).
+- **Checkout**: our Route Handler re-reads every line from the CRM uncached, rejects sold or repriced works, computes the total server-side, then creates a remote order. Orders are **unpaid** (`info.is_paid: false`) — the owners follow up. `order_id` is `Date.now()` (the API documents an int, so no UUID). When a payment provider is chosen it slots in *before* order creation.
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
 - **Events**: read-only fetch from a public Google Calendar; scheduling happens in Google Calendar itself, the site only displays.
 
@@ -107,7 +117,9 @@ Endpoints we care about:
 - **`net_price` is the cost price.** It arrives inside every product's `stock[]` entry. Strip it in `lib/hugeprofit/` before data ever reaches a component or API response — leaking merchant margins to shoppers is the second-worst realistic bug this site can have. Customer price is `price` / `sale_price`.
 - **The CRM API has no text search and no webhooks.** Search is ours (over the cached catalog). Freshness is time-based revalidation only — treat displayed stock as advisory and re-check stock server-side at checkout.
 - **CRM token is server-only.** Any `fetch` to `crm.h-profit.com` from client code is a bug by definition.
-- **Use plain `<img>`, never `next/image`** — decided 2026-08-06 (no Vercel image optimizer). The `@next/next/no-img-element` ESLint rule is disabled for this. Keep the habits `next/image` gave for free: fixed `aspect-ratio` containers (no layout shift), `loading="lazy"` below the fold, `fetchPriority="high"` on hero/LCP images. Product images are CRM-hosted (`https://crm.h-profit.com/bimages/get/...`) and load directly from there.
+- **Use plain `<img>`, never `next/image`** — decided 2026-08-06, re-confirmed 2026-08-12 against live numbers. The `@next/next/no-img-element` ESLint rule is disabled for this. Keep the habits `next/image` gave for free: fixed `aspect-ratio` containers (no layout shift), `loading="lazy"` below the fold, `fetchPriority="high"` on hero/LCP images. Product images are CRM-hosted (`https://crm.h-profit.com/bimages/get/...`) and load directly from there, which costs Vercel nothing.
+
+  Why not revisit it: **the project stays on the Vercel Hobby plan**, where blowing the Image Optimization quota does not bill you — it returns 402 and the browser renders `alt` text instead of the artwork. 298 CRM images × ~5 widths ≈ 1 500 transformations against a 5 000/month allowance, on a catalog that only grows. The shop grid is paginated instead (`PAGE_SIZE` in `components/shop/shop-view.tsx`), which caps what a scroll pulls. The CRM serves no resized variants, no WebP, and `Cache-Control: max-age=0` — all verified, don't re-probe.
 - **`AGENTS.md` is auto-(re)generated by `next dev`.** Commit it alongside your work; deleting it from a diff just recreates an uncommitted change.
 - **Rate limits are undocumented.** Don't hammer the CRM per-request — the catalog cache is also our politeness layer.
 - **Next 16 makes fetch caching opt-in**, and a request carrying an `Authorization` header needs `cache: 'force-cache'` explicitly — `next.revalidate` alone is not enough. See `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md`.

@@ -98,8 +98,12 @@ export function toProduct(crm: CrmProduct, warehouseId: number): Product | null 
     // The CRM returns the leaf plus its ancestors, which is what makes a
     // parent-category filter able to find works filed under its children.
     categories: crm.category.map((c) => ({ slug: String(c.id), label: c.name })),
-    inStock: stock.quantity > 0,
-    isLast: stock.quantity === 1,
+    // `instock` is availability, `quantity` is physical stock on hand — they
+    // diverge once an order reserves a unit (verified live 2026-08-13: one
+    // reservation took instock 29 → 28 while quantity stayed 29). Reading
+    // `quantity` here would re-offer works that are already spoken for.
+    inStock: stock.instock > 0,
+    isLast: stock.instock === 1,
     images: crm.images,
     description: crm.description?.trim() || null,
     size: toSize(crm.size),

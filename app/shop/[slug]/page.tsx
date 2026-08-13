@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCatalog, getProductBySlug, worksByArtistSlug } from '@/lib/hugeprofit'
-import { SITE_URL } from '@/lib/site'
+import { WEBSITE_URL } from '@/lib/site'
 import { ProductDetail } from '@/components/shop/product-detail'
 
 export async function generateStaticParams() {
@@ -55,7 +55,7 @@ export default async function ProductPage({
     brand: product.artist ? { '@type': 'Person', name: product.artist } : undefined,
     offers: {
       '@type': 'Offer',
-      url: `${SITE_URL}/shop/${product.slug}`,
+      url: `${WEBSITE_URL}/shop/${product.slug}`,
       price: product.price,
       priceCurrency: 'UAH',
       availability: product.inStock

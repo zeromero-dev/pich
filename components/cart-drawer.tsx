@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
+import { ShoppingBag, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useFocusTrap } from '@/lib/use-focus-trap'
@@ -24,7 +24,7 @@ function useIsBottomSheet() {
 }
 
 export function CartDrawer() {
-  const { items, subtotal, isOpen, close, remove, setQty } = useCart()
+  const { items, subtotal, isOpen, close, remove } = useCart()
   const { t } = useLocale()
   const reduced = useReducedMotion()
   const bottomSheet = useIsBottomSheet()
@@ -86,7 +86,7 @@ export function CartDrawer() {
             ) : (
               <>
                 <ul className="flex-1 divide-y divide-hairline overflow-y-auto px-6">
-                  {items.map(({ product, qty }) => (
+                  {items.map(({ product }) => (
                     <li key={product.id} className="flex gap-4 py-4">
                       <Link
                         href={`/shop/${product.slug}`}
@@ -114,28 +114,11 @@ export function CartDrawer() {
                             {t.cart.remove}
                           </button>
                         </div>
-                        <div className="mt-auto flex items-center justify-between">
-                          <div className="inline-flex items-center rounded-full border border-ink/15">
-                            <button
-                              type="button"
-                              onClick={() => setQty(product.id, qty - 1)}
-                              aria-label={t.cart.decrease}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt"
-                            >
-                              <Minus className="size-3.5" aria-hidden="true" />
-                            </button>
-                            <span className="w-7 text-center text-sm tabular-nums">{qty}</span>
-                            <button
-                              type="button"
-                              onClick={() => setQty(product.id, qty + 1)}
-                              aria-label={t.cart.increase}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt"
-                            >
-                              <Plus className="size-3.5" aria-hidden="true" />
-                            </button>
-                          </div>
+                        {/* No qty stepper — one of each work per order, and
+                            Ordering rejects qty > 1 anyway (catalog.md rule 1). */}
+                        <div className="mt-auto flex items-center justify-end">
                           <span className="text-sm font-semibold text-ink tabular-nums">
-                            {formatPrice(product.price * qty)}
+                            {formatPrice(product.price)}
                           </span>
                         </div>
                       </div>

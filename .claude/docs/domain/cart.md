@@ -29,7 +29,11 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 - Remove item / change qty / clear.
 - Persist and restore the draft across visits.
 
+## Resolved 2026-08-12
+
+- **Qty is capped at 1** (boolean availability, [catalog.md](catalog.md) rule 1). `add()` refreshes the snapshot instead of incrementing, `setQty` is gone from the context, and the stepper is out of `components/cart-drawer.tsx`.
+- **`CART_KEY` is now `plai-pich-cart-v2`.** v1 carts held mock works (`p1`…`p8`) and multi-qty lines; they no longer restore.
+
 ## Open decisions
 
-- **Cap qty at 1 and drop the stepper** — decided 2026-08-12 (boolean availability, [catalog.md](catalog.md) rule 1), **not yet implemented**. Do it with the checkout wiring; `add()`/`setQty()` in `components/providers.tsx` and the stepper in `components/cart-drawer.tsx`.
-- Cart snapshots taken before 2026-08-12 hold mock works (ids `p1`…`p8`) in the old `Product` shape. They restore and render without error, but they point at works that no longer exist. Bump `CART_KEY` when checkout ships.
+None.

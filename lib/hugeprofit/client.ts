@@ -65,3 +65,32 @@ export async function crmFetch<T>(
   }
   return body
 }
+
+/** Writes are never cached and never retried — a retry could double-create an order. */
+export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
+  const res = await fetch(`${BASE}/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: token(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  })
+
+  const text = await res.text()
+  if (!res.ok) {
+    throw new CrmError(`CRM ${path} responded ${res.status}: ${text.slice(0, 200)}`, res.status)
+  }
+
+  let body: T & { success?: boolean; error?: string }
+  try {
+    body = JSON.parse(text)
+  } catch {
+    throw new CrmError(`CRM ${path} returned non-JSON: ${text.slice(0, 200)}`)
+  }
+  if (body.success === false) {
+    throw new CrmError(`CRM ${path} failed: ${body.error ?? 'unknown error'}`)
+  }
+  return body
+}

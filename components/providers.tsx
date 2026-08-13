@@ -33,9 +33,14 @@ export function useLocale() {
 /* Cart                                                                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * One work per line, always qty 1 — availability is boolean (catalog.md rule 1)
+ * and Ordering rejects anything else. `qty` stays on the shape because the
+ * order payload sends it and it keeps totals honest if the rule ever relaxes.
+ */
 export type CartItem = {
   product: Product
-  qty: number
+  qty: 1
 }
 
 type CartContextValue = {
@@ -48,7 +53,6 @@ type CartContextValue = {
   close: () => void
   add: (product: Product) => void
   remove: (id: string) => void
-  setQty: (id: string, qty: number) => void
   clear: () => void
 }
 
@@ -60,7 +64,8 @@ export function useCart() {
   return ctx
 }
 
-const CART_KEY = 'plai-pich-cart'
+/* v2: mock works (p1…p8) and multi-qty lines from v1 must not restore. */
+const CART_KEY = 'plai-pich-cart-v2'
 const LOCALE_KEY = 'plai-pich-locale'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -102,28 +107,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
 
   const add = useCallback((product: Product) => {
+    // Re-adding refreshes the snapshot rather than incrementing — one per work.
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id)
-      if (existing) {
-        return prev.map((i) =>
-          i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i,
-        )
-      }
-      return [...prev, { product, qty: 1 }]
+      const others = prev.filter((i) => i.product.id !== product.id)
+      return prev.length === others.length
+        ? [...prev, { product, qty: 1 }]
+        : prev.map((i) => (i.product.id === product.id ? { product, qty: 1 } : i))
     })
     setBump((b) => b + 1)
   }, [])
 
   const remove = useCallback((id: string) => {
     setItems((prev) => prev.filter((i) => i.product.id !== id))
-  }, [])
-
-  const setQty = useCallback((id: string, qty: number) => {
-    setItems((prev) =>
-      prev
-        .map((i) => (i.product.id === id ? { ...i, qty: Math.max(0, qty) } : i))
-        .filter((i) => i.qty > 0),
-    )
   }, [])
 
   const clear = useCallback(() => setItems([]), [])
@@ -146,10 +141,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       close: () => setIsOpen(false),
       add,
       remove,
-      setQty,
       clear,
     }
-  }, [items, isOpen, bump, add, remove, setQty, clear])
+  }, [items, isOpen, bump, add, remove, clear])
 
   return (
     <LocaleContext.Provider value={localeValue}>
