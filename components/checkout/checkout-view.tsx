@@ -8,14 +8,31 @@ import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
-import { LogoMark } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
 type Fields = 'name' | 'email' | 'phone' | 'city' | 'address'
 
+function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = checkoutUrl
+  for (const [name, value] of [
+    ['data', data],
+    ['signature', signature],
+  ]) {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value
+    form.appendChild(input)
+  }
+  document.body.appendChild(form)
+  form.submit()
+}
+
 export function CheckoutView() {
   const { t } = useLocale()
-  const { items, subtotal, clear } = useCart()
+  const { items, subtotal } = useCart()
   const [values, setValues] = useState<Record<Fields, string>>({
     name: '',
     email: '',
@@ -70,7 +87,6 @@ export function CheckoutView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Prices travel for comparison only — the server re-derives the total.
           items: items.map(({ product, qty }) => ({
             workId: product.id,
             qty,
@@ -89,14 +105,15 @@ export function CheckoutView() {
               ? t.checkout.errorRepriced
               : t.checkout.errorGeneric,
         )
+        setSubmitting(false)
         return
       }
 
-      setOrderId(body.orderId)
-      clear()
+      // Full-page navigation to LiqPay — cart stays in localStorage until
+      // /checkout/result clears it on confirmed payment.
+      redirectToLiqPay(body.checkoutUrl, body.data, body.signature)
     } catch {
       setSubmitError(t.checkout.errorGeneric)
-    } finally {
       setSubmitting(false)
     }
   }
@@ -155,7 +172,6 @@ export function CheckoutView() {
         {t.checkout.title}
       </h1>
 
-      {/* Order summary */}
       <section className="mt-8 rounded-2xl bg-surface-alt p-5">
         <h2 className="text-sm font-semibold text-ink">{t.checkout.summary}</h2>
         <ul className="mt-4 divide-y divide-hairline">
@@ -208,11 +224,10 @@ export function CheckoutView() {
             onChange={(v) => setField('address', v)} onBlur={() => onBlur('address')} autoComplete="street-address" />
         </fieldset>
 
-        {/* Payment — swappable stub section (provider TBD). */}
         <fieldset>
           <legend className="mb-1 text-sm font-semibold text-ink">{t.checkout.payment}</legend>
-          <div className="mt-3 rounded-2xl border border-dashed border-ink/20 bg-surface-alt/60 p-5 text-sm leading-relaxed text-ink-soft">
-            {t.checkout.paymentStub}
+          <div className="mt-3 rounded-2xl border border-hairline bg-surface-alt/60 p-5 text-sm leading-relaxed text-ink-soft">
+            {t.checkout.paymentNote}
           </div>
         </fieldset>
 
