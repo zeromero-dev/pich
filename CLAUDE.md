@@ -78,7 +78,7 @@ lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment 
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
 - **Cart**: client-side only (localStorage / context). No server session.
-- **Checkout**: our Route Handler re-reads every line from the CRM uncached, rejects sold or repriced works, computes the total server-side, then creates a remote order. Orders are **unpaid** (`info.is_paid: false`) — the owners follow up. `order_id` is `Date.now()` (the API documents an int, so no UUID). When a payment provider is chosen it slots in *before* order creation.
+- **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to LiqPay's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. `order_id` is `Date.now()` (the API documents an int, so no UUID).
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
 - **Events**: read-only fetch from a public Google Calendar; scheduling happens in Google Calendar itself, the site only displays.
 
