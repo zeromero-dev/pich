@@ -8,6 +8,7 @@ export type LockedLine = {
 }
 
 export type CheckoutPayload = {
+  paymentId: number
   lines: LockedLine[]
   contact: OrderContact
 }

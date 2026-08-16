@@ -108,7 +108,13 @@ export async function POST(request: Request) {
 
   const paymentId = newOrderId(Date.now())
   const total = lines.reduce((sum, line) => sum + line.price * line.qty, 0)
-  const payload = encodePayload({ lines, contact: parsed.contact })
+  const payload = encodePayload({ paymentId, lines, contact: parsed.contact })
+
+  // Money-safety, not just validation: this must reject before the buyer pays, not
+  // after — a payload LiqPay's server_url can't round-trip means a paid order that
+  // never gets created (see checkout.md gotchas). 1800 covers a full 20-item cart
+  // with realistic field lengths while blocking pathological near-300-char fields.
+  if (payload.length > 1800) return badRequest('invalid')
 
   const { checkoutUrl, data, signature } = buildCheckoutRequest({
     orderId: paymentId,

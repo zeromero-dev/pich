@@ -33,7 +33,14 @@ export async function POST(request: Request) {
     }
 
     const orderId = Number(callback.order_id)
-    const { lines: locked, contact } = decodePayload(encodedPayload)
+    const { paymentId, lines: locked, contact } = decodePayload(encodedPayload)
+
+    if (paymentId !== orderId) {
+      // The payload's order binding doesn't match what LiqPay's signature attested to —
+      // either a bug or a replay/tamper attempt. Loud on purpose, same as the sold-out branch.
+      console.error('[liqpay-callback] payload/order_id mismatch', { orderId, paymentId })
+      return new NextResponse(null, { status: 200 })
+    }
 
     const fresh = await Promise.all(locked.map((line) => getFreshProduct(line.productId)))
     const stillAvailable = fresh.every((product) => product?.inStock)
