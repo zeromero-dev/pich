@@ -1,6 +1,5 @@
 import 'server-only'
 
-import type { Product } from '@/lib/data'
 import { crmPost } from './client'
 
 /**
@@ -18,8 +17,17 @@ export type OrderContact = {
 }
 
 export type OrderLine = {
-  product: Product
+  productId: string
+  sku: string
+  name: string
+  price: number
   qty: number
+}
+
+export type PaymentInfo = {
+  isPaid: boolean
+  paymentType: string
+  orderText?: string
 }
 
 export type CreatedOrder = {
@@ -31,9 +39,6 @@ type RemoteOrderResponse = {
   success?: boolean
   reservedProducts?: [number, string][]
 }
-
-/** Unpaid until the owners confirm — see checkout.md rule 3. */
-const PAYMENT_TYPE = 'Не оплачено'
 
 /**
  * `order_id` is documented as an int, so no UUID. Milliseconds are unique
@@ -53,13 +58,14 @@ export function splitName(full: string): { first: string; last: string } {
 }
 
 export function orderTotal(lines: OrderLine[]): number {
-  return lines.reduce((sum, line) => sum + line.product.price * line.qty, 0)
+  return lines.reduce((sum, line) => sum + line.price * line.qty, 0)
 }
 
 export function buildOrderPayload(
   orderId: number,
   lines: OrderLine[],
   contact: OrderContact,
+  payment: PaymentInfo,
 ) {
   const { first, last } = splitName(contact.name)
   return {
@@ -80,22 +86,23 @@ export function buildOrderPayload(
         delivery_cost: 0,
       },
       info: {
-        is_paid: false,
-        payment_type: PAYMENT_TYPE,
+        is_paid: payment.isPaid,
+        payment_type: payment.paymentType,
+        ...(payment.orderText ? { order_text: payment.orderText } : {}),
       },
       order_data: lines.map((line) => ({
         // `product_id` is the *marketplace* remote id; ours live in HugeProfit,
         // so the docs say to send null here and identify by local_product_id.
         product_id: null,
-        local_product_id: Number(line.product.id),
-        id: Number(line.product.id),
-        name: line.product.name,
-        sku: line.product.sku ?? '',
+        local_product_id: Number(line.productId),
+        id: Number(line.productId),
+        name: line.name,
+        sku: line.sku,
         quantity: line.qty,
-        price: line.product.price,
-        total: line.product.price * line.qty,
-        is_paid: false,
-        payment_type: PAYMENT_TYPE,
+        price: line.price,
+        total: line.price * line.qty,
+        is_paid: payment.isPaid,
+        payment_type: payment.paymentType,
       })),
     },
   }
@@ -105,8 +112,9 @@ export async function createRemoteOrder(
   orderId: number,
   lines: OrderLine[],
   contact: OrderContact,
+  payment: PaymentInfo,
 ): Promise<CreatedOrder> {
-  const payload = buildOrderPayload(orderId, lines, contact)
+  const payload = buildOrderPayload(orderId, lines, contact, payment)
   await crmPost<RemoteOrderResponse>('remote_orders', payload)
   return { orderId, total: orderTotal(lines) }
 }
