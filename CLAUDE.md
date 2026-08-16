@@ -41,8 +41,9 @@ npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
 ```
 
-Config and secrets live in `.env.local` (gitignored via `.env*`, so there is no
-`.env.example` — this block is the reference):
+Config and secrets live in `.env.local` (gitignored via `.env*`). `.env.example`
+lists the same keys with placeholder values — copy it to `.env.local` and fill
+in real ones:
 
 ```bash
 WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
