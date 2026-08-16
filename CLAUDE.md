@@ -49,6 +49,9 @@ WEBSITE_URL=https://plaipich.art  # required — production builds throw without
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
 GOOGLE_CALENDAR_API_KEY=...       # server-only
 GOOGLE_CALENDAR_ID=...
+LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
+LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
+LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
 ```
 
 `WEBSITE_URL` is the absolute origin baked into `metadataBase`, the sitemap, the
@@ -69,8 +72,8 @@ lib/data.ts          # BUILT: domain types + mock events (catalog and artist moc
 lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/calendar/        # PLANNED: Google Calendar fetch (public events, API-key access)
-app/api/checkout/    # BUILT: validate fresh stock + price → POST /bapi/remote_orders (unpaid; no payment step yet)
-lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost
+app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
+lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
 ```
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
@@ -129,7 +132,6 @@ Endpoints we care about:
 
 ## Open Decisions (do not build these without confirming)
 
-- **Payment provider**: online payment via a Ukrainian provider is decided; *which* provider (LiqPay / monobank / Fondy / WayForPay) is not. Until then, build checkout with a payment interface + a stub, not a concrete integration.
 - **Artist roster**: `lib/data.ts` still has 3 invented artists while the CRM has 71 real brand names, so `/artists` currently shows fiction. Needs owner input on who gets a page.
 
-Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres.
+Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider is LiqPay (decided 2026-08-16).
