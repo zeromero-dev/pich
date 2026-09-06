@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Send } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 
@@ -40,6 +41,14 @@ export function Footer() {
     { href: 'https://t.me', label: 'Telegram', Icon: Send },
   ]
 
+  // Funder marks keep their brand colors (donor visibility) — the one colored
+  // UI element besides photography. Heights preserve the composite's ratios.
+  const funders = [
+    { src: '/images/sponsors/ucord.png', width: 366, height: 170, alt: t.footer.funding.ucord, className: 'h-10 md:h-14' },
+    { src: '/images/sponsors/swiss.png', width: 439, height: 199, alt: t.footer.funding.swiss, className: 'h-12 md:h-16' },
+    { src: '/images/sponsors/niras.png', width: 325, height: 101, alt: t.footer.funding.niras, className: 'h-6 md:h-8' },
+  ]
+
   return (
     <footer className="mt-24 bg-surface-alt">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">
@@ -54,9 +63,9 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-ink">{t.footer.visit}</h3>
             <address className="mt-3 text-sm leading-relaxed text-ink-soft not-italic">
-              вул. Мистецька, 12
+              {t.footer.street}
               <br />
-              Львів, Україна
+              {t.footer.city}
               <br />
               hello@plaipich.art
             </address>
@@ -101,7 +110,26 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-2 border-t border-hairline pt-6 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 border-t border-hairline pt-8">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            {funders.map((f) => (
+              <img
+                key={f.src}
+                src={f.src}
+                alt={f.alt}
+                width={f.width}
+                height={f.height}
+                loading="lazy"
+                className={cn('w-auto', f.className)}
+              />
+            ))}
+          </div>
+          <p className="mt-5 max-w-2xl text-xs leading-relaxed text-ink-soft text-pretty">
+            {t.footer.funding.disclaimer}
+          </p>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-2 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between">
           <p>© {year} Плай Піч. {t.footer.rights}</p>
           <p>Made in Ukraine</p>
         </div>

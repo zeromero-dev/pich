@@ -135,11 +135,20 @@ export const dictionaries = {
     footer: {
       tagline: 'Арт-центр і крамничка сучасного українського мистецтва.',
       visit: 'Завітайте',
+      street: 'вул. Григорія Сковороди, 25',
+      city: 'Вінниця, Україна',
       hours: 'Години роботи',
-      hoursValue: 'Вт–Нд, 11:00–20:00',
+      hoursValue: 'Щодня, 11:00–21:00',
       follow: 'Ми в мережі',
       nav: 'Навігація',
       rights: 'Усі права захищено.',
+      funding: {
+        ucord: 'UCORD — Згуртованість та регіональний розвиток України',
+        swiss: 'Швейцарська Конфедерація',
+        niras: 'NIRAS',
+        disclaimer:
+          'Цей сайт було створено в межах ініціативи «Теплиця ідей», яка фінансується Швейцарсько-українським проєктом «Згуртованість та регіональний розвиток України», UCORD, що втілюється за підтримки Швейцарії компанією NIRAS Sweden AB. Відповідальність за зміст цього сайту несуть виключно автори. Точка зору авторів не обовʼязково відображає точку зору Швейцарської агенції розвитку та співробітництва або NIRAS Sweden AB.',
+      },
     },
   },
   en: {
@@ -266,11 +275,20 @@ export const dictionaries = {
     footer: {
       tagline: 'An art center and shop for contemporary Ukrainian art.',
       visit: 'Visit us',
+      street: '25 Hryhoriia Skovorody St.',
+      city: 'Vinnytsia, Ukraine',
       hours: 'Opening hours',
-      hoursValue: 'Tue–Sun, 11:00–20:00',
+      hoursValue: 'Daily, 11:00–21:00',
       follow: 'Follow us',
       nav: 'Navigation',
       rights: 'All rights reserved.',
+      funding: {
+        ucord: 'UCORD — Cohesion and Regional Development of Ukraine',
+        swiss: 'Swiss Confederation',
+        niras: 'NIRAS',
+        disclaimer:
+          'This website was created within the «Теплиця ідей» (Greenhouse of Ideas) initiative, funded by the Swiss-Ukrainian project “Cohesion and Regional Development of Ukraine”, UCORD, implemented with the support of Switzerland by NIRAS Sweden AB. The authors bear sole responsibility for the content of this website. The views of the authors do not necessarily reflect the views of the Swiss Agency for Development and Cooperation or NIRAS Sweden AB.',
+      },
     },
   },
 } as const

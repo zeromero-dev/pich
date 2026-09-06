@@ -21,8 +21,8 @@ export function AboutView() {
 
       <Reveal className="relative mt-10 aspect-[16/9] overflow-hidden rounded-3xl bg-surface-alt md:mt-14">
         <img
-          src="/images/about-space.webp"
-          alt="Затишний куточок арт-центру Плай Піч із книжками та роботами на стінах"
+          src="/images/template.jpg"
+          alt="Інтерʼєр арт-центру Плай Піч: стіна, завішана картинами"
           className="absolute inset-0 h-full w-full object-cover"
         />
       </Reveal>

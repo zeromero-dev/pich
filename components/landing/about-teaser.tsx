@@ -13,8 +13,8 @@ export function AboutTeaser() {
       <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
         <Reveal className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-surface-alt md:order-last">
           <img
-            src="/images/about-space.webp"
-            alt="Затишний куточок арт-центру Плай Піч із книжками та роботами на стінах"
+            src="/images/template.jpg"
+            alt="Інтерʼєр арт-центру Плай Піч: стіна, завішана картинами"
             loading="lazy"
             className="absolute inset-0 h-full w-full object-cover"
           />

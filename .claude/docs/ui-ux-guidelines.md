@@ -31,6 +31,7 @@ Monochrome only. Defined for Tailwind 4's `@theme` in `app/globals.css`:
 - Emphasis without color: bigger, bolder, more space — never a hue. Links in body text: underlined `ink`, no link color.
 - The only color on any page comes from photography (artwork, the space) and, if colored, the logo. Guard this — one stray colored badge breaks the whole scheme.
 - Exception — semantic states: form errors use Tailwind's `red-600`, success confirmations `green-700`. Function over purity; don't gray those out.
+- Exception — funder marks: the UCORD / Swiss Confederation / NIRAS logos in the footer keep their brand colors (donor visibility). Footer only; they never travel up the page.
 
 ## 2. Typography
 
@@ -126,5 +127,5 @@ The target feel is *tactile and instant* — Nintendo Switch, not luxury-brand s
 
 - Logo file → `public/` (if it's colored, it stays the only colored UI element — see top note).
 - Verify Geist Cyrillic coverage (§2) — decide Geist vs Inter before building any page.
-- Real photography of the space for the landing hero — the design leans on one great photo; a `surface-alt` placeholder block works until then. In a monochrome UI the photos do all the emotional work, so photo quality matters more here than in most designs.
+- Real photography of the space for the landing hero — the design leans on one great photo; a `surface-alt` placeholder block works until then. (2026-09-06: one temporary interior photo, `public/images/template.jpg`, stands in everywhere — 853px wide, so it is upscaled on desktop.) In a monochrome UI the photos do all the emotional work, so photo quality matters more here than in most designs.
 - Payment step UI depends on provider choice (LiqPay/monobank/Fondy/WayForPay) — design the checkout so the payment block is a swappable section.

@@ -7,8 +7,9 @@ import { AboutTeaser } from '@/components/landing/about-teaser'
 
 // Organization goes on the homepage only — Google reads it there, and repeating
 // it site-wide would collide with the per-page Event/Product schemas.
-// No address/openingHours/sameAs: the footer's are placeholders, and publishing
-// invented ones as machine-readable business data is worse than omitting them.
+// No sameAs: the footer's social links are placeholders — invented
+// machine-readable business data is worse than none. Address and hours mirror
+// the footer (lib/i18n.ts, footer.street / footer.hoursValue).
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
@@ -16,6 +17,13 @@ const jsonLd = {
   url: WEBSITE_URL,
   logo: BRAND.logo,
   description: BRAND.tagline,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'вул. Григорія Сковороди, 25',
+    addressLocality: 'Вінниця',
+    addressCountry: 'UA',
+  },
+  openingHours: 'Mo-Su 11:00-21:00',
 }
 
 export default async function Page() {

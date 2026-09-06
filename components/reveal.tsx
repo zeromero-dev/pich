@@ -10,6 +10,14 @@ type RevealProps = HTMLMotionProps<'div'> & {
   as?: 'div' | 'section' | 'li' | 'article' | 'header'
 }
 
+/**
+ * Scroll-entrance trigger: fires once the block's leading edge is 80px inside
+ * the viewport. A fractional `amount` can never be met by a block taller than
+ * viewport/amount (the 53-card artist grid on a phone), which left the page
+ * blank until a scroll.
+ */
+const viewport = { once: true, margin: '0px 0px -80px 0px' }
+
 /** Content block entrance: fade in + rise 12px, once on scroll into view. */
 export function Reveal({ className, delay = 0, children, ...props }: RevealProps) {
   const reduced = useReducedMotion()
@@ -17,7 +25,7 @@ export function Reveal({ className, delay = 0, children, ...props }: RevealProps
     <motion.div
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
       whileInView={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
+      viewport={viewport}
       transition={{ ...ease.page, delay }}
       className={cn(className)}
       {...props}
@@ -37,7 +45,7 @@ export function StaggerGroup({
     <motion.div
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.15 }}
+      viewport={viewport}
       variants={{
         hidden: {},
         visible: { transition: { staggerChildren: 0.05 } },
