@@ -14,6 +14,15 @@ export async function POST(request: Request) {
   const encodedPayload = searchParams.get('payload')
   if (!encodedPayload) return new NextResponse(null, { status: 400 })
 
+  // Checked before LiqPay's own signature: this query string is public and it
+  // alone decides what a paid order contains, so a bad tag is not worth a
+  // round trip through decodeCallback.
+  const payload = decodePayload(encodedPayload)
+  if (!payload) {
+    console.error('[liqpay-callback] payload signature mismatch')
+    return new NextResponse(null, { status: 400 })
+  }
+
   const form = await request.formData()
   const data = form.get('data')
   const signature = form.get('signature')
@@ -33,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const orderId = Number(callback.order_id)
-    const { paymentId, lines: locked, contact } = decodePayload(encodedPayload)
+    const { paymentId, lines: locked, contact } = payload
 
     if (paymentId !== orderId) {
       // The payload's order binding doesn't match what LiqPay's signature attested to —
