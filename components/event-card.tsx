@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { MapPin, Clock } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { eventDateParts, formatEventDateTime } from '@/lib/format'
@@ -29,7 +29,7 @@ export function EventCard({ event }: { event: PlaiEvent }) {
   const { day, month } = eventDateParts(event.start, locale)
 
   return (
-    <motion.article
+    <m.article
       whileHover={reduced ? undefined : { y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
       transition={spring.settle}
       className="flex h-full gap-5 rounded-2xl border border-hairline bg-surface p-5"
@@ -65,6 +65,6 @@ export function EventCard({ event }: { event: PlaiEvent }) {
           </PillButton>
         </div>
       </div>
-    </motion.article>
+    </m.article>
   )
 }

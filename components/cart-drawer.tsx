@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { ShoppingBag, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
@@ -43,7 +43,9 @@ export function CartDrawer() {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={t.cart.title}>
-          <motion.div
+          {/* Decorative backdrop — keyboard users close with Esc (focus trap) or the button. */}
+          <m.div
+            aria-hidden="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -51,7 +53,7 @@ export function CartDrawer() {
             onClick={close}
             className="absolute inset-0 bg-ink/25"
           />
-          <motion.aside
+          <m.aside
             ref={trapRef}
             tabIndex={-1}
             initial={reduced ? { opacity: 0 } : offscreen}
@@ -139,7 +141,7 @@ export function CartDrawer() {
                 </div>
               </>
             )}
-          </motion.aside>
+          </m.aside>
         </div>
       )}
     </AnimatePresence>

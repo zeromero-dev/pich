@@ -37,13 +37,16 @@ export function LogoMark({
 export function Logo({
   className,
   showWordmark = false,
+  onClick,
 }: {
   className?: string
   showWordmark?: boolean
+  onClick?: () => void
 }) {
   return (
     <Link
       href="/"
+      onClick={onClick}
       aria-label="Плай Піч — на головну"
       className={cn(
         'inline-flex items-center gap-2.5 text-ink transition-opacity hover:opacity-80',

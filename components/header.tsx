@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { Menu, ShoppingBag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { spring } from '@/lib/motion'
@@ -12,19 +12,20 @@ import { useCart, useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 import type { Locale } from '@/lib/i18n'
 
+const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
+  { value: 'uk', label: 'УКР' },
+  { value: 'en', label: 'EN' },
+]
+
 function LocaleSwitch() {
   const { locale, setLocale } = useLocale()
-  const options: { value: Locale; label: string }[] = [
-    { value: 'uk', label: 'УКР' },
-    { value: 'en', label: 'EN' },
-  ]
   return (
     <div
       role="group"
       aria-label="Мова / Language"
       className="relative inline-flex items-center rounded-full border border-ink/15 p-0.5"
     >
-      {options.map((opt) => {
+      {LOCALE_OPTIONS.map((opt) => {
         const active = locale === opt.value
         return (
           <button
@@ -38,7 +39,7 @@ function LocaleSwitch() {
             )}
           >
             {active && (
-              <motion.span
+              <m.span
                 layoutId="locale-pill"
                 transition={spring.settle}
                 className="absolute inset-0 -z-10 rounded-full bg-ink"
@@ -57,7 +58,7 @@ function CartButton() {
   const { t } = useLocale()
   const reduced = useReducedMotion()
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={open}
       whileTap={{ scale: 0.97 }}
@@ -68,7 +69,7 @@ function CartButton() {
       <ShoppingBag className="size-5" strokeWidth={1.75} aria-hidden="true" />
       <AnimatePresence>
         {count > 0 && (
-          <motion.span
+          <m.span
             key={bump}
             // Two keyframes only — springs reject a 1 → 1.3 → 1 sequence. The
             // `key={bump}` remount replays this on every add, so overshooting
@@ -79,10 +80,10 @@ function CartButton() {
             className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold text-surface tabular-nums"
           >
             {count}
-          </motion.span>
+          </m.span>
         )}
       </AnimatePresence>
-    </motion.button>
+    </m.button>
   )
 }
 
@@ -164,7 +165,7 @@ export function Header() {
         for this fixed overlay, shrinking inset-0 to the 64px header bar. */}
     <AnimatePresence>
         {menuOpen && (
-          <motion.div
+          <m.div
             ref={menuRef}
             tabIndex={-1}
             role="dialog"
@@ -177,9 +178,7 @@ export function Header() {
             className="fixed inset-0 z-50 flex flex-col bg-surface md:hidden"
           >
             <div className="flex h-16 items-center justify-between px-4">
-              <div onClick={() => setMenuOpen(false)}>
-                <Logo />
-              </div>
+              <Logo onClick={() => setMenuOpen(false)} />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
@@ -189,7 +188,7 @@ export function Header() {
                 <X className="size-5" strokeWidth={1.75} aria-hidden="true" />
               </button>
             </div>
-            <motion.nav
+            <m.nav
               className="flex flex-1 flex-col gap-2 px-6 pt-6"
               aria-label="Мобільна навігація"
               initial="hidden"
@@ -197,7 +196,7 @@ export function Header() {
               variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }}
             >
               {nav.map((item) => (
-                <motion.div
+                <m.div
                   key={item.href}
                   variants={{
                     hidden: { opacity: 0, y: 16 },
@@ -211,13 +210,13 @@ export function Header() {
                   >
                     {item.label}
                   </Link>
-                </motion.div>
+                </m.div>
               ))}
-            </motion.nav>
+            </m.nav>
             <div className="flex items-center justify-between border-t border-hairline px-6 py-5">
               <LocaleSwitch />
             </div>
-          </motion.div>
+          </m.div>
         )}
     </AnimatePresence>
     </>

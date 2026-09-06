@@ -25,6 +25,11 @@ function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+const SOCIALS = [
+  { href: 'https://instagram.com', label: 'Instagram', Icon: InstagramIcon },
+  { href: 'https://t.me', label: 'Telegram', Icon: Send },
+]
+
 export function Footer() {
   const { t } = useLocale()
   const year = new Date().getFullYear()
@@ -34,11 +39,6 @@ export function Footer() {
     { href: '/events', label: t.nav.events },
     { href: '/about', label: t.nav.about },
     { href: '/artists', label: t.nav.artists },
-  ]
-
-  const socials = [
-    { href: 'https://instagram.com', label: 'Instagram', Icon: InstagramIcon },
-    { href: 'https://t.me', label: 'Telegram', Icon: Send },
   ]
 
   // Funder marks keep their brand colors (donor visibility) — the one colored
@@ -78,7 +78,7 @@ export function Footer() {
             </p>
             <h3 className="mt-6 text-sm font-semibold text-ink">{t.footer.follow}</h3>
             <div className="mt-3 flex gap-2">
-              {socials.map(({ href, label, Icon }) => (
+              {SOCIALS.map(({ href, label, Icon }) => (
                 <a
                   key={label}
                   href={href}

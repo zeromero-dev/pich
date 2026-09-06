@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { serializeJsonLd } from '@/lib/json-ld'
 import { events } from '@/lib/data'
 import { EventsView } from '@/components/events/events-view'
 
@@ -21,7 +22,7 @@ export default function EventsPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <EventsView />
     </>

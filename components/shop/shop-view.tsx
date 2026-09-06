@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { Search, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import type { CategoryFilter, Product } from '@/lib/data'
@@ -84,11 +84,8 @@ export function ShopView({
     setVisible(PAGE_SIZE)
   }
 
-  /** Any filter change restarts paging — otherwise a narrow result set inherits a deep page. */
-  const applyFilter = (change: () => void) => {
-    change()
-    setVisible(PAGE_SIZE)
-  }
+  /** Every filter change restarts paging — otherwise a narrow result set inherits a deep page. */
+  const resetPaging = () => setVisible(PAGE_SIZE)
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
@@ -126,7 +123,10 @@ export function ShopView({
             <select
               id="shop-sort"
               value={sort}
-              onChange={(e) => applyFilter(() => setSort(e.target.value as SortKey))}
+              onChange={(e) => {
+                setSort(e.target.value as SortKey)
+                resetPaging()
+              }}
               className="h-11 rounded-full border border-ink/15 bg-surface px-4 text-sm text-ink outline-none focus:border-ink"
             >
               {SORT_KEYS.map((key) => (
@@ -138,7 +138,10 @@ export function ShopView({
 
             <button
               type="button"
-              onClick={() => applyFilter(() => setAvailableOnly((v) => !v))}
+              onClick={() => {
+                setAvailableOnly((v) => !v)
+                resetPaging()
+              }}
               aria-pressed={availableOnly}
               className={cn(
                 'h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors',
@@ -160,7 +163,10 @@ export function ShopView({
                 <button
                   key={cat.slug}
                   type="button"
-                  onClick={() => applyFilter(() => setCategory(cat.slug))}
+                  onClick={() => {
+                    setCategory(cat.slug)
+                    resetPaging()
+                  }}
                   aria-pressed={active}
                   className={cn(
                     'shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
@@ -185,44 +191,45 @@ export function ShopView({
         </div>
       </div>
 
-      {/* Grid */}
-      {filtered.length > 0 ? (
-        <>
-          <p className="mb-4 text-sm text-ink-faint tabular-nums" aria-live="polite">
-            {t.shop.resultCount(filtered.length)}
-          </p>
-          <motion.div
-            layout
-            className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
-          >
-            <AnimatePresence mode="popLayout">
-              {shown.map((product) => (
-                <motion.div
-                  key={product.id}
-                  layout={!reduced}
-                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                  transition={spring.settle}
-                >
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+      {/* Grid. Its AnimatePresence stays mounted through the empty state so the
+          last cards can play their exit instead of vanishing with the grid. */}
+      {filtered.length > 0 && (
+        <p className="mb-4 text-sm text-ink-faint tabular-nums" aria-live="polite">
+          {t.shop.resultCount(filtered.length)}
+        </p>
+      )}
+      <m.div
+        layout
+        className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
+      >
+        <AnimatePresence mode="popLayout">
+          {shown.map((product) => (
+            <m.div
+              key={product.id}
+              layout={!reduced}
+              initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              transition={spring.settle}
+            >
+              <ProductCard product={product} />
+            </m.div>
+          ))}
+        </AnimatePresence>
+      </m.div>
 
-          {filtered.length > shown.length && (
-            <div className="mt-12 flex justify-center">
-              <PillButton
-                variant="secondary"
-                onClick={() => setVisible((v) => v + PAGE_SIZE)}
-              >
-                {t.shop.showMore}
-              </PillButton>
-            </div>
-          )}
-        </>
-      ) : (
+      {filtered.length > shown.length && (
+        <div className="mt-12 flex justify-center">
+          <PillButton
+            variant="secondary"
+            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+          >
+            {t.shop.showMore}
+          </PillButton>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-3xl bg-surface-alt py-20 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface">
             <X className="size-6 text-ink-faint" strokeWidth={1.5} aria-hidden="true" />

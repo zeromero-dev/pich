@@ -60,7 +60,7 @@ Apple-like rules: few sizes, big jumps between them, negative tracking on large 
 
 ## 4. Motion — the personality layer
 
-**Library: [Motion](https://motion.dev)** (`npm i motion` — the successor of framer-motion; React 19 compatible). This is the one animation dependency; no GSAP, no AOS, no Lottie in v1.
+**Library: [Motion](https://motion.dev)** (`npm i motion` — the successor of framer-motion; React 19 compatible). This is the one animation dependency; no GSAP, no AOS, no Lottie in v1. Components import `m` from `motion/react`, never `motion`: `components/providers.tsx` wraps the tree in `LazyMotion features={domMax} strict`, which keeps ~30 kB out of the bundle and throws on a stray `motion.` element.
 
 The target feel is *tactile and instant* — Nintendo Switch, not luxury-brand slow-fade. Concretely:
 

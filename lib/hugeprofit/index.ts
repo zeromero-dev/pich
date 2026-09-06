@@ -33,12 +33,13 @@ function isSellable(product: Product | null): product is Product {
  */
 export async function getCatalog(): Promise<Product[]> {
   const crm = await fetchCrmProducts()
-  const products = crm.map((p) => toProduct(p, SHOP_WAREHOUSE_ID)).filter(isSellable)
-
-  return [
-    ...products.filter((p) => p.inStock),
-    ...products.filter((p) => !p.inStock),
-  ]
+  const available: Product[] = []
+  const sold: Product[] = []
+  for (const row of crm) {
+    const product = toProduct(row, SHOP_WAREHOUSE_ID)
+    if (isSellable(product)) (product.inStock ? available : sold).push(product)
+  }
+  return [...available, ...sold]
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
+import { m, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 import { ease } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
@@ -22,7 +22,7 @@ const viewport = { once: true, margin: '0px 0px -80px 0px' }
 export function Reveal({ className, delay = 0, children, ...props }: RevealProps) {
   const reduced = useReducedMotion()
   return (
-    <motion.div
+    <m.div
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
       whileInView={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
       viewport={viewport}
@@ -31,7 +31,7 @@ export function Reveal({ className, delay = 0, children, ...props }: RevealProps
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   )
 }
 
@@ -42,7 +42,7 @@ export function StaggerGroup({
   ...props
 }: HTMLMotionProps<'div'>) {
   return (
-    <motion.div
+    <m.div
       initial="hidden"
       whileInView="visible"
       viewport={viewport}
@@ -54,7 +54,7 @@ export function StaggerGroup({
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   )
 }
 
@@ -66,7 +66,7 @@ export function StaggerItem({
 }: HTMLMotionProps<'div'>) {
   const reduced = useReducedMotion()
   return (
-    <motion.div
+    <m.div
       variants={{
         hidden: reduced ? { opacity: 0 } : { opacity: 0, y: 12 },
         visible: {
@@ -79,6 +79,6 @@ export function StaggerItem({
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   )
 }

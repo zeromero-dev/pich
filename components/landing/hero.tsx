@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { ArrowRight } from 'lucide-react'
 import { useLocale } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
@@ -12,7 +12,7 @@ export function Hero() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-10 pb-16 md:px-6 md:pt-16 md:pb-24">
       <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
-        <motion.div
+        <m.div
           initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -32,15 +32,15 @@ export function Hero() {
               {t.landing.heroCtaEvents}
             </PillLink>
           </div>
-        </motion.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
           className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-surface-alt md:aspect-[5/6]"
         >
-          <motion.div
+          <m.div
             className="absolute inset-0"
             animate={reduced ? undefined : { scale: [1, 1.05] }}
             transition={{ duration: 24, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
@@ -51,8 +51,8 @@ export function Hero() {
               fetchPriority="high"
               className="absolute inset-0 h-full w-full object-cover"
             />
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       </div>
     </section>
   )

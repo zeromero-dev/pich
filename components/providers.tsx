@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { LazyMotion, domMax } from 'motion/react'
 import { dictionaries, type Dictionary, type Locale } from '@/lib/i18n'
 import type { Product } from '@/lib/data'
 
@@ -147,7 +148,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <LocaleContext.Provider value={localeValue}>
-      <CartContext.Provider value={cartValue}>{children}</CartContext.Provider>
+      <CartContext.Provider value={cartValue}>
+        {/* domMax, not domAnimation: the shop grid and the locale pill animate
+            layout. `strict` throws on any `motion.` component left behind. */}
+        <LazyMotion features={domMax} strict>
+          {children}
+        </LazyMotion>
+      </CartContext.Provider>
     </LocaleContext.Provider>
   )
 }

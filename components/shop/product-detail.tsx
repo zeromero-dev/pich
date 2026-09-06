@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { ArrowLeft, Check, Plus } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
@@ -109,7 +109,7 @@ export function ProductDetail({
               onClick={handleAdd}
               className="w-full sm:w-auto"
             >
-              <motion.span
+              <m.span
                 key={added ? 'added' : 'add'}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -127,7 +127,7 @@ export function ProductDetail({
                     {t.shop.addToCart}
                   </>
                 )}
-              </motion.span>
+              </m.span>
             </PillButton>
           </div>
 

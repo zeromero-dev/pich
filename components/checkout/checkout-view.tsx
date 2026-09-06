@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { Check, ArrowLeft } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
@@ -24,7 +24,8 @@ export function CheckoutView() {
     address: '',
   })
   const [errors, setErrors] = useState<Partial<Record<Fields, string>>>({})
-  const [touched, setTouched] = useState<Partial<Record<Fields, boolean>>>({})
+  // Read only inside handlers, so a ref spares a re-render per blur.
+  const touched = useRef<Partial<Record<Fields, boolean>>>({})
   const [orderId, setOrderId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -40,13 +41,13 @@ export function CheckoutView() {
   const setField = (field: Fields, value: string) => {
     setValues((v) => ({ ...v, [field]: value }))
     // Re-validate on change only after the first error ("reward early, punish late").
-    if (touched[field]) {
+    if (touched.current[field]) {
       setErrors((e) => ({ ...e, [field]: validateField(field, value) }))
     }
   }
 
   const onBlur = (field: Fields) => {
-    setTouched((tc) => ({ ...tc, [field]: true }))
+    touched.current = { ...touched.current, [field]: true }
     setErrors((e) => ({ ...e, [field]: validateField(field, values[field]) }))
   }
 
@@ -59,7 +60,7 @@ export function CheckoutView() {
       if (err) nextErrors[f] = err
     })
     setErrors(nextErrors)
-    setTouched(Object.fromEntries(fields.map((f) => [f, true])))
+    touched.current = Object.fromEntries(fields.map((f) => [f, true]))
     if (Object.keys(nextErrors).length > 0) return
 
     setSubmitting(true)
@@ -103,14 +104,14 @@ export function CheckoutView() {
   if (orderId !== null) {
     return (
       <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
-        <motion.div
+        <m.div
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={spring.snap}
           className="flex h-16 w-16 items-center justify-center rounded-full bg-ink"
         >
           <Check className="size-7 text-surface" aria-hidden="true" />
-        </motion.div>
+        </m.div>
         <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-ink">
           {t.checkout.successTitle}
         </h1>

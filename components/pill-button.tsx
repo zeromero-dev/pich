@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { spring } from '@/lib/motion'
@@ -27,8 +27,8 @@ const pill = cva(
 
 type Variants = VariantProps<typeof pill>
 
-const MotionButton = motion.button
-const MotionLink = motion.create(Link)
+const MotionButton = m.button
+const MotionLink = m.create(Link)
 
 export function PillButton({
   className,

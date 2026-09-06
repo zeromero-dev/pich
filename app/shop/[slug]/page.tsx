@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { serializeJsonLd } from '@/lib/json-ld'
 import { notFound } from 'next/navigation'
 import { getCatalog, getProductBySlug, worksByArtistSlug } from '@/lib/hugeprofit'
 import { WEBSITE_URL } from '@/lib/site'
@@ -68,7 +69,7 @@ export default async function ProductPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <ProductDetail product={product} related={related} />
     </>

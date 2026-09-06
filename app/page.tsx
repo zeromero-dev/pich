@@ -1,4 +1,5 @@
 import { getCatalog } from '@/lib/hugeprofit'
+import { serializeJsonLd } from '@/lib/json-ld'
 import { BRAND, WEBSITE_URL } from '@/lib/site'
 import { Hero } from '@/components/landing/hero'
 import { EventsPreview } from '@/components/landing/events-preview'
@@ -32,7 +33,7 @@ export default async function Page() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <main>
         <Hero />
