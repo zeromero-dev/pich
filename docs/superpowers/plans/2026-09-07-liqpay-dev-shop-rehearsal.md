@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Exercise the whole LiqPay payment chain end to end — payment page, webhook, real CRM order creation, failure paths — against the CRM's `dev` warehouse and its 50 mock products, so that not one real artwork is reserved, sold, or refunded during verification.
+**Goal:** Exercise the whole LiqPay payment chain end to end — payment page, webhook, real CRM order creation, failure paths — against the CRM's `dev` warehouse and its 50 mock products, so that not one real artwork is reserved, sold, or refunded during verification, enforced in code rather than by discipline.
 
-**Architecture:** No new subsystems and no change to the payment flow itself. One line in `lib/hugeprofit/client.ts` becomes environment-driven: `SHOP_WAREHOUSE_ID` reads `CRM_WAREHOUSE_ID` and falls back to the real shop warehouse. Setting `CRM_WAREHOUSE_ID=51630` in `.env.local` swings the entire site — catalog, product pages, checkout validation, and the webhook's stock re-check — onto the mock catalog, because all four already route through that one constant. Everything else in this plan is running the flow and reading what comes back.
+**Architecture:** No new subsystems and no change to the payment flow itself. Two changes in `lib/hugeprofit/`: `SHOP_WAREHOUSE_ID` becomes environment-driven so `CRM_WAREHOUSE_ID=51630` swings the entire site — catalog, product pages, checkout validation, webhook stock re-check — onto the mock catalog; and `createRemoteOrder`, the single chokepoint where a CRM order comes into existence, refuses to run against the real shop while `LIQPAY_SANDBOX=1`. Everything else in this plan is running the flow and reading what comes back.
 
-**Tech Stack:** Next.js 16 App Router route handlers, Node's built-in `crypto` (no new dependency). **There is no test framework in this repo and none is being added** (deliberate — see spec Non-goals; Node here is v20.19.0, which cannot run TypeScript directly, so `node --test` is not an option). Verification is `npm run build` (the de-facto typecheck), runnable `curl` checks against `npm run dev`, and real sandbox payments.
+**Tech Stack:** Next.js 16 App Router route handlers, Node's built-in `crypto` (no new dependency). **There is no test framework in this repo and none is being added** (deliberate — see spec Non-goals; Node here is v20.19.0, which cannot run TypeScript directly, so `node --test` is not an option). Verification is `npm run build` (the de-facto typecheck), runnable `curl` and `node` checks against `npm run dev`, and real sandbox payments.
 
 **Spec:** `docs/superpowers/specs/2026-08-16-liqpay-payment-design.md`
 
@@ -24,6 +24,7 @@
 - **Never commit a tunnel URL, a sandbox key, or a live key.** `.env.local` is gitignored (`.env*` at `.gitignore:34`); `.env.example` carries placeholders only.
 - CLAUDE.md rule: **`net_price` is the cost price and must never leave `lib/hugeprofit/`.** Nothing in this plan touches it — if a step tempts you to log a whole CRM product object, don't.
 - **`[DEV]` rows cannot be deleted via the API.** The HUGEPROFIT API has DELETE for categories, clients, sales, tags and sync-mappings, but not for products. Every mock row is permanent until someone removes it by hand in the CRM UI. Do not "clean up and retry" by creating a second batch.
+- **No test order may be created against warehouse 34998.** Task 1 enforces this in code; no later task may weaken or bypass that guard to make a step pass.
 
 ## Context: what already exists
 
@@ -52,7 +53,7 @@ Four of the cheapest, for use in the steps below:
 **Two blockers from the previous plan, re-checked 2026-09-07:**
 
 1. `HUGEPROFIT_API_KEY` returning `403 not-correct-api-key` — **resolved.** `GET /bapi/products?count=1` now returns `200` with the key in `.env.local`.
-2. No LiqPay sandbox credentials — **still open.** Task 3 Step 1 is where they get obtained; Tasks 3–5 cannot start without them.
+2. No LiqPay sandbox credentials — **still open.** Task 4 Step 1 is where they get obtained; Tasks 4–6 cannot start without them. Tasks 1–3 do not need them.
 
 ## Why the warehouse constant is the whole trick
 
@@ -62,28 +63,40 @@ Four of the cheapest, for use in the steps below:
 GET /bapi/products?product_id=9054668&warehouse_id=34998  →  {"data": []}
 ```
 
-So a dev product is invisible to `getFreshProduct` today, and `POST /api/checkout` for one returns `409 unavailable`. Making that constant configurable is the only source change this plan needs; the webhook, the catalog and the product pages all follow it for free because they share it.
+So a dev product is invisible to `getFreshProduct` today, and `POST /api/checkout` for one returns `409 unavailable`. Making that constant configurable is the only behavioural source change this plan needs; the webhook, the catalog and the product pages all follow it for free because they share it.
+
+## How "only DEV" is enforced
+
+Three layers, weakest to strongest:
+
+1. **Convention** — `.env.local` sets `CRM_WAREHOUSE_ID=51630` for the duration of this plan. A human can forget this.
+2. **Isolation** — the CRM's own `warehouse_id` filter means a dev product is invisible to the real shop's queries and vice versa (verified above). This stops mock data leaking into the shop, but it does *not* stop a sandbox payment for a **real** work if the override is missing.
+3. **The guard (Task 1)** — `createRemoteOrder` throws if `LIQPAY_SANDBOX=1` while `SHOP_WAREHOUSE_ID` is the real shop. This is the one that actually enforces the user's requirement, because order creation is the only operation in this codebase that reserves stock, and it has exactly one chokepoint.
+
+Task 2 proves layer 3 fires, by minting a genuinely valid webhook callback locally.
 
 ## What this plan deliberately does not do
 
 - **No production cutover.** That is Task 5 of `2026-09-06-liqpay-go-live.md`, unchanged, and runs after this plan passes.
 - **No refund flow.** Spec Non-goals. A paid-but-sold-out order still logs loudly and waits for a human (`app/api/checkout/liqpay-callback/route.ts:57-65`).
+- **No block on the reverse misconfiguration** (live keys pointed at the dev warehouse — real money for a mock candle). It costs the tester their own money, not the owners' stock, and the "never set `CRM_WAREHOUSE_ID` in Vercel" constraint covers production. Add a guard for it only if it actually happens.
 - **No deletion of the `[DEV]` rows.** No API exists for it; leave them, they are inert outside warehouse 51630.
 - **No test framework.** Node 20 cannot run TS directly and the repo has no runner; adding one is a separate decision.
-- **No image-upload path.** The CRM's product-create endpoint silently drops `images[]` and the API has no upload endpoint (verified 2026-09-07), so Task 2 adds them by hand in the CRM UI instead of automating it.
+- **No image-upload path.** The CRM's product-create endpoint silently drops `images[]` and the API has no upload endpoint (verified 2026-09-07), so Task 3 adds images by hand in the CRM UI instead of automating it.
 
 ---
 
-## Task 1: Make the shop warehouse configurable
+## Task 1: Warehouse override plus the sandbox guard
 
 **Files:**
 - Modify: `lib/hugeprofit/client.ts:13-17`
+- Modify: `lib/hugeprofit/orders.ts:1-9` and `:111-120`
 - Modify: `.env.example`
 - Modify: `CLAUDE.md` (env var list)
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: `SHOP_WAREHOUSE_ID: number` — same name, same type, same import site (`lib/hugeprofit/index.ts:4`). No call signature changes anywhere, so no other file needs touching.
+- Produces: `SHOP_WAREHOUSE_ID: number` (same name, same type, same import site at `lib/hugeprofit/index.ts:4`), a new export `REAL_SHOP_WAREHOUSE_ID: number` from `lib/hugeprofit/client.ts`, and an unchanged `createRemoteOrder(orderId: number, lines: OrderLine[], contact: OrderContact, payment: PaymentInfo): Promise<CreatedOrder>` that now throws `CrmError` in one new case. No call signature changes anywhere.
 
 - [ ] **Step 1: Confirm the constant has exactly one definition and one importer**
 
@@ -106,19 +119,52 @@ export const SHOP_WAREHOUSE_ID = 34998
 with:
 
 ```ts
+/** "Крамничка ПІЧ" — the only warehouse real works are sold from. */
+export const REAL_SHOP_WAREHOUSE_ID = 34998
+
 /**
- * "Крамничка ПІЧ" (34998). The account also has "Події в ПІЧі" (35002) and the
- * mock "dev" warehouse (51630); `CRM_WAREHOUSE_ID` swings the whole site onto
- * one of those for payment testing. Never set it in production.
+ * The account also has "Події в ПІЧі" (35002) and the mock "dev" warehouse
+ * (51630); `CRM_WAREHOUSE_ID` swings the whole site onto one of those for
+ * payment testing. Never set it in production.
  */
 const configuredWarehouse = Number(process.env.CRM_WAREHOUSE_ID)
 export const SHOP_WAREHOUSE_ID =
-  Number.isInteger(configuredWarehouse) && configuredWarehouse > 0 ? configuredWarehouse : 34998
+  Number.isInteger(configuredWarehouse) && configuredWarehouse > 0
+    ? configuredWarehouse
+    : REAL_SHOP_WAREHOUSE_ID
 ```
 
 The guard matters: `Number(undefined)` is `NaN` and `Number('')` is `0`, and either one reaching the CRM as `warehouse_id` returns an empty catalog — an entirely blank shop rather than a visible error.
 
-- [ ] **Step 3: Document the variable in `.env.example`**
+- [ ] **Step 3: Refuse to create a real-shop order in sandbox mode**
+
+In `lib/hugeprofit/orders.ts`, replace line 3:
+
+```ts
+import { crmPost } from './client'
+```
+
+with:
+
+```ts
+import { crmPost, CrmError, REAL_SHOP_WAREHOUSE_ID, SHOP_WAREHOUSE_ID } from './client'
+```
+
+Then, in `createRemoteOrder`, insert the guard as the first statement of the function body — above the existing `const payload = buildOrderPayload(...)` line:
+
+```ts
+  // Money safety: sandbox payments must never reserve a real work. This is the
+  // only place an order comes into existence, so it is the only place to check.
+  if (process.env.LIQPAY_SANDBOX === '1' && SHOP_WAREHOUSE_ID === REAL_SHOP_WAREHOUSE_ID) {
+    throw new CrmError(
+      `refusing to create order ${orderId} in the real shop while LIQPAY_SANDBOX=1 — set CRM_WAREHOUSE_ID to a test warehouse`,
+    )
+  }
+```
+
+`CrmError` is a class declared later in `client.ts` but imported here, so there is no temporal-dead-zone problem: it is only referenced when the function runs.
+
+- [ ] **Step 4: Document the variable in `.env.example`**
 
 In `.env.example`, add this line directly below the `HUGEPROFIT_API_KEY` line:
 
@@ -128,7 +174,7 @@ In `.env.example`, add this line directly below the `HUGEPROFIT_API_KEY` line:
 
 Leave it commented out. An empty `CRM_WAREHOUSE_ID=` would be `Number('') === 0`, which the Step 2 guard rejects, but a commented line states the intent better.
 
-- [ ] **Step 4: Document the variable in `CLAUDE.md`**
+- [ ] **Step 5: Document the variable in `CLAUDE.md`**
 
 In `CLAUDE.md`, in the fenced env block under "Development Commands", add this line directly below `HUGEPROFIT_API_KEY=...`:
 
@@ -136,13 +182,13 @@ In `CLAUDE.md`, in the fenced env block under "Development Commands", add this l
 CRM_WAREHOUSE_ID=51630            # optional, local only — points the catalog at the mock "dev" warehouse
 ```
 
-- [ ] **Step 5: Typecheck**
+- [ ] **Step 6: Typecheck**
 
 Run: `npm run build`
 
-Expected: succeeds, including the static page-data collection phase (this is the phase that failed with `CrmError: CRM products responded 403` before the API key was fixed; it must pass now). If it fails with a 403, the CRM key has been rejected again — stop and resolve that before any later task, because Tasks 3–5 all need working CRM reads and writes.
+Expected: succeeds, including the static page-data collection phase (this is the phase that failed with `CrmError: CRM products responded 403` before the API key was fixed; it must pass now). If it fails with a 403, the CRM key has been rejected again — stop and resolve that before any later task, because Tasks 2–6 all need working CRM reads and writes.
 
-- [ ] **Step 6: Prove the override actually reaches the CRM**
+- [ ] **Step 7: Prove the override actually reaches the CRM**
 
 Set `CRM_WAREHOUSE_ID=51630` in `.env.local`, then run `npm run dev` (a change to `.env.local` needs a restart — `SHOP_WAREHOUSE_ID` is evaluated at module load).
 
@@ -159,29 +205,218 @@ Expected: a JSON body containing `"checkoutUrl":"https://www.liqpay.ua/api/3/che
 
 A `409 {"error":"unavailable","unavailable":["9054727"]}` means the override did not take effect: `.env.local` was not saved, or the dev server was not restarted.
 
-- [ ] **Step 7: Prove the default is unchanged**
+- [ ] **Step 8: Prove the default is unchanged**
 
-Comment out `CRM_WAREHOUSE_ID` in `.env.local`, restart `npm run dev`, and re-run the exact curl from Step 6.
+Comment out `CRM_WAREHOUSE_ID` in `.env.local`, restart `npm run dev`, and re-run the exact curl from Step 7.
 
 Expected: `409` with `{"error":"unavailable","unavailable":["9054727"]}` — the dev product is correctly invisible when the override is absent. This is the check that proves production behaviour did not move.
 
-Then set `CRM_WAREHOUSE_ID=51630` again and restart; Tasks 2–5 all run with it set.
+Leave `CRM_WAREHOUSE_ID` commented out for now; Task 2 Step 4 needs it that way, and Task 2 Step 6 turns it back on.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add lib/hugeprofit/client.ts .env.example CLAUDE.md
+git add lib/hugeprofit/client.ts lib/hugeprofit/orders.ts .env.example CLAUDE.md
 git status
-git commit -m "feat: allow the catalog warehouse to be overridden for payment testing"
+git commit -m "feat: warehouse override for payment testing, with a real-shop guard"
 ```
 
 Review `git status` before committing — `.env.local` must not appear.
 
 ---
 
-## Task 2: Make the mock catalog browsable
+## Task 2: Prove the webhook accept path and the guard, locally
 
-The 50 seeded products have **no images**, and `isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". That filter runs in `getCatalog` and `getProductBySlug`, so with no images the mock shop renders zero works and no browser checkout is possible. `getFreshProduct` does **not** filter, which is why Task 1 Step 6 worked over the API.
+Everything verified so far about the webhook is a rejection: forged payloads get 400s. **Nothing has ever proved the accept path works**, and the previous plan's review flagged exactly that, deferring it to a sandbox payment.
+
+It does not have to wait. `verifyCallback` (`lib/liqpay/client.ts:61-63`) checks `sign(data) === signature`, and `sign` uses `LIQPAY_PRIVATE_KEY` from `.env.local` — a key this machine holds. So a valid callback can be minted locally against the dev server: same construction LiqPay uses, no LiqPay account, no tunnel, no money. That proves the CRM write path and the Task 1 guard in one sitting, and it is the last verification possible before sandbox credentials exist.
+
+**Files:**
+- Create: `<scratchpad>/mint-callback.mjs` — a throwaway outside the repo. Do not commit it. (`<scratchpad>` is this session's scratchpad directory.)
+- No source changes unless a check fails.
+
+**Interfaces:**
+- Consumes: `encodePayload`'s wire format from Task 1's untouched `lib/liqpay/payload.ts` — `<base64url(JSON)>.<base64url(HMAC-SHA256(LIQPAY_PRIVATE_KEY, body))>` — and `sign` from `lib/liqpay/client.ts:28-31` — `base64(sha1(key + data + key))`. The script reimplements both in plain JS because the repo has no TS runner; if either ever changes, this script must change with it.
+- Produces: nothing importable. A pass/fail verification only.
+
+- [ ] **Step 1: Write the minting script**
+
+Create `<scratchpad>/mint-callback.mjs`:
+
+```js
+// Throwaway: mints a webhook callback that is valid by our own code's rules.
+// Not a test framework, not repo code — do not commit.
+import { readFileSync } from 'node:fs'
+import { createHash, createHmac } from 'node:crypto'
+
+const env = Object.fromEntries(
+  readFileSync('C:/code/pich/.env.local', 'utf8')
+    .split('\n')
+    .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
+    .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).split('#')[0].trim()]),
+)
+const key = env.LIQPAY_PRIVATE_KEY
+if (!key) throw new Error('LIQPAY_PRIVATE_KEY missing from .env.local')
+
+const [productId, price] = [process.argv[2], Number(process.argv[3])]
+if (!productId || !Number.isFinite(price)) {
+  throw new Error('usage: node mint-callback.mjs <productId> <price>')
+}
+
+const paymentId = Date.now()
+const payloadJson = JSON.stringify({
+  paymentId,
+  lines: [{ productId, price, qty: 1 }],
+  contact: {
+    name: 'Тест Тестенко',
+    email: 'test@example.com',
+    phone: '+380990000000',
+    city: 'Львів',
+    address: 'вул. Тестова 1',
+  },
+})
+const body = Buffer.from(payloadJson).toString('base64url')
+const payload = `${body}.${createHmac('sha256', key).update(body).digest('base64url')}`
+
+// LiqPay's own construction: base64 JSON, signed sha1(key + data + key).
+const data = Buffer.from(
+  JSON.stringify({ status: 'sandbox', order_id: String(paymentId), amount: price, currency: 'UAH' }),
+).toString('base64')
+const signature = createHash('sha1').update(key + data + key).digest('base64')
+
+const res = await fetch(
+  `http://localhost:3000/api/checkout/liqpay-callback?payload=${payload}`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ data, signature }),
+  },
+)
+console.log(`paymentId=${paymentId} http=${res.status}`)
+```
+
+- [ ] **Step 2: Confirm the dev server is running with the real-shop default**
+
+`CRM_WAREHOUSE_ID` must still be commented out in `.env.local` from Task 1 Step 8, and `LIQPAY_SANDBOX=1` must be set. Restart `npm run dev` and watch its terminal for the rest of this task.
+
+- [ ] **Step 3: Fire a callback for a REAL work and confirm the guard blocks it**
+
+Pick any real work's product id from the live shop:
+
+```bash
+curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  "https://crm.h-profit.com/bapi/products?limit=1&warehouse_id=34998" \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const p=JSON.parse(s).data[0];console.log(p.id,p.stock[0].sale_price>0?p.stock[0].sale_price:p.stock[0].price)})"
+```
+
+Then run the script with that id and price:
+
+```bash
+node <scratchpad>/mint-callback.mjs <real product id> <its price>
+```
+
+Expected: `http=200` (the webhook always answers 200 to LiqPay), **and the dev server log shows `[liqpay-callback] processing failed` with a `CrmError` reading `refusing to create order … while LIQPAY_SANDBOX=1`.**
+
+Then confirm nothing was created:
+
+```bash
+curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  "https://crm.h-profit.com/bapi/remote_orders" | head -c 200
+```
+
+Expected: `{"success": true, "response": []}` — still no orders in the account.
+
+**If an order WAS created for a real work, stop the entire plan.** The guard does not work, a real artwork has been reserved with fake money, and it must be cancelled in the CRM UI before anything else proceeds.
+
+- [ ] **Step 4: Confirm the guard also blocks a `payload signature mismatch`-free happy path — i.e. that Step 3 failed at the guard, not earlier**
+
+Read the dev server log from Step 3 again.
+
+Expected: **no** `payload signature mismatch` line and **no** `signature mismatch` line. If either appears, the script's signing does not match the app's and Step 3 proved nothing about the guard — fix the script against `lib/liqpay/payload.ts` and `lib/liqpay/client.ts:28-31`, then re-run Step 3.
+
+The distinction matters: a rejected signature and a working guard produce the same "no order created" outcome, and only one of them is the thing being tested.
+
+- [ ] **Step 5: Confirm a paid-but-sold-out real work is also refused**
+
+No action needed if Step 3 passed — the guard fires before any stock check, so this case cannot reach order creation either. Note it and move on.
+
+- [ ] **Step 6: Switch to the dev warehouse and fire the same callback for a mock work**
+
+Set `CRM_WAREHOUSE_ID=51630` in `.env.local` and restart `npm run dev`. Then:
+
+```bash
+node <scratchpad>/mint-callback.mjs 9054727 260
+```
+
+Expected: `http=200` and **no `[liqpay-callback]` lines in the dev server log at all** — every line in that handler is an error path, so silence is success.
+
+- [ ] **Step 7: Confirm the order landed in the CRM, against the dev warehouse**
+
+Run:
+
+```bash
+curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  "https://crm.h-profit.com/bapi/remote_orders"
+```
+
+Expected: exactly one order. Check all of: `order_id` equals the `paymentId` the script printed; `price` is `260`; `currency` UAH; `status` `"pending"`; `info.is_paid` `true` with `payment_type: "LiqPay"`; `first_name` `Тест`, `last_name` `Тестенко`, `phone`/`email` as in the script; `address_1.city` `Львів`; and `order_data[0]` naming `[DEV] Свічка фігурна «Спіраль»` with `sku: "DEV-KRSEAK"`, `quantity: 1`, `price` and `total` of 260.
+
+This is the first time `POST /bapi/remote_orders` has ever run — `GET /bapi/remote_orders` returned `{"success": true, "response": []}` on 2026-09-07 — so the field shapes at `lib/hugeprofit/orders.ts:93-106` are being proved here, not assumed.
+
+If the order is missing or `order_data` is empty or wrong, the most likely culprit is the `product_id: null` + `local_product_id` pairing — try sending the numeric product id as `product_id` instead. Fix, re-run Step 6 against a *different* `[DEV]` product (this one's stock is now spent), and commit the fix separately.
+
+- [ ] **Step 8: Confirm the reservation hit the dev warehouse and the real shop is untouched**
+
+```bash
+curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  "https://crm.h-profit.com/bapi/products?product_id=9054727&warehouse_id=51630"
+```
+
+Expected: `stock[0]` shows `mid: 51630`, `instock: 0` (down from 1), `quantity: 1` — `instock` is availability, `quantity` is physical stock on hand, and they diverge on reservation (verified live 2026-08-13, documented at `lib/hugeprofit/map.ts:105-109`).
+
+Then the real-shop assertion. **Do not use `count=1`** — it ignores `warehouse_id` and returns the account-wide total (308 on 2026-09-07: 258 real + 50 mock), so it cannot tell the warehouses apart. Count rows instead:
+
+```bash
+curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  "https://crm.h-profit.com/bapi/products?limit=500&warehouse_id=34998" \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).data.length))"
+```
+
+Expected: `258`. If it moved, stop and raise it — that would mean the CRM reserves across warehouses, which invalidates the isolation premise of this whole plan.
+
+- [ ] **Step 9: Test the duplicate-order claim while a real order exists to duplicate**
+
+The spec claims idempotency comes from the CRM rejecting a duplicate `order_id` ("Idempotency without a database"), and that has never been tested. Re-run the exact same callback — the script generates a fresh `paymentId` each run, so instead re-send the duplicate directly, substituting the `order_id` from Step 7:
+
+```bash
+curl -s -X POST "https://crm.h-profit.com/bapi/remote_orders" \
+  -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
+  -d '{"data":{"order_id":<the order_id from Step 7>,"order_name":"duplicate probe","price":260,"currency":"UAH","status":"pending","first_name":"Тест","address_1":{"address_1":"вул. Тестова 1","city":"Львів","delivery_cost":0},"info":{"is_paid":true,"payment_type":"LiqPay"},"order_data":[{"product_id":null,"local_product_id":9054727,"id":9054727,"name":"[DEV] Свічка фігурна «Спіраль»","sku":"DEV-KRSEAK","quantity":1,"price":260,"total":260,"is_paid":true,"payment_type":"LiqPay"}]}}'
+```
+
+Expected: an error response, and `GET /bapi/remote_orders` still showing exactly one order with that `order_id`.
+
+If a **second** order appears, the CRM does not enforce a unique `order_id`, the spec's idempotency claim is false, and a LiqPay redelivery would double-book the owners. Record it and raise it — it must be resolved before the production cutover, though it does not block the remaining tasks here.
+
+- [ ] **Step 10: Record what was proved**
+
+In `.claude/docs/domain/checkout.md`, find the section describing the LiqPay flow and add a short paragraph: on 2026-09-07 the webhook's accept path was exercised with a locally-minted valid callback, creating the account's first `remote_orders` record against the mock `dev` warehouse (51630); `createRemoteOrder` refuses to run against warehouse 34998 while `LIQPAY_SANDBOX=1`; and whatever Step 9 showed about duplicate `order_id`. Keep it to a paragraph — this doc records rules, not test logs.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add .claude/docs/domain/checkout.md
+git status
+git commit -m "docs: record the locally-verified webhook accept path and the sandbox guard"
+```
+
+The minting script stays in the scratchpad and is **not** committed. Confirm it does not appear in `git status`.
+
+---
+
+## Task 3: Make the mock catalog browsable
+
+The 50 seeded products have **no images**, and `isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". That filter runs in `getCatalog` and `getProductBySlug`, so with no images the mock shop renders zero works and no browser checkout is possible. `getFreshProduct` does **not** filter, which is why Tasks 1 and 2 worked over the API.
 
 Three images are enough for every later task. This is a human step in the CRM UI — the API cannot do it.
 
@@ -194,9 +429,11 @@ Open `https://crm.h-profit.com`, find these three products by SKU, and upload an
 
 | sku | name | price |
 |---|---|---|
-| `DEV-KRSEAK` | `[DEV] Свічка фігурна «Спіраль»` | 260 |
 | `DEV-X8K946` | `[DEV] Набір чайних свічок, 12 шт.` | 340 |
 | `DEV-4S3185` | `[DEV] Листівки «Львівські дахи», набір 6 шт.` | 380 |
+| `DEV-0JIRQP` | `[DEV] Свічка «Смерека»` | 420 |
+
+(`DEV-KRSEAK`, the ₴260 candle, is deliberately not in this list — Task 2 spent its stock, so it can no longer be bought through the UI.)
 
 - [ ] **Step 2: Confirm the CRM now returns image URLs for them**
 
@@ -204,7 +441,7 @@ Run:
 
 ```bash
 curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
-  "https://crm.h-profit.com/bapi/products?product_id=9054727&warehouse_id=51630"
+  "https://crm.h-profit.com/bapi/products?product_id=9054728&warehouse_id=51630"
 ```
 
 (If `$HUGEPROFIT_API_KEY` is not exported in your shell, read it from `.env.local` — do not paste it into a file or a commit message.)
@@ -215,7 +452,7 @@ Expected: the returned object's `images` array holds at least one `https://crm.h
 
 With `CRM_WAREHOUSE_ID=51630` set and `npm run dev` running, open `http://localhost:3000/shop`. The catalog is cached for 5 minutes (`CATALOG_REVALIDATE`), so restarting the dev server is the fastest way to see fresh data.
 
-Expected: exactly the three products from Step 1 appear, priced ₴260 / ₴340 / ₴380, each under its `[DEV]` name and attributed to artist `DEV`. Clicking one opens its product page, and "Додати в кошик" puts it in the cart.
+Expected: exactly the three products from Step 1 appear, priced ₴340 / ₴380 / ₴420, each under its `[DEV]` name and attributed to artist `DEV`. Clicking one opens its product page, and "Додати в кошик" puts it in the cart.
 
 If the grid is empty, the catalog cache is stale — restart `npm run dev` and reload.
 
@@ -225,7 +462,7 @@ This task changes no files. Do not commit.
 
 ---
 
-## Task 3: Sandbox credentials, tunnel, and payment page
+## Task 4: Sandbox credentials, tunnel, and payment page
 
 This task's deliverable is narrow and worth its own gate: **LiqPay accepts our signed request and renders a payment page for a mock work.** That single outcome validates both of the spec's flagged assumptions — the signature algorithm, and that `amount` is in major currency units (₴, not kopiyky). If `amount` were wrong by 100×, the payment page shows it.
 
@@ -243,7 +480,7 @@ LiqPay's servers must reach `server_url`, and `localhost` is not reachable from 
 
 Run: `npx cloudflared tunnel --url http://localhost:3000`
 
-Expected: prints a `https://<random-words>.trycloudflare.com` URL. (`npx ngrok http 3000` works too but now requires an account and authtoken; cloudflared needs neither.) Leave this running for Tasks 3–5.
+Expected: prints a `https://<random-words>.trycloudflare.com` URL. (`npx ngrok http 3000` works too but now requires an account and authtoken; cloudflared needs neither.) Leave this running for Tasks 4–6.
 
 - [ ] **Step 3: Point `.env.local` at the tunnel**
 
@@ -257,7 +494,9 @@ LIQPAY_PRIVATE_KEY=sandbox_...
 LIQPAY_SANDBOX=1
 ```
 
-`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing. Write down the previous `WEBSITE_URL` value — Task 6 restores it.
+`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing. Write down the previous `WEBSITE_URL` value — Task 7 restores it.
+
+Note that swapping `LIQPAY_PRIVATE_KEY` for the real sandbox key invalidates Task 2's minting script for any payload minted with the old key. That is expected; the script is only ever run fresh.
 
 - [ ] **Step 4: Confirm the tunnel reaches the app**
 
@@ -267,9 +506,9 @@ Expected: `200`. Anything else means LiqPay's webhook will never arrive either �
 
 - [ ] **Step 5: Reach LiqPay's payment page**
 
-Open the tunnel URL in a browser, add `[DEV] Свічка фігурна «Спіраль»` (₴260) to the cart, go to `/checkout`, fill the form with any plausible contact details, and submit.
+Open the tunnel URL in a browser, add `[DEV] Набір чайних свічок, 12 шт.` (₴340) to the cart, go to `/checkout`, fill the form with any plausible contact details, and submit.
 
-Expected: the browser navigates to a `liqpay.ua`-hosted payment page. **Read the amount printed on that page and confirm it says `260,00 ₴`** — not `2,60 ₴` and not `26 000 ₴`.
+Expected: the browser navigates to a `liqpay.ua`-hosted payment page. **Read the amount printed on that page and confirm it says `340,00 ₴`** — not `3,40 ₴` and not `34 000 ₴`.
 
 If LiqPay shows a signature error instead of a payment form, `sign()` (`lib/liqpay/client.ts:28-31`) disagrees with LiqPay's current algorithm — recheck it against LiqPay's docs before continuing; every later task depends on it.
 
@@ -294,16 +533,16 @@ git commit -m "docs: mark LiqPay's flagged assumptions sandbox-verified"
 
 ---
 
-## Task 4: Full sandbox happy path against the dev warehouse
+## Task 5: Full sandbox happy path through the browser
 
-This is the first time `POST /bapi/remote_orders` is ever called for real — `GET /bapi/remote_orders` returned `{"success": true, "response": []}` on 2026-09-07, so the account has never held one. The field shapes in `buildOrderPayload` (`lib/hugeprofit/orders.ts:93-106`) are still API-docs-derived guesses, and this task turns them into facts. Getting it wrong costs a junk order against a ₴260 mock candle instead of a real painting.
+Task 2 already proved the webhook creates a correct CRM order when handed a valid callback. What remains unproved is everything **LiqPay** does: that its real callback carries the fields we expect, that its query-string round trip preserves the payload tag, and that the buyer's return journey renders.
 
 **Files:**
 - No planned source changes. Fix whatever this task breaks, in the file it breaks in.
 
 - [ ] **Step 1: Pay with LiqPay's sandbox test card**
 
-With the tunnel and dev server still running, repeat the checkout from Task 3 Step 5 and complete payment with LiqPay's sandbox test card: `4242 4242 4242 4242`, any future expiry, any CVV.
+With the tunnel and dev server still running, repeat the checkout from Task 4 Step 5 and complete payment with LiqPay's sandbox test card: `4242 4242 4242 4242`, any future expiry, any CVV.
 
 Expected: payment completes on LiqPay's page.
 
@@ -330,40 +569,25 @@ and change `resultUrl` at `app/api/checkout/route.ts:123` to `${WEBSITE_URL}/api
 
 Check the terminal running `npm run dev`.
 
-Expected: **no `[liqpay-callback]` lines at all.** Every log line in that handler is an error path — silence is success.
+Expected: **no `[liqpay-callback]` lines at all.**
 
-- `payload signature mismatch` → LiqPay mangled the query string (the HMAC tag itself is verified working, so suspect URL encoding).
-- `payload/order_id mismatch` → the payload was bound to a different payment.
-- `paid order not created — stock changed` → the mock work's `instock` went to 0 between the two checks; each mock has quantity 1, so this is expected on a *second* purchase of the same product and means you must pick a different `[DEV]` item.
-- `processing failed` → read the attached error; most likely the CRM rejecting the order payload, which Step 4 confirms.
+- `payload signature mismatch` → LiqPay's query-string round trip mangled the tag. Task 2 proved the tag construction itself is sound, so suspect URL encoding of the `.` separator or base64url characters.
+- `payload/order_id mismatch` → LiqPay's `order_id` is not coming back as the integer we sent.
+- `paid order not created — stock changed` → the mock work's `instock` hit 0; each mock has quantity 1, so pick another `[DEV]` item.
+- `processing failed` → read the attached error. If it names the sandbox guard, `CRM_WAREHOUSE_ID` was lost from `.env.local`.
 
-- [ ] **Step 4: Confirm the order landed in the CRM**
-
-Run:
+- [ ] **Step 4: Confirm this second order landed in the CRM**
 
 ```bash
 curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
   "https://crm.h-profit.com/bapi/remote_orders"
 ```
 
-Expected: exactly one order in `response[]`. Check every one of these: `order_id` matches the `paymentId` from the result URL; `first_name`/`last_name`/`phone`/`email` match what was typed; `address_1.city` and `address_1.address_1` match; `price` is `260`; `currency` is UAH; `status` is `"pending"`; `info.is_paid` is `true` with `payment_type: "LiqPay"`; and `order_data[0]` names `[DEV] Свічка фігурна «Спіраль»` with `sku: "DEV-KRSEAK"`, `quantity: 1`, and `price`/`total` of 260.
+Expected: **two** orders now — Task 2's locally-minted one and this one. The new one's `order_id` matches the `paymentId` in the result URL, its `price` is `340`, and its `order_data[0]` names `[DEV] Набір чайних свічок, 12 шт.` with `sku: "DEV-X8K946"`.
 
-If the order is missing or `order_data` is empty or wrong, the shape at `lib/hugeprofit/orders.ts:93-106` is wrong. The most likely culprit is the `product_id: null` + `local_product_id` pairing — try sending the numeric product id as `product_id` instead. Fix, re-run Steps 1–4 with a *different* `[DEV]` product (the first one's stock is now spent), and commit the fix separately.
+Compare the two orders field by field. Any difference between the locally-minted order and LiqPay's is a fact about LiqPay's callback that this codebase was guessing at — note it in Task 7's handoff.
 
-- [ ] **Step 5: Confirm the reservation hit the dev warehouse and only the dev warehouse**
-
-The `POST /bapi/remote_orders` response carries `reservedProducts: [[product_id, marketplace_id]]`, and the CRM — not our code — chooses which warehouse to reserve from. This step proves that choice landed on 51630.
-
-Run:
-
-```bash
-curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
-  "https://crm.h-profit.com/bapi/products?product_id=9054727&warehouse_id=51630"
-```
-
-Expected: the product's `stock[0]` shows `mid: 51630`, `instock: 0` (down from 1), and `quantity: 1` — `instock` is availability and `quantity` is physical stock on hand; they diverge on reservation, as verified live on 2026-08-13 and documented at `lib/hugeprofit/map.ts:105-109`.
-
-Then run the real-shop count as a safety assertion. **Do not use `count=1` for this** — it ignores `warehouse_id` and returns the account-wide total (308 on 2026-09-07: 258 real + 50 mock), so it cannot tell the two warehouses apart. Count the rows instead:
+- [ ] **Step 5: Confirm the real shop is still untouched**
 
 ```bash
 curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
@@ -371,9 +595,7 @@ curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/js
   | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).data.length))"
 ```
 
-Expected: `258` — the real shop is untouched by this test purchase. If it moved, stop immediately and raise it: that would mean the CRM reserves across warehouses, which invalidates the whole isolation premise of this plan.
-
-If `instock` did **not** move on the dev product, note it: it means a paid work stays purchasable and the owners need to know reservation is manual.
+Expected: `258`.
 
 - [ ] **Step 6: Commit any fixes this task produced**
 
@@ -382,60 +604,46 @@ If Steps 1–5 needed no source change, skip this step and commit nothing.
 ```bash
 git add -A
 git status
-git commit -m "fix: <what the live CRM/LiqPay round trip actually required>"
+git commit -m "fix: <what the live LiqPay round trip actually required>"
 ```
 
 Review `git status` before committing — `.env.local` must not appear.
 
 ---
 
-## Task 5: Sandbox failure paths
+## Task 6: Sandbox failure paths
 
-The happy path is the cheap half. These three cases decide whether a failure costs the owners money or just an apology.
+The happy path is the cheap half. These cases decide whether a failure costs the owners money or just an apology.
 
 **Files:**
 - No planned source changes.
 
 - [ ] **Step 1: Abandon a payment**
 
-Start a checkout for a *different* `[DEV]` product than Task 4 used — `[DEV] Набір чайних свічок, 12 шт.` (`9054728`, ₴340) — reach LiqPay's page, then close the tab without paying. Return to the site.
+Start a checkout for a *different* `[DEV]` product — `[DEV] Листівки «Львівські дахи», набір 6 шт.` (`9054701`, ₴380) — reach LiqPay's page, then close the tab without paying. Return to the site.
 
-Expected: **no new CRM order** (`GET /bapi/remote_orders` still returns exactly the one order from Task 4), the cart still holds the work, and the product's `instock` is still 1.
+Expected: **no new CRM order** (`GET /bapi/remote_orders` still returns exactly the two orders from Tasks 2 and 5), the cart still holds the work, and the product's `instock` is still 1.
 
 - [ ] **Step 2: Confirm a failed status renders as failure, not success**
 
 Visit `https://<tunnel>/checkout/result?paymentId=1` — an id LiqPay has never seen.
 
-Expected: the "Оплата не пройшла" failure view or the "Перевіряємо оплату…" pending view — **never** the success view, and the cart is **not** cleared. `checkStatus` returns `unknown` for an unknown id, which `ResultView` renders as pending.
+Expected: the "Оплата не пройшла" failure view or the "Перевіряємо оплату…" pending view — **never** the success view, and the cart is **not** cleared. `checkStatus` returns `unknown` for an unknown id, which `ResultView` renders as pending (`components/checkout/result-view.tsx:24-25`).
 
-- [ ] **Step 3: Confirm a duplicate webhook does not double-order**
+- [ ] **Step 3: Record what the failure paths did**
 
-LiqPay may redeliver a webhook. The spec claims idempotency comes from the CRM rejecting a duplicate `order_id` ("Idempotency without a database"), and that claim has never been tested. Test it directly rather than waiting for a redelivery — substitute the real `order_id` from Task 4:
+Append to the paragraph added in Task 2 Step 10 in `.claude/docs/domain/checkout.md`: the date, that a real LiqPay sandbox payment completed end to end against the mock `dev` warehouse, and the observed behaviour of abandonment and unknown-payment status. Keep it short.
 
-```bash
-curl -s -X POST "https://crm.h-profit.com/bapi/remote_orders" \
-  -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
-  -d '{"data":{"order_id":<the order_id from Task 4>,"order_name":"duplicate probe","price":260,"currency":"UAH","status":"pending","first_name":"Тест","address_1":{"address_1":"вул. Тестова 1","city":"Львів","delivery_cost":0},"info":{"is_paid":true,"payment_type":"LiqPay"},"order_data":[{"product_id":null,"local_product_id":9054727,"id":9054727,"name":"[DEV] Свічка фігурна «Спіраль»","sku":"DEV-KRSEAK","quantity":1,"price":260,"total":260,"is_paid":true,"payment_type":"LiqPay"}]}}'
-```
-
-Expected: an error response, and `GET /bapi/remote_orders` still shows exactly one order with that `order_id`.
-
-If a **second** order appears, the CRM does not enforce a unique `order_id`, the spec's idempotency claim is false, and a LiqPay redelivery would double-book the owners. Stop and raise it — that is a design-level problem this plan cannot paper over, and it must be resolved before the production cutover.
-
-- [ ] **Step 4: Record what the failure paths actually did**
-
-In `.claude/docs/domain/checkout.md`, find the section describing the LiqPay flow and add a short verification paragraph: the date (2026-09-07), that a sandbox payment created a real CRM order end to end **against the mock `dev` warehouse (51630), not the live shop**, and the observed behaviour of abandonment, unknown-payment status, and duplicate `order_id`. Keep it to a paragraph — this doc records rules, not test logs.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add .claude/docs/domain/checkout.md
-git commit -m "docs: record the sandbox verification of the LiqPay flow"
+git commit -m "docs: record the sandbox failure-path verification"
 ```
 
 ---
 
-## Task 6: Restore the real catalog and truth up the comments
+## Task 7: Restore the real catalog and truth up the comments
 
 **Files:**
 - Modify: `.env.local` (restore — never committed)
@@ -444,9 +652,11 @@ git commit -m "docs: record the sandbox verification of the LiqPay flow"
 
 - [ ] **Step 1: Restore local env and stop the tunnel**
 
-In `.env.local`: restore `WEBSITE_URL` to the value recorded in Task 3 Step 3, and **comment out `CRM_WAREHOUSE_ID`**. Stop the cloudflared tunnel. Restart `npm run dev`.
+In `.env.local`: restore `WEBSITE_URL` to the value recorded in Task 4 Step 3, and **comment out `CRM_WAREHOUSE_ID`**. Stop the cloudflared tunnel. Restart `npm run dev`.
 
-Expected on `http://localhost:3000/shop`: the real catalog, not three `[DEV]` items. If mock rows are still showing, `CRM_WAREHOUSE_ID` is still set or the dev server was not restarted.
+Expected on `http://localhost:3000/shop`: the real catalog, not `[DEV]` items. If mock rows are still showing, `CRM_WAREHOUSE_ID` is still set or the dev server was not restarted.
+
+Leaving `LIQPAY_SANDBOX=1` set locally is fine and safe: with the real catalog restored, the Task 1 guard now refuses to create any order at all, which is the correct posture for a machine that is not testing payments.
 
 - [ ] **Step 2: Confirm no tunnel URL leaked into the repo**
 
@@ -508,19 +718,20 @@ git commit -m "docs: comments now reflect the sandbox-verified payment path"
 
 - [ ] **Step 5: Hand off to the production cutover**
 
-State plainly which of Tasks 3–5 passed and which needed fixes, then point at `docs/superpowers/plans/2026-09-06-liqpay-go-live.md` **Task 5** as the next step. Do not begin it: it needs live LiqPay keys, Vercel project access, a real card, and a merge to `master` — all decisions for the owners, not this plan.
+State plainly which of Tasks 4–6 passed and which needed fixes, then point at `docs/superpowers/plans/2026-09-06-liqpay-go-live.md` **Task 5** as the next step. Do not begin it: it needs live LiqPay keys, Vercel project access, a real card, and a merge to `master` — all decisions for the owners, not this plan.
 
-**Carry these two warnings into that handoff:**
+**Carry these three warnings into that handoff:**
 
 1. `CRM_WAREHOUSE_ID` must **not** be added to the Vercel environment. Its absence is what keeps production on warehouse 34998.
-2. The go-live plan's Task 5 Step 6 buys a real work with a real card. Everything this plan verified was against mock stock, so that step remains the first real-money test.
+2. `LIQPAY_SANDBOX` must **not** be set in Vercel either — with live keys and the real shop that combination now throws on every order, so a stray value takes checkout down rather than merely making it fake.
+3. The go-live plan's Task 5 Step 6 buys a real work with a real card. Everything this plan verified was against mock stock, so that step remains the first real-money test.
 
 ---
 
 ## Self-Review Notes
 
-- **Spec coverage:** the spec's carried-forward open item (sandbox verification of the signature algorithm and `amount` units) is Task 3 Step 5. Its idempotency claim, previously untested, is now directly probed in Task 5 Step 3. Non-goals are respected and restated under "What this plan deliberately does not do".
-- **Type consistency:** Task 1 changes `SHOP_WAREHOUSE_ID` from a literal to a computed value of the same name and type; no signature anywhere changes, and Step 1 confirms the single definition and single importer before the edit. No later task references a symbol Task 1 did not produce.
-- **No placeholders:** every step carries real code, a real command with its expected output, or an exact document edit. The intentional blanks are `<random-words>.trycloudflare.com` (unknowable before Task 3 Step 2) and `<the order_id from Task 4>` (generated at payment time).
-- **Ordering rationale:** Task 1 is the only source change and is verifiable without any LiqPay credential, so it can land and be reviewed while the sandbox keys are still being obtained. Task 2 unblocks a browser cart. Tasks 3→4→5 escalate the cost of failure (payment page → real CRM write → failure paths). Task 6 restores the environment so nobody inherits a machine pointed at mock data.
-- **Known human-only steps:** Task 2 (CRM UI image upload), Task 3 Steps 1–2 and 5 (LiqPay dashboard, tunnel, browser), Task 4 Steps 1–2, Task 5 Steps 1–2. A subagent can execute Task 1 and Task 6 unattended; the rest need a person with a browser.
+- **Spec coverage:** the spec's carried-forward open item (sandbox verification of the signature algorithm and `amount` units) is Task 4 Step 5. Its previously untested idempotency claim is probed in Task 2 Step 9. Its "webhook is the only order creator" rule is now enforced, not just documented, by Task 1 Step 3. Non-goals are respected and restated under "What this plan deliberately does not do".
+- **Type consistency:** Task 1 keeps `SHOP_WAREHOUSE_ID: number` and `createRemoteOrder`'s signature identical, adds one export (`REAL_SHOP_WAREHOUSE_ID`), and Step 1 confirms the single definition and single importer before editing. Task 2's script reimplements two wire formats rather than importing them (no TS runner exists) and says so explicitly in its Interfaces block.
+- **No placeholders:** every step carries real code, a real command with its expected output, or an exact document edit. The intentional blanks are `<random-words>.trycloudflare.com` (unknowable before Task 4 Step 2), `<scratchpad>` (session-specific), `<real product id>` (read at Task 2 Step 3), and `<the order_id from Step 7>` (generated at run time).
+- **Ordering rationale:** Tasks 1 and 2 need no LiqPay account and no browser, so the guard lands and is proved before any credential exists — and Task 2 deliberately fires at the **real** shop first, while the guard is the only thing standing in the way, because that is the assertion the whole plan rests on. Task 3 unblocks a browser cart. Tasks 4→5→6 escalate cost of failure. Task 7 restores the environment so nobody inherits a machine pointed at mock data.
+- **Known human-only steps:** Task 3 (CRM UI image upload), Task 4 Steps 1–2 and 5 (LiqPay dashboard, tunnel, browser), Task 5 Steps 1–2, Task 6 Steps 1–2. Tasks 1, 2 and 7 are executable unattended.
