@@ -524,6 +524,12 @@ In `docs/superpowers/specs/2026-08-16-liqpay-payment-design.md`, replace the `##
 - ~~Sandbox verification of the two flagged assumptions above must happen before the rest of the design is trusted.~~ **Done 2026-09-07:** signature algorithm and `amount`-in-major-units both confirmed against a LiqPay sandbox account, buying a mock work from the CRM's `dev` warehouse.
 ```
 
+Then correct this spec's idempotency claim, which Task 2 disproved. Find the "Idempotency without a database" passage and replace its assertion that the CRM rejects a duplicate `order_id` with:
+
+```markdown
+Re-POSTing an existing `order_id` does **not** error and does **not** create a second order — the CRM upserts, overwriting the existing row in place and blanking any field the new payload omits (verified 2026-09-07). Idempotency therefore rests on `order_id` being `Date.now()`, unique per checkout, plus the fact that a LiqPay redelivery replays the same payload and so rewrites identical values. The CRM is not a guard here.
+```
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -720,11 +726,13 @@ git commit -m "docs: comments now reflect the sandbox-verified payment path"
 
 State plainly which of Tasks 4–6 passed and which needed fixes, then point at `docs/superpowers/plans/2026-09-06-liqpay-go-live.md` **Task 5** as the next step. Do not begin it: it needs live LiqPay keys, Vercel project access, a real card, and a merge to `master` — all decisions for the owners, not this plan.
 
-**Carry these three warnings into that handoff:**
+**Carry these five warnings into that handoff:**
 
-1. `CRM_WAREHOUSE_ID` must **not** be added to the Vercel environment. Its absence is what keeps production on warehouse 34998.
-2. `LIQPAY_SANDBOX` must **not** be set in Vercel either — with live keys and the real shop that combination now throws on every order, so a stray value takes checkout down rather than merely making it fake.
-3. The go-live plan's Task 5 Step 6 buys a real work with a real card. Everything this plan verified was against mock stock, so that step remains the first real-money test.
+1. **Stock reservation is unproven, and may not happen at all.** Task 2's dev-warehouse order returned `reservedProducts: []` and left `instock` at 1, contradicting the standing claim that the CRM reserves stock on order creation. The likely cause is that reservation targets a warehouse fixed in the token's integration settings (34998) where the mock product has no row — which cannot be confirmed without creating an order against a real work, something this plan forbids. **The owners need to know that a paid work may stay purchasable until someone moves it by hand.** Settle it on the production cutover's first real payment, and check the account's integration settings.
+2. **A duplicate `order_id` overwrites, it does not reject.** Task 2 proved the CRM upserts, blanking fields the second payload omits. `order_id` is `Date.now()` so collisions between buyers are implausible and a LiqPay redelivery replays identical values, but the spec's named idempotency mechanism does not exist.
+3. `CRM_WAREHOUSE_ID` must **not** be added to the Vercel environment. Its absence is what keeps production on warehouse 34998.
+4. `LIQPAY_SANDBOX` must **not** be set in Vercel either — with live keys and the real shop that combination now throws on every order, so a stray value takes checkout down rather than merely making it fake.
+5. The go-live plan's Task 5 Step 6 buys a real work with a real card. Everything this plan verified was against mock stock, so that step remains the first real-money test.
 
 ---
 
