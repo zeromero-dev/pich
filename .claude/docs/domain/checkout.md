@@ -14,6 +14,8 @@ Turning a cart draft into an order in the CRM. The CRM is the order system of re
 
 Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders) **released the reservation** — `instock` went back to 29 — but **left the auto-created client record in place**. So every web order permanently adds a row to Клієнти, and cancelling an order does not clean it up. Whether the CRM de-duplicates a returning buyer by phone or email is untested.
 
+**Verified locally against the live CRM 2026-09-07**, with a webhook callback minted outside LiqPay (same HMAC payload tag and same `sign()` construction, both keyed on the `LIQPAY_PRIVATE_KEY` the app itself reads — no LiqPay account involved): against the real shop (warehouse 34998, `LIQPAY_SANDBOX=1`), `createRemoteOrder`'s guard fired and refused to create the order, logging `CrmError: refusing to create order … in the real shop while LIQPAY_SANDBOX=1`; `GET /bapi/remote_orders` stayed empty. With `CRM_WAREHOUSE_ID=51630`, the same callback shape created the account's first-ever `remote_orders` record (mock product 9054727), matching every field this doc documents above — except `instock` did **not** decrease and the response's `reservedProducts` was empty, so the "CRM reserves stock on creation" claim above does not hold for a product with no stock row in the token's own reservation warehouse (34998), which this mock product has none of. Separately, re-POSTing the same `order_id` did not error — it silently overwrote the existing order in place (same CRM row id, `phone`/`email`/`last_name` wiped by the second payload's omissions) rather than rejecting or duplicating, so `order_id` gives upsert behavior, not a guard, and a LiqPay redelivery must not be assumed harmless.
+
 ## Model
 
 ```
