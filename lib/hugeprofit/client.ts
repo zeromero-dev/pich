@@ -10,11 +10,19 @@ const BASE = 'https://crm.h-profit.com/bapi'
 /** Catalog cache window. Also our rate-limit politeness layer — limits are undocumented. */
 export const CATALOG_REVALIDATE = 300
 
+/** "Крамничка ПІЧ" — the only warehouse real works are sold from. */
+export const REAL_SHOP_WAREHOUSE_ID = 34998
+
 /**
- * "Крамничка ПІЧ". The account also has "Події в ПІЧі" (35002), empty today;
- * filtering keeps non-shop stock out of the catalog if it ever gets used.
+ * The account also has "Події в ПІЧі" (35002) and the mock "dev" warehouse
+ * (51630); `CRM_WAREHOUSE_ID` swings the whole site onto one of those for
+ * payment testing. Never set it in production.
  */
-export const SHOP_WAREHOUSE_ID = 34998
+const configuredWarehouse = Number(process.env.CRM_WAREHOUSE_ID)
+export const SHOP_WAREHOUSE_ID =
+  Number.isInteger(configuredWarehouse) && configuredWarehouse > 0
+    ? configuredWarehouse
+    : REAL_SHOP_WAREHOUSE_ID
 
 export class CrmError extends Error {
   constructor(
