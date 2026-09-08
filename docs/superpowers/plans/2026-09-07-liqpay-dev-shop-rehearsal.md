@@ -53,7 +53,7 @@ Four of the cheapest, for use in the steps below:
 **Two blockers from the previous plan, re-checked 2026-09-07:**
 
 1. `HUGEPROFIT_API_KEY` returning `403 not-correct-api-key` — **resolved.** `GET /bapi/products?count=1` now returns `200` with the key in `.env.local`.
-2. No LiqPay sandbox credentials — **still open.** Task 4 Step 1 is where they get obtained; Tasks 4–6 cannot start without them. Tasks 1–3 do not need them.
+2. No LiqPay sandbox credentials — **resolved.** `.env.local` holds a `sandbox_`-prefixed key pair with `LIQPAY_SANDBOX=1`, so Task 4 Step 1 is already satisfied. Tasks 4–6 need only a public tunnel and a browser.
 
 ## Why the warehouse constant is the whole trick
 
@@ -75,7 +75,9 @@ Weakest to strongest:
 4. **The write catch-all** — `crmPost` refuses *any* CRM write under the same condition, so a future write path inherits the protection instead of having to remember it. Deliberately redundant with layer 3 today; layer 3 stays because its message names the order and Task 2's evidence quotes it.
 5. **The read gate** — when `SHOP_WAREHOUSE_ID` is not the real shop (`DEV_ONLY`), `crmFetch` refuses any request that names a different warehouse, and any request that names none at all — an unscoped `products` read returns the real catalogue alongside the mock rows. Not reachable through today's callers, which all pass `SHOP_WAREHOUSE_ID`; it exists to stop a future one widening silently.
 6. **The production gate** — `lib/hugeprofit/client.ts` throws at import if `VERCEL_ENV === 'production'` and `CRM_WAREHOUSE_ID` is set, so a deployed site can never serve mock works as the real shop. `VERCEL_ENV`, not `NODE_ENV`, because `npm run build` sets the latter and local production builds must keep working. Verified 2026-09-07: the build fails with that message.
-7. **Token scope (the only real boundary, and it is not in this repo)** — every gate above is our own code asking itself nicely; `HUGEPROFIT_API_KEY` still grants the whole account, and any script bypassing the app (the seeding scripts did exactly that) reaches the real shop. The CRM's integration settings offer "select the appropriate warehouses to which the API will have access" and a separate reservation-warehouse choice. A token scoped to `dev` is the only thing that makes real-shop access *impossible* rather than *guarded*. Run `node scripts/crm-scope.mjs` to see what the current token actually reaches.
+7. **Token scope — DONE 2026-09-07, and the only real boundary.** Every gate above is our own code asking itself nicely; a script that bypasses the app (the seeding scripts did exactly that) was unaffected by any of them. `HUGEPROFIT_API_KEY` has now been re-scoped in the CRM's integration settings to the `dev` warehouse alone, and the CRM enforces it server-side: warehouse enumeration returns `dev` only; `warehouse_id=34998` returns 0 rows; an **unscoped** `products` read returns 54 (dev) rather than the whole account; a real product fetched by `product_id` returns 0 rows; `count=1`, which ignores warehouse filters, fell from 308 to 54; and a `product_stock` write aimed at 34998 is refused by the CRM with `marketplace_id 34998 is no access`. Re-run `node scripts/crm-scope.mjs` after the production cutover swaps this token back — its verdict line names which one is loaded.
+
+   Residual reach, judged acceptable: `reference_info` remains account-wide (72 brand names, 3 accounts including the cash balance). No product, stock, price or order data, and nothing in the site reads it.
 
 ## What this plan deliberately does not do
 
@@ -469,29 +471,38 @@ In the LiqPay merchant dashboard, switch the account to sandbox mode and copy th
 
 LiqPay's servers must reach `server_url`, and `localhost` is not reachable from them.
 
-Run: `npx cloudflared tunnel --url http://localhost:3000`
+**cloudflared does not work on this network** (verified 2026-09-07): IPv6 has no route here, and `api.trycloudflare.com`'s IPv4 address `104.16.230.132` is unreachable — including when that same IP is asked for `www.cloudflare.com`, so it is the route to that address block, not filtering aimed at tunnels. Reachability of the alternatives was measured: `api.ngrok.com` 400, `localtunnel.me` 302, `vercel.com` 200.
 
-Expected: prints a `https://<random-words>.trycloudflare.com` URL. (`npx ngrok http 3000` works too but now requires an account and authtoken; cloudflared needs neither.) Leave this running for Tasks 4–6.
+Use ngrok. One-time setup: create a free account at `dashboard.ngrok.com`, copy the authtoken, then:
+
+```bash
+npx ngrok config add-authtoken <YOUR_TOKEN>
+npx ngrok http 3000
+```
+
+Expected: prints a `https://<random>.ngrok-free.app` forwarding URL. Leave it running for Tasks 4-6; the free tier issues a new hostname on every restart, so restarting means redoing Step 3.
+
+ngrok's free tier shows a one-time interstitial on **browser** page loads (click "Visit Site"). Server-to-server POSTs carry no browser user-agent and skip it, so LiqPay's webhook is unaffected — the direction that matters. localtunnel was rejected for the opposite reason: its behaviour toward server POSTs could not be established, and a silently-swallowed webhook is exactly what this task exists to catch.
 
 - [ ] **Step 3: Point `.env.local` at the tunnel**
 
 Set these in `.env.local`, keeping `HUGEPROFIT_API_KEY` as it already is:
 
 ```bash
-WEBSITE_URL=https://<random-words>.trycloudflare.com
+WEBSITE_URL=https://<random>.ngrok-free.app
 CRM_WAREHOUSE_ID=51630
 LIQPAY_PUBLIC_KEY=sandbox_...
 LIQPAY_PRIVATE_KEY=sandbox_...
 LIQPAY_SANDBOX=1
 ```
 
-`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing. Write down the previous `WEBSITE_URL` value — Task 7 restores it.
+`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing. The value Task 7 restores is `http://localhost:3000` (recorded 2026-09-07).
 
 Note that swapping `LIQPAY_PRIVATE_KEY` for the real sandbox key invalidates Task 2's minting script for any payload minted with the old key. That is expected; the script is only ever run fresh.
 
 - [ ] **Step 4: Confirm the tunnel reaches the app**
 
-Run: `curl -s -o /dev/null -w "%{http_code}\n" https://<random-words>.trycloudflare.com/shop`
+Run: `curl -s -o /dev/null -w "%{http_code}\n" https://<random>.ngrok-free.app/shop`
 
 Expected: `200`. Anything else means LiqPay's webhook will never arrive either — fix the tunnel before paying for anything.
 
@@ -623,7 +634,7 @@ Expected: **no new CRM order** (`GET /bapi/remote_orders` still returns exactly 
 
 - [ ] **Step 2: Confirm a failed status renders as failure, not success**
 
-Visit `https://<tunnel>/checkout/result?paymentId=1` — an id LiqPay has never seen.
+Visit `https://<random>.ngrok-free.app/checkout/result?paymentId=1` — an id LiqPay has never seen.
 
 Expected: the "Оплата не пройшла" failure view or the "Перевіряємо оплату…" pending view — **never** the success view, and the cart is **not** cleared. `checkStatus` returns `unknown` for an unknown id, which `ResultView` renders as pending (`components/checkout/result-view.tsx:24-25`).
 
@@ -649,7 +660,7 @@ git commit -m "docs: record the sandbox failure-path verification"
 
 - [ ] **Step 1: Restore local env and stop the tunnel**
 
-In `.env.local`: restore `WEBSITE_URL` to the value recorded in Task 4 Step 3, and **comment out `CRM_WAREHOUSE_ID`**. Stop the cloudflared tunnel. Restart `npm run dev`.
+In `.env.local`: restore `WEBSITE_URL` to `http://localhost:3000` (recorded 2026-09-07), and **comment out `CRM_WAREHOUSE_ID`**. Stop the ngrok tunnel. Restart `npm run dev`.
 
 Expected on `http://localhost:3000/shop`: the real catalog, not `[DEV]` items. If mock rows are still showing, `CRM_WAREHOUSE_ID` is still set or the dev server was not restarted.
 
@@ -731,6 +742,6 @@ State plainly which of Tasks 4–6 passed and which needed fixes, then point at 
 
 - **Spec coverage:** the spec's carried-forward open item (sandbox verification of the signature algorithm and `amount` units) is Task 4 Step 5. Its previously untested idempotency claim is probed in Task 2 Step 9. Its "webhook is the only order creator" rule is now enforced, not just documented, by Task 1 Step 3. Non-goals are respected and restated under "What this plan deliberately does not do".
 - **Type consistency:** Task 1 keeps `SHOP_WAREHOUSE_ID: number` and `createRemoteOrder`'s signature identical, adds one export (`REAL_SHOP_WAREHOUSE_ID`), and Step 1 confirms the single definition and single importer before editing. Task 2's script reimplements two wire formats rather than importing them (no TS runner exists) and says so explicitly in its Interfaces block.
-- **No placeholders:** every step carries real code, a real command with its expected output, or an exact document edit. The intentional blanks are `<random-words>.trycloudflare.com` (unknowable before Task 4 Step 2), `<scratchpad>` (session-specific), `<real product id>` (read at Task 2 Step 3), and `<the order_id from Step 7>` (generated at run time).
+- **No placeholders:** every step carries real code, a real command with its expected output, or an exact document edit. The intentional blanks are `<random>.ngrok-free.app` and `<YOUR_TOKEN>` (unknowable before Task 4 Step 2), `<scratchpad>` (session-specific), `<real product id>` (read at Task 2 Step 3), and `<the order_id from Step 7>` (generated at run time).
 - **Ordering rationale:** Tasks 1 and 2 need no LiqPay account and no browser, so the guard lands and is proved before any credential exists — and Task 2 deliberately fires at the **real** shop first, while the guard is the only thing standing in the way, because that is the assertion the whole plan rests on. Task 3 unblocks a browser cart. Tasks 4→5→6 escalate cost of failure. Task 7 restores the environment so nobody inherits a machine pointed at mock data.
 - **Known human-only steps:** Task 3 (CRM UI image upload), Task 4 Steps 1–2 and 5 (LiqPay dashboard, tunnel, browser), Task 5 Steps 1–2, Task 6 Steps 1–2. Tasks 1, 2 and 7 are executable unattended.
