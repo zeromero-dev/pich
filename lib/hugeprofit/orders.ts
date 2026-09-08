@@ -3,9 +3,10 @@ import 'server-only'
 import { crmPost, CrmError, REAL_SHOP_WAREHOUSE_ID, SHOP_WAREHOUSE_ID } from './client'
 
 /**
- * Order creation against `POST /bapi/remote_orders`. Field shapes are from the
- * API docs — this endpoint has never been exercised against the live account,
- * which had zero remote orders as of 2026-08-12.
+ * Order creation against `POST /bapi/remote_orders`, verified end to end from a
+ * LiqPay sandbox payment 2026-09-08 against the mock `dev` warehouse — the field
+ * shapes below are confirmed, not docs-derived guesses. The CRM reserves stock
+ * into the warehouse its integration settings name, not the one we query.
  */
 
 export type OrderContact = {

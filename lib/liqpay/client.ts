@@ -3,8 +3,10 @@ import { createHash } from 'node:crypto'
 import type { LiqPayCallbackData, LiqPayStatus } from './types'
 
 /**
- * Signature algorithm and endpoints per LiqPay's published PHP SDK —
- * see spec for sourcing. Not yet exercised against a live account.
+ * Signature algorithm and endpoints per LiqPay's published PHP SDK, verified
+ * against a sandbox account 2026-09-08: a real payment settled and its webhook
+ * arrived. `amount` is in major units (₴), and LiqPay returns the buyer to
+ * `result_url` with a GET.
  */
 const CHECKOUT_URL = 'https://www.liqpay.ua/api/3/checkout'
 const REQUEST_URL = 'https://www.liqpay.ua/api/request'
