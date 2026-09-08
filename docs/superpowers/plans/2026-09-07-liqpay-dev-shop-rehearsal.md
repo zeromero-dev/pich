@@ -67,13 +67,15 @@ So a dev product is invisible to `getFreshProduct` today, and `POST /api/checkou
 
 ## How "only DEV" is enforced
 
-Three layers, weakest to strongest:
+Weakest to strongest:
 
 1. **Convention** — `.env.local` sets `CRM_WAREHOUSE_ID=51630` for the duration of this plan. A human can forget this.
 2. **Isolation** — the CRM's own `warehouse_id` filter means a dev product is invisible to the real shop's queries and vice versa (verified above). This stops mock data leaking into the shop, but it does *not* stop a sandbox payment for a **real** work if the override is missing.
-3. **The guard (Task 1)** — `createRemoteOrder` throws if `LIQPAY_SANDBOX=1` while `SHOP_WAREHOUSE_ID` is the real shop. This is the one that actually enforces the user's requirement, because order creation is the only operation in this codebase that reserves stock, and it has exactly one chokepoint.
-
-Task 2 proves layer 3 fires, by minting a genuinely valid webhook callback locally.
+3. **The order guard (Task 1)** — `createRemoteOrder` throws if `LIQPAY_SANDBOX=1` while `SHOP_WAREHOUSE_ID` is the real shop. Order creation is the only operation in this codebase that reserves stock, and it has exactly one chokepoint. Task 2 proved this fires, by minting a genuinely valid webhook callback locally.
+4. **The write catch-all** — `crmPost` refuses *any* CRM write under the same condition, so a future write path inherits the protection instead of having to remember it. Deliberately redundant with layer 3 today; layer 3 stays because its message names the order and Task 2's evidence quotes it.
+5. **The read gate** — when `SHOP_WAREHOUSE_ID` is not the real shop (`DEV_ONLY`), `crmFetch` refuses any request that names a different warehouse, and any request that names none at all — an unscoped `products` read returns the real catalogue alongside the mock rows. Not reachable through today's callers, which all pass `SHOP_WAREHOUSE_ID`; it exists to stop a future one widening silently.
+6. **The production gate** — `lib/hugeprofit/client.ts` throws at import if `VERCEL_ENV === 'production'` and `CRM_WAREHOUSE_ID` is set, so a deployed site can never serve mock works as the real shop. `VERCEL_ENV`, not `NODE_ENV`, because `npm run build` sets the latter and local production builds must keep working. Verified 2026-09-07: the build fails with that message.
+7. **Token scope (the only real boundary, and it is not in this repo)** — every gate above is our own code asking itself nicely; `HUGEPROFIT_API_KEY` still grants the whole account, and any script bypassing the app (the seeding scripts did exactly that) reaches the real shop. The CRM's integration settings offer "select the appropriate warehouses to which the API will have access" and a separate reservation-warehouse choice. A token scoped to `dev` is the only thing that makes real-shop access *impossible* rather than *guarded*. Run `node scripts/crm-scope.mjs` to see what the current token actually reaches.
 
 ## What this plan deliberately does not do
 
@@ -82,7 +84,7 @@ Task 2 proves layer 3 fires, by minting a genuinely valid webhook callback local
 - **No block on the reverse misconfiguration** (live keys pointed at the dev warehouse — real money for a mock candle). It costs the tester their own money, not the owners' stock, and the "never set `CRM_WAREHOUSE_ID` in Vercel" constraint covers production. Add a guard for it only if it actually happens.
 - **No deletion of the `[DEV]` rows.** No API exists for it; leave them, they are inert outside warehouse 51630.
 - **No test framework.** Node 20 cannot run TS directly and the repo has no runner; adding one is a separate decision.
-- **No image-upload path.** The CRM's product-create endpoint silently drops `images[]` and the API has no upload endpoint (verified 2026-09-07), so Task 3 adds images by hand in the CRM UI instead of automating it.
+- **No image upload for products that already exist.** `POST /bapi/products` ingests `images[]` on **create** (asynchronously — see Task 3), but the API has no update-by-id and no upload endpoint, so an existing product's images can only be changed in the CRM UI. Task 3 sidesteps this by creating new imaged mocks rather than back-filling old ones.
 
 ---
 
@@ -416,40 +418,38 @@ The minting script stays in the scratchpad and is **not** committed. Confirm it 
 
 ## Task 3: Get a mock work into the cart
 
-The 50 seeded products have **no images**, and `isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". That filter runs in `getCatalog` and `getProductBySlug`, so the mock shop grid renders zero works. The API cannot fix this: `POST /bapi/products` silently drops `images[]`, and the docs carry no upload endpoint of any kind (re-checked 2026-09-07 across the whole documentation index — `images` appears only in the create schema and in read responses).
+`isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". The first 50 seeded mocks had none, so the grid rendered nothing.
 
-The grid is not needed. The cart is client-side localStorage holding whole `Product` objects (`components/providers.tsx:68`, key `plai-pich-cart-v2`), `/checkout` renders from that, and `POST /api/checkout` validates through `getFreshProduct`, which does **not** filter on images. So a cart seeded in devtools reaches LiqPay exactly as a clicked one does — verified 2026-09-07: with the dev warehouse active, that request returned a LiqPay checkout with `amount: 340`.
+**Already done, 2026-09-07.** `POST /bapi/products` *does* accept `images[]` — it fetches each URL and re-hosts it, but **asynchronously**, so a readback immediately after creation still shows `[]` and looks like a silent drop. Waiting and re-reading shows the ingested CRM-hosted URL. Five dev products now carry images and render at `/shop`:
+
+| product_id | sku | name | price |
+|---|---|---|---|
+| 9060539 | `DEV-Z8AJ17` | `[DEV] Свічка «Тиха ніч»` | 340 |
+| 9060540 | `DEV-3TMCHI` | `[DEV] Листівки «Дахи», набір 6 шт.` | 380 |
+| 9060541 | `DEV-ZGXDCD` | `[DEV] Чашка «Ранкова глина»` | 420 |
+| 9060532 | `DEV-GQONAN` | `[DEV] Проба зображення` | 100 |
+| 9054668 | `DEV-GGPG7T` | `[DEV] Ваза «Ранок»` | 1450 |
 
 **Files:**
-- No source changes. Browser devtools only.
+- No source changes.
 
 - [ ] **Step 1: Start the dev server against the dev warehouse**
 
 `CRM_WAREHOUSE_ID=51630` must be active (not commented out) in `.env.local`, alongside `LIQPAY_SANDBOX=1`. Run `npm run dev`.
 
-- [ ] **Step 2: Seed the cart**
+- [ ] **Step 2: Confirm the mock shop renders**
 
-Open `http://localhost:3000/checkout`, then paste this into the browser console and press enter. It puts `[DEV] Набір чайних свічок, 12 шт.` (`9054728`, ₴340) in the cart and reloads:
+Open `http://localhost:3000/shop`.
 
-```js
-localStorage.setItem('plai-pich-cart-v2', "[{\"product\":{\"id\":\"9054728\",\"slug\":\"dev-nabir-chainykh-svichok-12-sht-9054728\",\"name\":\"[DEV] Набір чайних свічок, 12 шт.\",\"artist\":\"DEV\",\"artistId\":\"108410\",\"artistSlug\":\"dev\",\"price\":340,\"categories\":[{\"slug\":\"117004\",\"label\":\"Свічки\"},{\"slug\":\"117002\",\"label\":\"Хенд мейд\"}],\"inStock\":true,\"isLast\":true,\"images\":[],\"description\":\"Бджолиний віск, алюмінієві гільзи.\",\"size\":null,\"sku\":\"DEV-X8K946\"},\"qty\":1}]"); location.reload()
-```
+Expected: the five works above, each under its `[DEV]` name and attributed to artist `DEV`. Clicking one opens its product page; "Додати в кошик" fills the cart.
 
-For Task 6's abandonment test, swap the four values to `[DEV] Листівки «Львівські дахи», набір 6 шт.` — `id`/slug suffix `9054701`, `price` `380`, `sku` `DEV-4S3185`, categories `[{"slug":"117001","label":"Поліграфія"}]`. A third spare is `9054724` / `DEV-0JIRQP` / ₴420.
+If the grid is empty or stale, the catalog cache is holding an older list — `rm -rf .next/cache/fetch-cache` and restart `npm run dev`. The 5-minute `CATALOG_REVALIDATE` window otherwise applies.
 
-Expected: the header cart badge shows 1 and `/checkout` lists the work at ₴340 with a broken image placeholder. The broken image is cosmetic — nothing in the payment path reads it.
-
-- [ ] **Step 3: Confirm the cart survives into a checkout request**
-
-Fill the checkout form and submit.
-
-Expected: the browser leaves for LiqPay's hosted page (Task 4 covers what to check there). A `409 unavailable` instead means `CRM_WAREHOUSE_ID` is not active or the dev server was not restarted after setting it.
-
-- [ ] **Step 4: Nothing to commit**
+- [ ] **Step 3: Nothing to commit**
 
 This task changes no files. Do not commit.
 
-**Optional, only if you want the mock shop grid to look real:** upload any image to `DEV-X8K946`, `DEV-4S3185` and `DEV-0JIRQP` by hand at `https://crm.h-profit.com`, and they will appear at `/shop` within the 5-minute catalog cache. Nothing in Tasks 4–7 needs it.
+**Fallback, if you ever need a work that has no image:** the cart is client-side localStorage holding whole `Product` objects (`components/providers.tsx:68`, key `plai-pich-cart-v2`), and `POST /api/checkout` validates through `getFreshProduct`, which does **not** filter on images — so a cart seeded from the console reaches LiqPay exactly as a clicked one does (verified 2026-09-07, returning `amount: 340`). Seed it with `localStorage.setItem('plai-pich-cart-v2', JSON.stringify([{ product: <the Product shape>, qty: 1 }])); location.reload()`.
 
 ---
 
@@ -497,7 +497,7 @@ Expected: `200`. Anything else means LiqPay's webhook will never arrive either �
 
 - [ ] **Step 5: Reach LiqPay's payment page**
 
-Open the tunnel URL in a browser, seed the cart with `[DEV] Набір чайних свічок, 12 шт.` (₴340) using Task 3 Step 2's console snippet — localStorage is per-origin, so the tunnel host needs its own seeding even if localhost already has one — then go to `/checkout`, fill the form with any plausible contact details, and submit.
+Open the tunnel URL in a browser, add `[DEV] Свічка «Тиха ніч»` (`9060539`, ₴340) to the cart, go to `/checkout`, fill the form with any plausible contact details, and submit.
 
 Expected: the browser navigates to a `liqpay.ua`-hosted payment page. **Read the amount printed on that page and confirm it says `340,00 ₴`** — not `3,40 ₴` and not `34 000 ₴`.
 
@@ -580,7 +580,7 @@ curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/js
   "https://crm.h-profit.com/bapi/remote_orders"
 ```
 
-Expected: **two** orders now — Task 2's locally-minted one and this one. The new one's `order_id` matches the `paymentId` in the result URL, its `price` is `340`, and its `order_data[0]` names `[DEV] Набір чайних свічок, 12 шт.` with `sku: "DEV-X8K946"`.
+Expected: **two** orders now — Task 2's locally-minted one and this one. The new one's `order_id` matches the `paymentId` in the result URL, its `price` is `340`, and its `order_data[0]` names `[DEV] Свічка «Тиха ніч»` with `sku: "DEV-Z8AJ17"`.
 
 Compare the two orders field by field. Any difference between the locally-minted order and LiqPay's is a fact about LiqPay's callback that this codebase was guessing at — note it in Task 7's handoff.
 
@@ -617,7 +617,7 @@ The happy path is the cheap half. These cases decide whether a failure costs the
 
 - [ ] **Step 1: Abandon a payment**
 
-Seed the cart with a *different* `[DEV]` product — `[DEV] Листівки «Львівські дахи», набір 6 шт.` (`9054701`, ₴380), per Task 3 Step 2's substitution note — start a checkout, reach LiqPay's page, then close the tab without paying. Return to the site.
+Start a checkout for a *different* `[DEV]` product — `[DEV] Листівки «Дахи», набір 6 шт.` (`9060540`, ₴380) — reach LiqPay's page, then close the tab without paying. Return to the site.
 
 Expected: **no new CRM order** (`GET /bapi/remote_orders` still returns exactly the two orders from Tasks 2 and 5), the cart still holds the work, and the product's `instock` is still 1.
 

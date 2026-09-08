@@ -24,6 +24,22 @@ export const SHOP_WAREHOUSE_ID =
     ? configuredWarehouse
     : REAL_SHOP_WAREHOUSE_ID
 
+// A deployed production site pointed at a test warehouse would serve mock works
+// as the real shop. `VERCEL_ENV`, not `NODE_ENV` — a local production build is
+// how the rehearsal typechecks, and that must keep working.
+if (process.env.VERCEL_ENV === 'production' && process.env.CRM_WAREHOUSE_ID) {
+  throw new Error(
+    'CRM_WAREHOUSE_ID must not be set in production — it points the shop at a test warehouse. Remove it from the Vercel project settings.',
+  )
+}
+
+/**
+ * Test mode: the catalog points somewhere other than the real shop, so every
+ * CRM request must stay inside that warehouse. Enforced below, in both
+ * directions — no read may name the real shop, no write may leave it standing.
+ */
+export const DEV_ONLY = SHOP_WAREHOUSE_ID !== REAL_SHOP_WAREHOUSE_ID
+
 export class CrmError extends Error {
   constructor(
     message: string,
@@ -47,6 +63,22 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
+  // In test mode an unscoped read is as dangerous as a wrong one: `products`
+  // without `warehouse_id` returns the real catalogue alongside the mock rows.
+  if (DEV_ONLY) {
+    const requested = params.warehouse_id
+    if (requested === undefined) {
+      throw new CrmError(
+        `refusing an unscoped CRM read (${path}) — dev-only mode requires warehouse_id ${SHOP_WAREHOUSE_ID}`,
+      )
+    }
+    if (Number(requested) !== SHOP_WAREHOUSE_ID) {
+      throw new CrmError(
+        `refusing a CRM read (${path}) for warehouse ${requested} — dev-only mode allows ${SHOP_WAREHOUSE_ID} only`,
+      )
+    }
+  }
+
   const url = new URL(`${BASE}/${path}`)
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, String(value))
@@ -76,6 +108,14 @@ export async function crmFetch<T>(
 
 /** Writes are never cached and never retried — a retry could double-create an order. */
 export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
+  // Catch-all for every write path, present and future: sandbox money must
+  // never move real stock. `createRemoteOrder` carries its own narrower guard.
+  if (process.env.LIQPAY_SANDBOX === '1' && !DEV_ONLY) {
+    throw new CrmError(
+      `refusing a CRM write (${path}) against the real shop while LIQPAY_SANDBOX=1 — set CRM_WAREHOUSE_ID to a test warehouse`,
+    )
+  }
+
   const res = await fetch(`${BASE}/${path}`, {
     method: 'POST',
     headers: {

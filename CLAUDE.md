@@ -49,6 +49,8 @@ in real ones:
 WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
 CRM_WAREHOUSE_ID=51630            # optional, local only — points the catalog at the mock "dev" warehouse
+                                  # gated: throws at import if VERCEL_ENV=production; while set,
+                                  # crmFetch refuses reads naming any other warehouse (see scripts/crm-scope.mjs)
 GOOGLE_CALENDAR_API_KEY=...       # server-only
 GOOGLE_CALENDAR_ID=...
 LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
