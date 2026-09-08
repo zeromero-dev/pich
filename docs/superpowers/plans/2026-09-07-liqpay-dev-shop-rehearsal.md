@@ -496,7 +496,15 @@ LIQPAY_PRIVATE_KEY=sandbox_...
 LIQPAY_SANDBOX=1
 ```
 
-`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing. The value Task 7 restores is `http://localhost:3000` (recorded 2026-09-07).
+`lib/site.ts` reads `WEBSITE_URL` at module load, so **restart `npm run dev`** after editing.
+
+Set `DEV_ORIGIN` to the same host **without the scheme** in the same file:
+
+```bash
+DEV_ORIGIN=<random>.ngrok-free.dev
+```
+
+Without it `next dev` blocks cross-origin requests for `/_next/static/*` from the tunnel host, and every page arrives as server-rendered HTML that never hydrates — the catalogue looks right but "Додати в кошик" does nothing, which reads as "the site is broken over the tunnel" rather than as a config error. `next.config.ts` feeds this into `allowedDevOrigins`; the host lives in `.env.local` because tunnel URLs are ephemeral and must never be committed. Verified 2026-09-07: with it set, all 19 static chunks on `/shop` return 200 through the tunnel and the dev server logs no blocked-origin warnings. The value Task 7 restores is `http://localhost:3000` (recorded 2026-09-07).
 
 Note that swapping `LIQPAY_PRIVATE_KEY` for the real sandbox key invalidates Task 2's minting script for any payload minted with the old key. That is expected; the script is only ever run fresh.
 
