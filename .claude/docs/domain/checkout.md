@@ -86,7 +86,7 @@ The whole body goes **inside a `data` wrapper**: `{ "data": { … } }`.
 | `status` | omit → `"pending"` | decided 2026-08-12: **always leave it `"pending"`**. Payment is signalled through `info.is_paid`, not the status — the owners drive the status themselves in the CRM. (Other documented values, unused by us: `processing`, `saled`, `cancelled`, `delivering`, `delivered`, `received`, `refund`, `arrived`.) |
 | `info` | `InfoType` | `{ is_paid: true, payment_type: "<provider>", order_text?: … }` — `is_paid` is `true` by construction, since payment precedes order creation (rule 3). Carries the payment reference so the owners can match money to order. |
 
-Response includes `reservedProducts` (`[[product_id, marketplace_id]]`) — the CRM reserves stock on order creation, into a warehouse chosen in the HugeProfit integration settings. Confirmed 2026-09-07 (see note above): a product with no stock row in that reservation warehouse gets no reservation and an empty `reservedProducts` — which warehouse that is has not been confirmed from the account's own settings.
+Response includes `reservedProducts` (`[[product_id, marketplace_id]]`) — the CRM reserves stock on order creation, into a warehouse chosen in the HugeProfit integration settings. Confirmed 2026-09-07 (see note above): a product with no stock row in that reservation warehouse gets no reservation and an empty `reservedProducts`. The single-warehouse mechanism is documented — the API docs' integration-settings page says "select the warehouse to which the goods will be reserved upon receipt of a new order" — but which warehouse this account chose has not been read from its own settings.
 
 ### Settings that live in the CRM, not in our code
 

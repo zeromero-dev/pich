@@ -414,51 +414,42 @@ The minting script stays in the scratchpad and is **not** committed. Confirm it 
 
 ---
 
-## Task 3: Make the mock catalog browsable
+## Task 3: Get a mock work into the cart
 
-The 50 seeded products have **no images**, and `isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". That filter runs in `getCatalog` and `getProductBySlug`, so with no images the mock shop renders zero works and no browser checkout is possible. `getFreshProduct` does **not** filter, which is why Tasks 1 and 2 worked over the API.
+The 50 seeded products have **no images**, and `isSellable` (`lib/hugeprofit/index.ts:26-28`) drops any product with an empty `images[]`, by design: "a work with no photograph has nothing to sell". That filter runs in `getCatalog` and `getProductBySlug`, so the mock shop grid renders zero works. The API cannot fix this: `POST /bapi/products` silently drops `images[]`, and the docs carry no upload endpoint of any kind (re-checked 2026-09-07 across the whole documentation index — `images` appears only in the create schema and in read responses).
 
-Three images are enough for every later task. This is a human step in the CRM UI — the API cannot do it.
+The grid is not needed. The cart is client-side localStorage holding whole `Product` objects (`components/providers.tsx:68`, key `plai-pich-cart-v2`), `/checkout` renders from that, and `POST /api/checkout` validates through `getFreshProduct`, which does **not** filter on images. So a cart seeded in devtools reaches LiqPay exactly as a clicked one does — verified 2026-09-07: with the dev warehouse active, that request returned a LiqPay checkout with `amount: 340`.
 
 **Files:**
-- No source changes. CRM UI only.
+- No source changes. Browser devtools only.
 
-- [ ] **Step 1: Add a photo to three dev products in the CRM UI**
+- [ ] **Step 1: Start the dev server against the dev warehouse**
 
-Open `https://crm.h-profit.com`, find these three products by SKU, and upload any image to each (a placeholder photo is fine — nothing here is customer-facing):
+`CRM_WAREHOUSE_ID=51630` must be active (not commented out) in `.env.local`, alongside `LIQPAY_SANDBOX=1`. Run `npm run dev`.
 
-| sku | name | price |
-|---|---|---|
-| `DEV-X8K946` | `[DEV] Набір чайних свічок, 12 шт.` | 340 |
-| `DEV-4S3185` | `[DEV] Листівки «Львівські дахи», набір 6 шт.` | 380 |
-| `DEV-0JIRQP` | `[DEV] Свічка «Смерека»` | 420 |
+- [ ] **Step 2: Seed the cart**
 
-(`DEV-KRSEAK`, the ₴260 candle, is deliberately not in this list — Task 2 spent its stock, so it can no longer be bought through the UI.)
+Open `http://localhost:3000/checkout`, then paste this into the browser console and press enter. It puts `[DEV] Набір чайних свічок, 12 шт.` (`9054728`, ₴340) in the cart and reloads:
 
-- [ ] **Step 2: Confirm the CRM now returns image URLs for them**
-
-Run:
-
-```bash
-curl -s -H "Authorization: $HUGEPROFIT_API_KEY" -H "Content-Type: application/json" \
-  "https://crm.h-profit.com/bapi/products?product_id=9054728&warehouse_id=51630"
+```js
+localStorage.setItem('plai-pich-cart-v2', "[{\"product\":{\"id\":\"9054728\",\"slug\":\"dev-nabir-chainykh-svichok-12-sht-9054728\",\"name\":\"[DEV] Набір чайних свічок, 12 шт.\",\"artist\":\"DEV\",\"artistId\":\"108410\",\"artistSlug\":\"dev\",\"price\":340,\"categories\":[{\"slug\":\"117004\",\"label\":\"Свічки\"},{\"slug\":\"117002\",\"label\":\"Хенд мейд\"}],\"inStock\":true,\"isLast\":true,\"images\":[],\"description\":\"Бджолиний віск, алюмінієві гільзи.\",\"size\":null,\"sku\":\"DEV-X8K946\"},\"qty\":1}]"); location.reload()
 ```
 
-(If `$HUGEPROFIT_API_KEY` is not exported in your shell, read it from `.env.local` — do not paste it into a file or a commit message.)
+For Task 6's abandonment test, swap the four values to `[DEV] Листівки «Львівські дахи», набір 6 шт.` — `id`/slug suffix `9054701`, `price` `380`, `sku` `DEV-4S3185`, categories `[{"slug":"117001","label":"Поліграфія"}]`. A third spare is `9054724` / `DEV-0JIRQP` / ₴420.
 
-Expected: the returned object's `images` array holds at least one `https://crm.h-profit.com/bimages/get/...` URL. An empty array means the CRM UI upload did not save; retry it before continuing, because every later task needs a browser cart.
+Expected: the header cart badge shows 1 and `/checkout` lists the work at ₴340 with a broken image placeholder. The broken image is cosmetic — nothing in the payment path reads it.
 
-- [ ] **Step 3: Confirm the mock shop renders**
+- [ ] **Step 3: Confirm the cart survives into a checkout request**
 
-With `CRM_WAREHOUSE_ID=51630` set and `npm run dev` running, open `http://localhost:3000/shop`. The catalog is cached for 5 minutes (`CATALOG_REVALIDATE`), so restarting the dev server is the fastest way to see fresh data.
+Fill the checkout form and submit.
 
-Expected: exactly the three products from Step 1 appear, priced ₴340 / ₴380 / ₴420, each under its `[DEV]` name and attributed to artist `DEV`. Clicking one opens its product page, and "Додати в кошик" puts it in the cart.
-
-If the grid is empty, the catalog cache is stale — restart `npm run dev` and reload.
+Expected: the browser leaves for LiqPay's hosted page (Task 4 covers what to check there). A `409 unavailable` instead means `CRM_WAREHOUSE_ID` is not active or the dev server was not restarted after setting it.
 
 - [ ] **Step 4: Nothing to commit**
 
 This task changes no files. Do not commit.
+
+**Optional, only if you want the mock shop grid to look real:** upload any image to `DEV-X8K946`, `DEV-4S3185` and `DEV-0JIRQP` by hand at `https://crm.h-profit.com`, and they will appear at `/shop` within the 5-minute catalog cache. Nothing in Tasks 4–7 needs it.
 
 ---
 
@@ -506,7 +497,7 @@ Expected: `200`. Anything else means LiqPay's webhook will never arrive either �
 
 - [ ] **Step 5: Reach LiqPay's payment page**
 
-Open the tunnel URL in a browser, add `[DEV] Набір чайних свічок, 12 шт.` (₴340) to the cart, go to `/checkout`, fill the form with any plausible contact details, and submit.
+Open the tunnel URL in a browser, seed the cart with `[DEV] Набір чайних свічок, 12 шт.` (₴340) using Task 3 Step 2's console snippet — localStorage is per-origin, so the tunnel host needs its own seeding even if localhost already has one — then go to `/checkout`, fill the form with any plausible contact details, and submit.
 
 Expected: the browser navigates to a `liqpay.ua`-hosted payment page. **Read the amount printed on that page and confirm it says `340,00 ₴`** — not `3,40 ₴` and not `34 000 ₴`.
 
@@ -626,7 +617,7 @@ The happy path is the cheap half. These cases decide whether a failure costs the
 
 - [ ] **Step 1: Abandon a payment**
 
-Start a checkout for a *different* `[DEV]` product — `[DEV] Листівки «Львівські дахи», набір 6 шт.` (`9054701`, ₴380) — reach LiqPay's page, then close the tab without paying. Return to the site.
+Seed the cart with a *different* `[DEV]` product — `[DEV] Листівки «Львівські дахи», набір 6 шт.` (`9054701`, ₴380), per Task 3 Step 2's substitution note — start a checkout, reach LiqPay's page, then close the tab without paying. Return to the site.
 
 Expected: **no new CRM order** (`GET /bapi/remote_orders` still returns exactly the two orders from Tasks 2 and 5), the cart still holds the work, and the product's `instock` is still 1.
 
@@ -728,7 +719,7 @@ State plainly which of Tasks 4–6 passed and which needed fixes, then point at 
 
 **Carry these five warnings into that handoff:**
 
-1. **Stock reservation is unproven, and may not happen at all.** Task 2's dev-warehouse order returned `reservedProducts: []` and left `instock` at 1, contradicting the standing claim that the CRM reserves stock on order creation. The likely cause is that reservation targets a warehouse fixed in the token's integration settings (34998) where the mock product has no row — which cannot be confirmed without creating an order against a real work, something this plan forbids. **The owners need to know that a paid work may stay purchasable until someone moves it by hand.** Settle it on the production cutover's first real payment, and check the account's integration settings.
+1. **Stock reservation is unproven, and may not happen at all.** Task 2's dev-warehouse order returned `reservedProducts: []` and left `instock` at 1, contradicting the standing claim that the CRM reserves stock on order creation. The cause is almost certainly that reservation targets a *single* warehouse fixed in the token's integration settings, where the mock product has no row — the API docs describe exactly that setting ("select the warehouse to which the goods will be reserved upon receipt of a new order"), so the mechanism is documented; only this account's chosen value is unread. Read it from the HugeProfit integration settings page — that settles it without spending a real work. **The owners need to know that a paid work may stay purchasable until someone moves it by hand.** Settle it on the production cutover's first real payment, and check the account's integration settings.
 2. **A duplicate `order_id` overwrites, it does not reject.** Task 2 proved the CRM upserts, blanking fields the second payload omits. `order_id` is `Date.now()` so collisions between buyers are implausible and a LiqPay redelivery replays identical values, but the spec's named idempotency mechanism does not exist.
 3. `CRM_WAREHOUSE_ID` must **not** be added to the Vercel environment. Its absence is what keeps production on warehouse 34998.
 4. `LIQPAY_SANDBOX` must **not** be set in Vercel either — with live keys and the real shop that combination now throws on every order, so a stray value takes checkout down rather than merely making it fake.
