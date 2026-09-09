@@ -48,6 +48,7 @@ in real ones:
 ```bash
 WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
+CRM_SHOP_WAREHOUSE_ID=34998      # required — real shop warehouse; throws at import if unset or invalid
 CRM_WAREHOUSE_ID=51630            # optional, local only — points the catalog at the mock "dev" warehouse
                                   # gated: throws at import if VERCEL_ENV=production; while set,
                                   # crmFetch refuses reads naming any other warehouse (see scripts/crm-scope.mjs)

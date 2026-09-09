@@ -10,8 +10,24 @@ const BASE = 'https://crm.h-profit.com/bapi'
 /** Catalog cache window. Also our rate-limit politeness layer — limits are undocumented. */
 export const CATALOG_REVALIDATE = 300
 
-/** "Крамничка ПІЧ" — the only warehouse real works are sold from. */
-export const REAL_SHOP_WAREHOUSE_ID = 34998
+function requiredWarehouseId(name: string): number {
+  const raw = process.env[name]
+  const id = Number(raw)
+  if (!raw || !Number.isInteger(id) || id <= 0) {
+    throw new Error(
+      `${name} must be a positive integer warehouse id — got ${raw === undefined ? 'unset' : JSON.stringify(raw)}. ` +
+        'It anchors the dev-only CRM guards, so it is never defaulted; set it in .env.local and in the Vercel project settings.',
+    )
+  }
+  return id
+}
+
+/**
+ * "Крамничка ПІЧ" — the only warehouse real works are sold from, and the anchor
+ * every dev-only gate compares against. Never defaulted: a lost anchor would
+ * flip `DEV_ONLY` on and let a sandbox write reach the real shop.
+ */
+export const REAL_SHOP_WAREHOUSE_ID = requiredWarehouseId('CRM_SHOP_WAREHOUSE_ID')
 
 /**
  * The account also has "Події в ПІЧі" (35002) and the mock "dev" warehouse

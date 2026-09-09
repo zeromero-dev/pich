@@ -5,8 +5,6 @@
 //   node scripts/crm-scope.mjs
 import { readFileSync } from 'node:fs'
 
-const REAL_SHOP = 34998
-
 const env = Object.fromEntries(
   readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
     .split('\n')
@@ -16,6 +14,11 @@ const env = Object.fromEntries(
 
 const token = env.HUGEPROFIT_API_KEY
 if (!token) throw new Error('HUGEPROFIT_API_KEY missing from .env.local')
+
+const REAL_SHOP = Number(env.CRM_SHOP_WAREHOUSE_ID)
+if (!Number.isInteger(REAL_SHOP) || REAL_SHOP <= 0) {
+  throw new Error('CRM_SHOP_WAREHOUSE_ID missing or invalid in .env.local')
+}
 
 async function crm(path) {
   const res = await fetch(`https://crm.h-profit.com/bapi/${path}`, {

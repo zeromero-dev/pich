@@ -16,6 +16,7 @@
 
 - **No new npm dependencies. No database. No test framework.**
 - Env vars are server-only — no `NEXT_PUBLIC_` prefix on any of them, ever.
+- **`CRM_SHOP_WAREHOUSE_ID` must be set in every environment.** It is the real shop's id and the anchor the dev-only guards compare against; it is never defaulted, so an unset or non-numeric value throws at import. Verified 2026-09-09 in both directions.
 - **`CRM_WAREHOUSE_ID` must never exist in the Vercel environment.** `lib/hugeprofit/client.ts` throws at import when `VERCEL_ENV === 'production'` and it is set, so a stray value takes the whole site down rather than quietly serving mock works. Same for `DEV_ORIGIN`, which is dev-only and inert in production but has no business there.
 - **`LIQPAY_SANDBOX` must never exist in the Vercel environment.** With live keys against the real shop, `crmPost` refuses every write while it is `"1"` — checkout would take money and create no order.
 - **The webhook is the only code path allowed to call `createRemoteOrder`.** Nothing else creates CRM orders.
@@ -123,6 +124,7 @@ In the Vercel project → Settings → Environment Variables, **Production** sco
 | `LIQPAY_PUBLIC_KEY` | the **live** public key (no `sandbox_` prefix) |
 | `LIQPAY_PRIVATE_KEY` | the **live** private key |
 | `HUGEPROFIT_API_KEY` | the full-access token from Task 1 Step 2 |
+| `CRM_SHOP_WAREHOUSE_ID` | `34998` — **required**; the site throws at import without it |
 | `GOOGLE_CALENDAR_API_KEY` | unchanged if already set |
 | `GOOGLE_CALENDAR_ID` | unchanged if already set |
 
