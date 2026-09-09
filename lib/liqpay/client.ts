@@ -27,6 +27,14 @@ function isSandbox(): boolean {
   return process.env.LIQPAY_SANDBOX === '1'
 }
 
+/**
+ * Payments are off until both keys exist. The credentials are the flag —
+ * a separate toggle could disagree with them, and this one cannot.
+ */
+export function paymentsEnabled(): boolean {
+  return Boolean(process.env.LIQPAY_PUBLIC_KEY && process.env.LIQPAY_PRIVATE_KEY)
+}
+
 export function sign(data: string): string {
   const key = privateKey()
   return createHash('sha1').update(key + data + key).digest('base64')

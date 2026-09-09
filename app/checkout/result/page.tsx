@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { checkStatus } from '@/lib/liqpay/client'
+import { checkStatus, paymentsEnabled } from '@/lib/liqpay/client'
 import { ResultView } from '@/components/checkout/result-view'
 
 export const metadata: Metadata = {
@@ -14,6 +14,6 @@ export default async function CheckoutResultPage({
 }) {
   const { paymentId } = await searchParams
   const id = paymentId && /^\d+$/.test(paymentId) ? Number(paymentId) : null
-  const status = id ? await checkStatus(id) : 'unknown'
+  const status = id && paymentsEnabled() ? await checkStatus(id) : 'unknown'
   return <ResultView status={status} />
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
-import { verifyCallback, decodeCallback } from '@/lib/liqpay/client'
+import { verifyCallback, decodeCallback, paymentsEnabled } from '@/lib/liqpay/client'
 import { decodePayload } from '@/lib/liqpay/payload'
 import { createRemoteOrder, type OrderLine } from '@/lib/hugeprofit/orders'
 
@@ -10,6 +10,9 @@ import { createRemoteOrder, type OrderLine } from '@/lib/hugeprofit/orders'
  * (see plan Task 4); LiqPay's signed POST body only carries payment status.
  */
 export async function POST(request: Request) {
+  // No keys means no signature can be verified, so nothing here is trustworthy.
+  if (!paymentsEnabled()) return new NextResponse(null, { status: 400 })
+
   const { searchParams } = new URL(request.url)
   const encodedPayload = searchParams.get('payload')
   if (!encodedPayload) return new NextResponse(null, { status: 400 })

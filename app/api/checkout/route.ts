@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
-import { buildCheckoutRequest } from '@/lib/liqpay/client'
+import { buildCheckoutRequest, paymentsEnabled } from '@/lib/liqpay/client'
 import { encodePayload } from '@/lib/liqpay/payload'
 import { newOrderId, type OrderContact } from '@/lib/hugeprofit/orders'
 import type { LockedLine } from '@/lib/liqpay/types'
@@ -59,6 +59,12 @@ function parse(body: unknown): CheckoutRequest | null {
 }
 
 export async function POST(request: Request) {
+  // Payments off (no LiqPay keys). 503, not 500: the cart is valid, the site
+  // just cannot take money yet — and this must never throw at a buyer.
+  if (!paymentsEnabled()) {
+    return NextResponse.json({ error: 'payments_disabled' }, { status: 503 })
+  }
+
   let body: unknown
   try {
     body = await request.json()

@@ -103,7 +103,9 @@ export function CheckoutView() {
             ? t.checkout.errorUnavailable
             : body?.error === 'repriced'
               ? t.checkout.errorRepriced
-              : t.checkout.errorGeneric,
+              : body?.error === 'payments_disabled'
+                ? t.checkout.errorPaymentsDisabled
+                : t.checkout.errorGeneric,
         )
         setSubmitting(false)
         return

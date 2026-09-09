@@ -125,6 +125,7 @@ export const dictionaries = {
       errorUnavailable: 'На жаль, роботу вже придбали. Поверніться до кошика й приберіть її, щоб оформити решту.',
       errorRepriced: 'Ціна змінилася, поки ви оформлювали замовлення. Поверніться до кошика — ми покажемо актуальну ціну.',
       errorGeneric: 'Не вдалося оформити замовлення. Спробуйте ще раз або звʼяжіться з нами.',
+      errorPaymentsDisabled: 'Онлайн-оплата ще не працює. Напишіть нам — домовимося про оплату і передачу роботи.',
     },
     notFound: {
       title: 'Сторінку не знайдено',
@@ -269,6 +270,7 @@ export const dictionaries = {
       errorUnavailable: 'That work has just been sold. Go back to the cart and remove it to order the rest.',
       errorRepriced: 'The price changed while you were checking out. Go back to the cart to see the current price.',
       errorGeneric: 'We could not place the order. Please try again or get in touch.',
+      errorPaymentsDisabled: 'Online payment is not live yet. Get in touch and we will arrange payment and handover.',
     },
     notFound: {
       title: 'Page not found',
