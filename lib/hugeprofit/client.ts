@@ -16,45 +16,18 @@ function requiredWarehouseId(name: string): number {
   if (!raw || !Number.isInteger(id) || id <= 0) {
     throw new Error(
       `${name} must be a positive integer warehouse id — got ${raw === undefined ? 'unset' : JSON.stringify(raw)}. ` +
-        'It anchors the dev-only CRM guards, so it is never defaulted; set it in .env.local and in the Vercel project settings.',
+        'It is never defaulted; set it in .env.local and in the Vercel project settings.',
     )
   }
   return id
 }
 
 /**
- * "Крамничка ПІЧ" — the only warehouse real works are sold from, and the anchor
- * every dev-only gate compares against. Never defaulted: a lost anchor would
- * flip `DEV_ONLY` on and let a sandbox write reach the real shop.
+ * The warehouse the whole site sells from — "Крамничка ПІЧ" (34998) in
+ * production, the mock "dev" warehouse (51630) in Preview and locally. Never
+ * defaulted: a missing value would silently sell from whatever a default named.
  */
-export const REAL_SHOP_WAREHOUSE_ID = requiredWarehouseId('CRM_SHOP_WAREHOUSE_ID')
-
-/**
- * The account also has "Події в ПІЧі" (35002) and the mock "dev" warehouse
- * (51630); `CRM_WAREHOUSE_ID` swings the whole site onto one of those for
- * payment testing. Never set it in production.
- */
-const configuredWarehouse = Number(process.env.CRM_WAREHOUSE_ID)
-export const SHOP_WAREHOUSE_ID =
-  Number.isInteger(configuredWarehouse) && configuredWarehouse > 0
-    ? configuredWarehouse
-    : REAL_SHOP_WAREHOUSE_ID
-
-// A deployed production site pointed at a test warehouse would serve mock works
-// as the real shop. `VERCEL_ENV`, not `NODE_ENV` — a local production build is
-// how the rehearsal typechecks, and that must keep working.
-if (process.env.VERCEL_ENV === 'production' && process.env.CRM_WAREHOUSE_ID) {
-  throw new Error(
-    'CRM_WAREHOUSE_ID must not be set in production — it points the shop at a test warehouse. Remove it from the Vercel project settings.',
-  )
-}
-
-/**
- * Test mode: the catalog points somewhere other than the real shop, so every
- * CRM request must stay inside that warehouse. Enforced below, in both
- * directions — no read may name the real shop, no write may leave it standing.
- */
-export const DEV_ONLY = SHOP_WAREHOUSE_ID !== REAL_SHOP_WAREHOUSE_ID
+export const SHOP_WAREHOUSE_ID = requiredWarehouseId('CRM_WAREHOUSE_ID')
 
 export class CrmError extends Error {
   constructor(
@@ -79,20 +52,12 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
-  // In test mode an unscoped read is as dangerous as a wrong one: `products`
-  // without `warehouse_id` returns the real catalogue alongside the mock rows.
-  if (DEV_ONLY) {
-    const requested = params.warehouse_id
-    if (requested === undefined) {
-      throw new CrmError(
-        `refusing an unscoped CRM read (${path}) — dev-only mode requires warehouse_id ${SHOP_WAREHOUSE_ID}`,
-      )
-    }
-    if (Number(requested) !== SHOP_WAREHOUSE_ID) {
-      throw new CrmError(
-        `refusing a CRM read (${path}) for warehouse ${requested} — dev-only mode allows ${SHOP_WAREHOUSE_ID} only`,
-      )
-    }
+  // Every read stays inside the configured warehouse: `products` without
+  // `warehouse_id` returns every warehouse the token can reach.
+  if (Number(params.warehouse_id) !== SHOP_WAREHOUSE_ID) {
+    throw new CrmError(
+      `refusing a CRM read (${path}) for warehouse ${params.warehouse_id ?? 'none'} — only ${SHOP_WAREHOUSE_ID} is allowed`,
+    )
   }
 
   const url = new URL(`${BASE}/${path}`)
@@ -124,12 +89,10 @@ export async function crmFetch<T>(
 
 /** Writes are never cached and never retried — a retry could double-create an order. */
 export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
-  // Catch-all for every write path, present and future: sandbox money must
-  // never move real stock. `createRemoteOrder` carries its own narrower guard.
-  if (process.env.LIQPAY_SANDBOX === '1' && !DEV_ONLY) {
-    throw new CrmError(
-      `refusing a CRM write (${path}) against the real shop while LIQPAY_SANDBOX=1 — set CRM_WAREHOUSE_ID to a test warehouse`,
-    )
+  // Sandbox money must never create orders on the production deployment, whose
+  // warehouse holds real works. Every write passes here, so this covers them all.
+  if (process.env.LIQPAY_SANDBOX === '1' && process.env.VERCEL_ENV === 'production') {
+    throw new CrmError(`refusing a CRM write (${path}) — LIQPAY_SANDBOX=1 on the production deployment`)
   }
 
   const res = await fetch(`${BASE}/${path}`, {

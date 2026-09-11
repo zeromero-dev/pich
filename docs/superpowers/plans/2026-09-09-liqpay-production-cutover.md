@@ -16,8 +16,7 @@
 
 - **No new npm dependencies. No database. No test framework.**
 - Env vars are server-only — no `NEXT_PUBLIC_` prefix on any of them, ever.
-- **`CRM_SHOP_WAREHOUSE_ID` must be set in every environment.** It is the real shop's id and the anchor the dev-only guards compare against; it is never defaulted, so an unset or non-numeric value throws at import. Verified 2026-09-09 in both directions.
-- **`CRM_WAREHOUSE_ID` must never exist in the Vercel environment.** `lib/hugeprofit/client.ts` throws at import when `VERCEL_ENV === 'production'` and it is set, so a stray value takes the whole site down rather than quietly serving mock works. Same for `DEV_ORIGIN`, which is dev-only and inert in production but has no business there.
+- **`CRM_WAREHOUSE_ID` must read `34998` in Production.** It is required and never defaulted, but nothing in code knows which warehouse is real — `51630` there would serve the mock works as the shop without any error. `DEV_ORIGIN` must not exist in Production at all.
 - **`LIQPAY_SANDBOX` must never exist in the Vercel environment.** With live keys against the real shop, `crmPost` refuses every write while it is `"1"` — checkout would take money and create no order.
 - **The webhook is the only code path allowed to call `createRemoteOrder`.** Nothing else creates CRM orders.
 - `net_price` is the CRM's cost price and must never leave `lib/hugeprofit/`.
@@ -71,13 +70,13 @@ Expected: it names **Крамничка ПІЧ (34998)**. If it still names `dev
 
 - [ ] **Step 2: Restore a full-access token locally**
 
-Put the account-wide `HUGEPROFIT_API_KEY` back in `.env.local` (or re-widen the current token's warehouse access to include 34998), and **comment out `CRM_WAREHOUSE_ID`** in the same edit. The two must always move together: a dev-scoped token with the real warehouse selected yields an empty catalogue, and a full token with `CRM_WAREHOUSE_ID=51630` serves mock works.
+Put the account-wide `HUGEPROFIT_API_KEY` back in `.env.local` (or re-widen the current token's warehouse access to include 34998), and **set `CRM_WAREHOUSE_ID=34998`** in the same edit. The two must always move together: a dev-scoped token with the real warehouse selected yields an empty catalogue, and a full token with `CRM_WAREHOUSE_ID=51630` serves mock works.
 
 - [ ] **Step 3: Prove the token reaches the real shop again**
 
 Run: `node scripts/crm-scope.mjs`
 
-Expected: all three warehouses enumerated, `34998` reporting **258 rows**, and the closing line reading `VERDICT: this token reaches the REAL SHOP (34998)`. During the rehearsal that verdict was the opposite, deliberately — seeing it flip back is the confirmation.
+Expected: `34998` reporting **258 rows** and marked `<-- CRM_WAREHOUSE_ID`. A full-access token also reads `51630 (dev)`, and the verdict line says so — expected for production's token.
 
 - [ ] **Step 4: Prove the app serves the real catalogue**
 
@@ -87,7 +86,7 @@ Run `npm run dev`, then:
 curl -s http://localhost:3000/shop | grep -c '\[DEV\]'
 ```
 
-Expected: `0`. Any `[DEV]` row here means `CRM_WAREHOUSE_ID` is still set and Step 2 was not completed.
+Expected: `0`. Any `[DEV]` row here means `CRM_WAREHOUSE_ID` is still `51630` and Step 2 was not completed.
 
 Then confirm the catalogue is genuinely populated:
 
@@ -124,15 +123,14 @@ In the Vercel project → Settings → Environment Variables, **Production** sco
 | `LIQPAY_PUBLIC_KEY` | the **live** public key (no `sandbox_` prefix) |
 | `LIQPAY_PRIVATE_KEY` | the **live** private key |
 | `HUGEPROFIT_API_KEY` | the full-access token from Task 1 Step 2 |
-| `CRM_SHOP_WAREHOUSE_ID` | `34998` — **required**; the site throws at import without it |
+| `CRM_WAREHOUSE_ID` | `34998` — **required**; the site throws at import without it, and serves the wrong stock silently if it is `51630` |
 | `GOOGLE_CALENDAR_API_KEY` | unchanged if already set |
 | `GOOGLE_CALENDAR_ID` | unchanged if already set |
 
-- [ ] **Step 2: Confirm the four forbidden variables are absent**
+- [ ] **Step 2: Confirm the three forbidden variables are absent**
 
 Check the Production scope contains **no** entry for:
 
-- `CRM_WAREHOUSE_ID` — would serve mock works; now throws at import instead, taking the site down
 - `LIQPAY_SANDBOX` — would make `crmPost` refuse every write, so checkout takes money and creates no order
 - `DEV_ORIGIN` — dev-only, inert here, but has no business in production
 - any `NEXT_PUBLIC_`-prefixed copy of a key
@@ -173,7 +171,7 @@ git push origin master
 
 In the Vercel dashboard, open the deployment's build log.
 
-Expected: a successful build. If it failed with `CRM_WAREHOUSE_ID must not be set in production`, Task 2 Step 2 was not done — remove the variable and redeploy. That error is the production gate working as designed.
+Expected: a successful build. If it failed naming `CRM_WAREHOUSE_ID`, the variable is missing from Production — set it to `34998` and redeploy. If it built but Step 5 below finds `[DEV]` rows, the variable is present with the wrong value.
 
 - [ ] **Step 4: Verify the origin baked into the deployed build**
 

@@ -16,9 +16,8 @@
 
 - **No new npm dependencies. No database. No test framework.**
 - Env vars are server-only — no `NEXT_PUBLIC_` prefix on any of them, ever.
-- **`CRM_SHOP_WAREHOUSE_ID` must be set in every environment**, Preview and Production alike. It is never defaulted; an unset or non-numeric value throws at import (`lib/hugeprofit/client.ts:13-23`).
-- **`CRM_WAREHOUSE_ID` must never exist in the Production environment.** `lib/hugeprofit/client.ts:46-50` throws at import when `VERCEL_ENV === 'production'` and it is set. Preview is deliberately exempt — that exemption is what makes this plan possible.
-- **`LIQPAY_SANDBOX` must never exist in the Production environment.** `crmPost` refuses every CRM write while it is `"1"` against the real shop.
+- **`CRM_WAREHOUSE_ID` must be set in every environment** — `51630` (mock) on Preview and locally, `34998` on Production. Never defaulted; unset or non-numeric throws at import (`lib/hugeprofit/client.ts:13-30`). Nothing in code knows which warehouse is real, so a wrong value on Production serves the wrong stock without any error — check the value, not just its presence.
+- **`LIQPAY_SANDBOX` must never exist in the Production environment.** `crmPost` refuses every CRM write while it is `"1"` on `VERCEL_ENV=production`.
 - **The webhook is the only code path allowed to call `createRemoteOrder`.** Nothing else creates CRM orders.
 - `net_price` is the CRM's cost price and must never leave `lib/hugeprofit/`.
 - Comments: 2–3 lines max, constraints only — never narrate what the next lines do.
@@ -35,9 +34,9 @@ Before this branch, `master`'s checkout created unpaid CRM orders and worked wit
 
 | Keys present | `LIQPAY_SANDBOX` | `CRM_WAREHOUSE_ID` | Behaviour |
 |---|---|---|---|
-| No | — | — | Payments off. Checkout explains, nothing 500s. **Production after merge.** |
+| No | — | `34998` | Payments off. Checkout explains, nothing 500s. **Production after merge.** |
 | Sandbox pair | `1` | `51630` | Full chain against mock stock. **Preview.** |
-| Live pair | unset | unset | Real payments. **Production after the cutover plan.** |
+| Live pair | unset | `34998` | Real payments. **Production after the cutover plan.** |
 
 ## What this plan deliberately does not do
 
@@ -252,7 +251,6 @@ Vercel → Settings → Environment Variables, **Preview** scope only:
 | Key | Value |
 |-----|-------|
 | `WEBSITE_URL` | the branch alias URL from Step 2, no trailing slash |
-| `CRM_SHOP_WAREHOUSE_ID` | `34998` |
 | `CRM_WAREHOUSE_ID` | `51630` |
 | `HUGEPROFIT_API_KEY` | the dev-scoped token |
 | `LIQPAY_PUBLIC_KEY` | the sandbox public key |
@@ -322,9 +320,9 @@ This task changes no repository files beyond the optional empty commit in Step 4
 
 - [ ] **Step 1: Confirm Production carries no test configuration**
 
-In Vercel → Settings → Environment Variables, **Production** scope, confirm there is **no** entry for `CRM_WAREHOUSE_ID`, `LIQPAY_SANDBOX`, `LIQPAY_PUBLIC_KEY`, `LIQPAY_PRIVATE_KEY`, or `DEV_ORIGIN`, and that `CRM_SHOP_WAREHOUSE_ID=34998`, `WEBSITE_URL=https://plaipich.art` and a full-access `HUGEPROFIT_API_KEY` are present.
+In Vercel → Settings → Environment Variables, **Production** scope, confirm there is **no** entry for `LIQPAY_SANDBOX`, `LIQPAY_PUBLIC_KEY`, `LIQPAY_PRIVATE_KEY`, or `DEV_ORIGIN`, and that `CRM_WAREHOUSE_ID=34998`, `WEBSITE_URL=https://plaipich.art` and a full-access `HUGEPROFIT_API_KEY` are present.
 
-The first two would break the deployed site outright — `CRM_WAREHOUSE_ID` throws at import in production, and `LIQPAY_SANDBOX` makes `crmPost` refuse every write. The LiqPay keys being **absent** is what keeps payments off after the merge.
+`LIQPAY_SANDBOX` would make `crmPost` refuse every write, and `CRM_WAREHOUSE_ID=51630` would serve the mock works as the shop with no error at all. The LiqPay keys being **absent** is what keeps payments off after the merge.
 
 - [ ] **Step 2: Confirm the branch is clean and current**
 
@@ -349,7 +347,7 @@ git push origin master
 
 Open the Production deployment's build log in Vercel.
 
-Expected: success. A failure naming `CRM_SHOP_WAREHOUSE_ID` or `CRM_WAREHOUSE_ID` means Step 1 was not completed — fix the variable and redeploy; both errors name their own remedy.
+Expected: success. A failure naming `CRM_WAREHOUSE_ID` means it is missing from Production — set it to `34998` and redeploy; the error names its own remedy.
 
 - [ ] **Step 5: Confirm production serves the real shop**
 

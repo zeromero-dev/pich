@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { crmPost, CrmError, REAL_SHOP_WAREHOUSE_ID, SHOP_WAREHOUSE_ID } from './client'
+import { crmPost } from './client'
 
 /**
  * Order creation against `POST /bapi/remote_orders`, verified end to end from a
@@ -115,14 +115,6 @@ export async function createRemoteOrder(
   contact: OrderContact,
   payment: PaymentInfo,
 ): Promise<CreatedOrder> {
-  // Money safety: sandbox payments must never reserve a real work. This is the
-  // only place an order comes into existence, so it is the only place to check.
-  if (process.env.LIQPAY_SANDBOX === '1' && SHOP_WAREHOUSE_ID === REAL_SHOP_WAREHOUSE_ID) {
-    throw new CrmError(
-      `refusing to create order ${orderId} in the real shop while LIQPAY_SANDBOX=1 — set CRM_WAREHOUSE_ID to a test warehouse`,
-    )
-  }
-
   const payload = buildOrderPayload(orderId, lines, contact, payment)
   await crmPost<RemoteOrderResponse>('remote_orders', payload)
   return { orderId, total: orderTotal(lines) }
