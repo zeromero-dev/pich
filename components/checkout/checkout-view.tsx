@@ -2,9 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { m } from 'motion/react'
-import { Check, ArrowLeft } from 'lucide-react'
-import { spring } from '@/lib/motion'
+import { ArrowLeft } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
@@ -43,7 +41,6 @@ export function CheckoutView() {
   const [errors, setErrors] = useState<Partial<Record<Fields, string>>>({})
   // Read only inside handlers, so a ref spares a re-render per blur.
   const touched = useRef<Partial<Record<Fields, boolean>>>({})
-  const [orderId, setOrderId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -118,34 +115,6 @@ export function CheckoutView() {
       setSubmitError(t.checkout.errorGeneric)
       setSubmitting(false)
     }
-  }
-
-  if (orderId !== null) {
-    return (
-      <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
-        <m.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={spring.snap}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-ink"
-        >
-          <Check className="size-7 text-surface" aria-hidden="true" />
-        </m.div>
-        <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-ink">
-          {t.checkout.successTitle}
-        </h1>
-        <p className="mt-3 text-base leading-relaxed text-ink-soft text-pretty">
-          {t.checkout.successBody}
-        </p>
-        <p className="mt-4 text-sm text-ink-faint tabular-nums">
-          {t.checkout.orderNumber} #{orderId}
-        </p>
-        <PillLink href="/shop" className="mt-8">
-          {t.cart.continue}
-        </PillLink>
-        <LogoMark className="mt-16 h-9 w-auto text-ink-faint" />
-      </main>
-    )
   }
 
   if (items.length === 0) {
