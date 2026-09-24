@@ -41,14 +41,20 @@ npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
 ```
 
-Config and secrets live in `.env.local` (gitignored via `.env*`, so there is no
-`.env.example` — this block is the reference):
+Config and secrets live in `.env.local` (gitignored via `.env*`). `.env.example`
+lists the same keys with placeholder values — copy it to `.env.local` and fill
+in real ones:
 
 ```bash
 WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
+CRM_WAREHOUSE_ID=51630            # required — warehouse the site sells from: 51630 (mock "dev") locally/Preview,
+                                  # 34998 in production. Throws at import if unset; crmFetch refuses reads for any other
 GOOGLE_CALENDAR_API_KEY=...       # server-only
 GOOGLE_CALENDAR_ID=...
+LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
+LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
+LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
 ```
 
 `WEBSITE_URL` is the absolute origin baked into `metadataBase`, the sitemap, the
@@ -69,13 +75,13 @@ lib/data.ts          # BUILT: domain types + mock events (catalog and artist moc
 lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/calendar/        # PLANNED: Google Calendar fetch (public events, API-key access)
-app/api/checkout/    # BUILT: validate fresh stock + price → POST /bapi/remote_orders (unpaid; no payment step yet)
-lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost
+app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
+lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
 ```
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
 - **Cart**: client-side only (localStorage / context). No server session.
-- **Checkout**: our Route Handler re-reads every line from the CRM uncached, rejects sold or repriced works, computes the total server-side, then creates a remote order. Orders are **unpaid** (`info.is_paid: false`) — the owners follow up. `order_id` is `Date.now()` (the API documents an int, so no UUID). When a payment provider is chosen it slots in *before* order creation.
+- **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to LiqPay's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. `order_id` is `Date.now()` (the API documents an int, so no UUID).
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
 - **Events**: read-only fetch from a public Google Calendar; scheduling happens in Google Calendar itself, the site only displays.
 
@@ -129,7 +135,16 @@ Endpoints we care about:
 
 ## Open Decisions (do not build these without confirming)
 
-- **Payment provider**: online payment via a Ukrainian provider is decided; *which* provider (LiqPay / monobank / Fondy / WayForPay) is not. Until then, build checkout with a payment interface + a stub, not a concrete integration.
 - **Artist roster**: `lib/data.ts` still has 3 invented artists while the CRM has 71 real brand names, so `/artists` currently shows fiction. Needs owner input on who gets a page.
 
-Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres.
+Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider is LiqPay (decided 2026-08-16).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

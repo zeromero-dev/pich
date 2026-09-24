@@ -2,20 +2,35 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { m } from 'motion/react'
-import { Check, ArrowLeft } from 'lucide-react'
-import { spring } from '@/lib/motion'
+import { ArrowLeft } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
-import { LogoMark } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
 type Fields = 'name' | 'email' | 'phone' | 'city' | 'address'
 
+function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = checkoutUrl
+  for (const [name, value] of [
+    ['data', data],
+    ['signature', signature],
+  ]) {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value
+    form.appendChild(input)
+  }
+  document.body.appendChild(form)
+  form.submit()
+}
+
 export function CheckoutView() {
   const { t } = useLocale()
-  const { items, subtotal, clear } = useCart()
+  const { items, subtotal } = useCart()
   const [values, setValues] = useState<Record<Fields, string>>({
     name: '',
     email: '',
@@ -26,7 +41,6 @@ export function CheckoutView() {
   const [errors, setErrors] = useState<Partial<Record<Fields, string>>>({})
   // Read only inside handlers, so a ref spares a re-render per blur.
   const touched = useRef<Partial<Record<Fields, boolean>>>({})
-  const [orderId, setOrderId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -70,7 +84,6 @@ export function CheckoutView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Prices travel for comparison only — the server re-derives the total.
           items: items.map(({ product, qty }) => ({
             workId: product.id,
             qty,
@@ -87,46 +100,21 @@ export function CheckoutView() {
             ? t.checkout.errorUnavailable
             : body?.error === 'repriced'
               ? t.checkout.errorRepriced
-              : t.checkout.errorGeneric,
+              : body?.error === 'payments_disabled'
+                ? t.checkout.errorPaymentsDisabled
+                : t.checkout.errorGeneric,
         )
+        setSubmitting(false)
         return
       }
 
-      setOrderId(body.orderId)
-      clear()
+      // Full-page navigation to LiqPay — cart stays in localStorage until
+      // /checkout/result clears it on confirmed payment.
+      redirectToLiqPay(body.checkoutUrl, body.data, body.signature)
     } catch {
       setSubmitError(t.checkout.errorGeneric)
-    } finally {
       setSubmitting(false)
     }
-  }
-
-  if (orderId !== null) {
-    return (
-      <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
-        <m.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={spring.snap}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-ink"
-        >
-          <Check className="size-7 text-surface" aria-hidden="true" />
-        </m.div>
-        <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-ink">
-          {t.checkout.successTitle}
-        </h1>
-        <p className="mt-3 text-base leading-relaxed text-ink-soft text-pretty">
-          {t.checkout.successBody}
-        </p>
-        <p className="mt-4 text-sm text-ink-faint tabular-nums">
-          {t.checkout.orderNumber} #{orderId}
-        </p>
-        <PillLink href="/shop" className="mt-8">
-          {t.cart.continue}
-        </PillLink>
-        <LogoMark className="mt-16 h-9 w-auto text-ink-faint" />
-      </main>
-    )
   }
 
   if (items.length === 0) {
@@ -155,7 +143,6 @@ export function CheckoutView() {
         {t.checkout.title}
       </h1>
 
-      {/* Order summary */}
       <section className="mt-8 rounded-2xl bg-surface-alt p-5">
         <h2 className="text-sm font-semibold text-ink">{t.checkout.summary}</h2>
         <ul className="mt-4 divide-y divide-hairline">
@@ -208,11 +195,10 @@ export function CheckoutView() {
             onChange={(v) => setField('address', v)} onBlur={() => onBlur('address')} autoComplete="street-address" />
         </fieldset>
 
-        {/* Payment — swappable stub section (provider TBD). */}
         <fieldset>
           <legend className="mb-1 text-sm font-semibold text-ink">{t.checkout.payment}</legend>
-          <div className="mt-3 rounded-2xl border border-dashed border-ink/20 bg-surface-alt/60 p-5 text-sm leading-relaxed text-ink-soft">
-            {t.checkout.paymentStub}
+          <div className="mt-3 rounded-2xl border border-hairline bg-surface-alt/60 p-5 text-sm leading-relaxed text-ink-soft">
+            {t.checkout.paymentNote}
           </div>
         </fieldset>
 
