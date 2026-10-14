@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
-import {
-  createRemoteOrder,
-  newOrderId,
-  type OrderContact,
-  type OrderLine,
-} from '@/lib/hugeprofit/orders'
+import { buildCheckoutRequest, paymentsEnabled } from '@/lib/liqpay/client'
+import { encodePayload } from '@/lib/liqpay/payload'
+import { newOrderId, type OrderContact } from '@/lib/hugeprofit/orders'
+import type { LockedLine } from '@/lib/liqpay/types'
+import { WEBSITE_URL } from '@/lib/site'
 
 /**
- * Turns a cart draft into a CRM order. The client sends intent — work ids and
- * the price it displayed — never facts: every line is re-read from the CRM
- * uncached and the total is computed here (checkout.md rule 1).
- *
- * No payment step yet. Orders land unpaid (`info.is_paid: false`) and the
- * owners follow up — decided 2026-08-12.
+ * Validates the cart against fresh CRM data (unchanged from the unpaid flow)
+ * and returns a signed LiqPay checkout request. No CRM order is created here
+ * — that only happens in the liqpay-callback webhook, once payment clears.
  */
 
 type RequestLine = { workId: string; qty: number; price: number }
@@ -63,6 +59,12 @@ function parse(body: unknown): CheckoutRequest | null {
 }
 
 export async function POST(request: Request) {
+  // Payments off (no LiqPay keys). 503, not 500: the cart is valid, the site
+  // just cannot take money yet — and this must never throw at a buyer.
+  if (!paymentsEnabled()) {
+    return NextResponse.json({ error: 'payments_disabled' }, { status: 503 })
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
 
   const unavailable: string[] = []
   const repriced: { workId: string; name: string; was: number; now: number }[] = []
-  const lines: OrderLine[] = []
+  const lines: LockedLine[] = []
 
   parsed.items.forEach((item, index) => {
     const product = fresh[index]
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
       })
       return
     }
-    lines.push({ product, qty: 1 })
+    lines.push({ productId: product.id, price: product.price, qty: 1 })
   })
 
   if (unavailable.length > 0) {
@@ -110,14 +112,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'repriced', repriced }, { status: 409 })
   }
 
-  const orderId = newOrderId(Date.now())
-  try {
-    const order = await createRemoteOrder(orderId, lines, parsed.contact)
-    return NextResponse.json(order, { status: 201 })
-  } catch (error) {
-    // The buyer has paid nothing, so a failure here costs them only a retry —
-    // but the owners still need to see it.
-    console.error('[checkout] order creation failed', { orderId, error })
-    return NextResponse.json({ error: 'crm' }, { status: 502 })
-  }
+  const paymentId = newOrderId(Date.now())
+  const total = lines.reduce((sum, line) => sum + line.price * line.qty, 0)
+  const payload = encodePayload({ paymentId, lines, contact: parsed.contact })
+
+  // Money-safety, not just validation: this must reject before the buyer pays, not
+  // after — a payload LiqPay's server_url can't round-trip means a paid order that
+  // never gets created (see checkout.md gotchas). 1800 covers a full 20-item cart
+  // with realistic field lengths; +44 for the HMAC tag encodePayload appends.
+  if (payload.length > 1844) return badRequest('invalid')
+
+  const { checkoutUrl, data, signature } = buildCheckoutRequest({
+    orderId: paymentId,
+    amount: total,
+    description: `Замовлення Plai Pich #${paymentId}`,
+    resultUrl: `${WEBSITE_URL}/checkout/result?paymentId=${paymentId}`,
+    serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback?payload=${payload}`,
+  })
+
+  return NextResponse.json({ checkoutUrl, data, signature }, { status: 200 })
 }

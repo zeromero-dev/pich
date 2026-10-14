@@ -10,11 +10,24 @@ const BASE = 'https://crm.h-profit.com/bapi'
 /** Catalog cache window. Also our rate-limit politeness layer — limits are undocumented. */
 export const CATALOG_REVALIDATE = 300
 
+function requiredWarehouseId(name: string): number {
+  const raw = process.env[name]
+  const id = Number(raw)
+  if (!raw || !Number.isInteger(id) || id <= 0) {
+    throw new Error(
+      `${name} must be a positive integer warehouse id — got ${raw === undefined ? 'unset' : JSON.stringify(raw)}. ` +
+        'It is never defaulted; set it in .env.local and in the Vercel project settings.',
+    )
+  }
+  return id
+}
+
 /**
- * "Крамничка ПІЧ". The account also has "Події в ПІЧі" (35002), empty today;
- * filtering keeps non-shop stock out of the catalog if it ever gets used.
+ * The warehouse the whole site sells from — "Крамничка ПІЧ" (34998) in
+ * production, the mock "dev" warehouse (51630) in Preview and locally. Never
+ * defaulted: a missing value would silently sell from whatever a default named.
  */
-export const SHOP_WAREHOUSE_ID = 34998
+export const SHOP_WAREHOUSE_ID = requiredWarehouseId('CRM_WAREHOUSE_ID')
 
 export class CrmError extends Error {
   constructor(
@@ -39,6 +52,14 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
+  // Every read stays inside the configured warehouse: `products` without
+  // `warehouse_id` returns every warehouse the token can reach.
+  if (Number(params.warehouse_id) !== SHOP_WAREHOUSE_ID) {
+    throw new CrmError(
+      `refusing a CRM read (${path}) for warehouse ${params.warehouse_id ?? 'none'} — only ${SHOP_WAREHOUSE_ID} is allowed`,
+    )
+  }
+
   const url = new URL(`${BASE}/${path}`)
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, String(value))
@@ -68,6 +89,12 @@ export async function crmFetch<T>(
 
 /** Writes are never cached and never retried — a retry could double-create an order. */
 export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
+  // Sandbox money must never create orders on the production deployment, whose
+  // warehouse holds real works. Every write passes here, so this covers them all.
+  if (process.env.LIQPAY_SANDBOX === '1' && process.env.VERCEL_ENV === 'production') {
+    throw new CrmError(`refusing a CRM write (${path}) — LIQPAY_SANDBOX=1 on the production deployment`)
+  }
+
   const res = await fetch(`${BASE}/${path}`, {
     method: 'POST',
     headers: {
