@@ -1,6 +1,6 @@
 import 'server-only'
 
-import type { Artist, CategoryFilter, Product } from '@/lib/data'
+import type { Artist, CategoryFilter, CategoryTile, Product } from '@/lib/data'
 import { crmFetch, SHOP_WAREHOUSE_ID } from './client'
 import { idFromSlug, toProduct } from './map'
 import type { CrmProduct, CrmProductsResponse } from './types'
@@ -60,6 +60,25 @@ export function categoriesOf(products: Product[]): CategoryFilter[] {
     }
   }
   return [...counts.values()].sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'uk'),
+  )
+}
+
+/**
+ * Homepage tiles: the root of each work's chain (last entry — the CRM returns
+ * leaf first). Works without a parent count under their leaf, so a sparsely
+ * filled tree still yields tiles. Covers come from catalog order: newest in stock.
+ */
+export function rootCategoriesOf(products: Product[]): CategoryTile[] {
+  const bySlug = new Map<string, CategoryTile>()
+  for (const product of products) {
+    const root = product.categories.at(-1)
+    if (!root) continue
+    const entry = bySlug.get(root.slug)
+    if (entry) entry.count += 1
+    else bySlug.set(root.slug, { ...root, count: 1, cover: product.images[0] })
+  }
+  return [...bySlug.values()].sort(
     (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'uk'),
   )
 }

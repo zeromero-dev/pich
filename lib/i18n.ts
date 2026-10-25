@@ -32,6 +32,7 @@ export const dictionaries = {
       featuredTitle: 'Вибрані роботи',
       featuredAll: 'Уся крамничка',
       prev: 'Попередні',
+      categoriesTitle: 'Категорії',
       next: 'Наступні',
       aboutTitle: 'Місце, а не лише вітрина',
       aboutBody:
@@ -182,6 +183,7 @@ export const dictionaries = {
       featuredTitle: 'Selected works',
       featuredAll: 'Browse the shop',
       prev: 'Previous',
+      categoriesTitle: 'Categories',
       next: 'Next',
       aboutTitle: 'A place, not just a storefront',
       aboutBody:

@@ -17,6 +17,11 @@ export type CategoryFilter = Category & {
   count: number
 }
 
+/** A homepage category tile: a root category with a cover from its newest work. */
+export type CategoryTile = CategoryFilter & {
+  cover: string
+}
+
 /**
  * A work in the shop. No `medium`/`year` — the CRM has no source for them
  * (`attr[]` is filled on 2 of 258 products).
