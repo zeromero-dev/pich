@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { artistsOf, getCatalog } from '@/lib/hugeprofit'
 import { getEvents } from '@/lib/events'
+import { infoPages } from '@/lib/info-pages'
 import { WEBSITE_URL } from '@/lib/site'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -15,5 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${WEBSITE_URL}/artists/${a.slug}`,
   }))
   const eventRoutes = (await getEvents()).map((e) => ({ url: `${WEBSITE_URL}/events/${e.slug}` }))
-  return [...staticRoutes, ...productRoutes, ...artistRoutes, ...eventRoutes]
+  const infoRoutes = Object.entries(infoPages)
+    .filter(([, page]) => !page.placeholder)
+    .map(([path]) => ({ url: `${WEBSITE_URL}/${path}` }))
+  return [...staticRoutes, ...infoRoutes, ...productRoutes, ...artistRoutes, ...eventRoutes]
 }

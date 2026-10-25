@@ -170,6 +170,10 @@ export const dictionaries = {
     },
     footer: {
       tagline: 'Арт-центр і крамничка сучасного українського мистецтва.',
+      customers: 'Покупцям',
+      delivery: 'Доставка та оплата',
+      returns: 'Обмін та повернення',
+      privacy: 'Політика конфіденційності',
       visit: 'Завітайте',
       street: 'вул. Григорія Сковороди, 25',
       city: 'Вінниця, Україна',
@@ -346,6 +350,10 @@ export const dictionaries = {
     },
     footer: {
       tagline: 'An art center and shop for contemporary Ukrainian art.',
+      customers: 'Customers',
+      delivery: 'Delivery & payment',
+      returns: 'Exchanges & returns',
+      privacy: 'Privacy policy',
       visit: 'Visit us',
       street: '25 Hryhoriia Skovorody St.',
       city: 'Vinnytsia, Ukraine',

@@ -105,6 +105,22 @@ export function Footer() {
                 </li>
               ))}
             </ul>
+            <h3 className="mt-6 text-sm font-semibold text-ink">{t.footer.customers}</h3>
+            <ul className="mt-3 space-y-2">
+              {(
+                [
+                  { href: '/delivery', label: t.footer.delivery },
+                  { href: '/returns', label: t.footer.returns },
+                  { href: '/privacy', label: t.footer.privacy },
+                ] as const
+              ).map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="text-sm text-ink-soft transition-colors hover:text-ink">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
