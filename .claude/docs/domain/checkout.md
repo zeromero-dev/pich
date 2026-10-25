@@ -18,6 +18,8 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 
 **Verified end to end through LiqPay's sandbox 2026-09-08**, paying a mock work with a test card over a public tunnel: LiqPay's own webhook reached `server_url`, the handler logged nothing (every line in it is an error path), and the CRM order landed complete — 340 UAH, `info.is_paid: true`, `order_text: "LiqPay order_id …"`, contact fields intact. Two things this settled that the local mint could not:
 
+**Not yet verified: qty > 1.** Multi-unit lines (built 2026-10-25) have not been rehearsed against the CRM — whether `remote_orders` reserves N units for `quantity: N` is unknown. The 2026-10-25 attempt stopped at setup: the token no longer reads the dev warehouse 51630 (`scripts/crm-scope.mjs` lists only 34998). Don't ship qty > 1 to production until a sandbox run confirms `instock` drops by N.
+
 - **Reservation does work, into the warehouse the integration settings name.** This order came back `is_reserved: true`, `reserved_pids: [9060539]`, `mid: "51630"`, and the work moved `instock 1 → 0` with `quantity` still 1. The 2026-09-07 no-reservation result above was not a missing feature: the token in use then reserved into 34998, where that mock product had no stock row. Once the token was re-scoped to the dev warehouse, reservation targeted 51630 and fired. So the rule stands as originally written — the caveat is only that reservation goes to the *configured* warehouse, not to the product's own.
 - **`result_url` is a GET.** LiqPay redirected the browser back with `GET /checkout/result?paymentId=…` (200), so the page route answers it fine. The long-standing worry that LiqPay POSTs there, which would 405 against a Next page, did not materialise for this flow.
 
@@ -41,7 +43,7 @@ Order {                               // what we create in the CRM
 ## Business rules
 
 1. **The client sends intent, not facts.** Only work ids and quantities cross the boundary. Prices, names, and totals are re-derived from fresh CRM data server-side. A price mismatch between what the buyer saw and current CRM data is a *decision point* (reject vs honor), not something to silently absorb — see open decisions.
-2. **Stock validation is checkout-time truth.** Each work must be currently available; qty > 1 of any work is rejected (boolean-availability rule, [catalog.md](catalog.md)). Displayed stock was advisory; this check is authoritative. Re-fetch is one uncached call per line — `getFreshProduct()` — because `product_id` takes a single id only.
+2. **Stock validation is checkout-time truth.** Each line's `qty` must be ≤ the work's fresh `available` ([catalog.md](catalog.md) rule 1); shortfalls return `409 insufficient` with per-line counts. The webhook re-checks `available >= qty` before creating the order. Displayed stock was advisory; this check is authoritative. Re-fetch is one uncached call per line — `getFreshProduct()` — because `product_id` takes a single id only.
 3. **Payment precedes order creation.** Decided 2026-08-12, built 2026-08-16 (LiqPay): `/api/checkout` validates and returns a signed LiqPay request but creates nothing; the CRM order is only created in the `liqpay-callback` webhook, after LiqPay's signature is verified and the payload's `paymentId` is confirmed to match the paid `order_id`. The order goes to the CRM with `info.is_paid: true`, `payment_type: "LiqPay"` and `status: "pending"`. The CRM reserves the stock on creation, into the warehouse named in the integration settings — confirmed working 2026-09-08, and confirmed to no-op for a product with no stock row in that particular warehouse (see the notes above).
 
    This makes the paid-but-order-creation-failed state real: a buyer can be charged by LiqPay while `createRemoteOrder` then fails (CRM down, stock sold out in the interim, etc). That case must be loud, never swallowed — the webhook logs it with `console.error` and enough context (order id, product ids) for a human to reconcile manually; there is no automated refund path.
@@ -51,9 +53,10 @@ Order {                               // what we create in the CRM
 
 ```
 1. POST /api/checkout receives { items: [{workId, qty, price}], contact }  — price is for comparison only
-2. Shape-validate; reject qty != 1, duplicate work ids, >20 items, bad email, blank fields
+2. Shape-validate; reject qty outside 1–99 (integers), duplicate work ids, >20 items, bad email, blank fields
 3. getFreshProduct() per line — uncached, one call each (product_id takes a single id)
 4. Reject 409 "unavailable" if any work is missing or sold
+4b. Reject 409 "insufficient" { short: [{workId, available}] } if any qty > fresh available
 5. Reject 409 "repriced" if any CRM price != the price the buyer saw, echoing was/now
 6. Compute the total server-side from fresh data; encode { paymentId, lines, contact } into
    the LiqPay server_url's payload query param (reject 400 if that payload is too long —
@@ -61,7 +64,7 @@ Order {                               // what we create in the CRM
 7. 200 { checkoutUrl, data, signature } → browser redirects to LiqPay to pay
 8. LiqPay POSTs the result to app/api/checkout/liqpay-callback, which verifies the
    signature, decodes the payload, confirms payload.paymentId === the paid order_id,
-   re-checks stock, then POST /bapi/remote_orders with info.is_paid: true
+   re-checks available >= qty per line, then POST /bapi/remote_orders with info.is_paid: true
 9. Buyer lands on /checkout/result, which calls LiqPay's status API and shows a status
    message (no live order number); cart is cleared client-side on confirmed payment
 ```

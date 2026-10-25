@@ -12,15 +12,15 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 
 ## Business rules
 
-1. One item per work; adding an already-present work increments its qty.
-2. `qty ≥ 1` on every item; setting qty to 0 removes the item.
+1. One line per work; adding a present work adds to its qty, clamped to the snapshot's `available`.
+2. `1 ≤ qty ≤ available` on every line; removing is explicit (`remove`), not qty 0.
 3. Totals are always derived, never persisted — a stored total can't drift from the items.
 
 ## Policies
 
 - **Snapshot semantics, accepted staleness.** An item embeds the Work as it looked when added. localStorage (`plai-pich-cart`) outlives catalog cache refreshes, so a restored cart can hold stale prices or already-sold works. Accepted *by design* because of the next policy.
 - **The cart is never authoritative.** No price, availability, or total from the cart crosses into Ordering as truth — Ordering re-derives every line from fresh CRM data server-side ([checkout.md](checkout.md)). Never "fix" staleness by trusting client-sent values; recompute.
-- **Tension with the boolean-availability rule**: qty > 1 can't survive Ordering's validation. The draft still allows incrementing qty (v0 behavior) — harmless while checkout is a stub, but it must be capped before checkout goes live.
+- **Qty is capped at the snapshot's `available`** (brief 2026-10). The server re-checks against fresh stock and answers `insufficient` with the real counts; the checkout page clamps the cart to them.
 - Restore happens after hydration; SSR renders an empty cart first (accepted flash, not a bug).
 
 ## Use cases
@@ -31,8 +31,7 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 
 ## Resolved 2026-08-12
 
-- **Qty is capped at 1** (boolean availability, [catalog.md](catalog.md) rule 1). `add()` refreshes the snapshot instead of incrementing, `setQty` is gone from the context, and the stepper is out of `components/cart-drawer.tsx`.
-- **`CART_KEY` is now `plai-pich-cart-v2`.** v1 carts held mock works (`p1`…`p8`) and multi-qty lines; they no longer restore.
+- **`CART_KEY` is now `plai-pich-cart-v3`** (2026-10-25). v2 snapshots lack `available` and would clamp to NaN; v1 held mock works. Neither restores.
 
 ## Open decisions
 
