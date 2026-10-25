@@ -19,7 +19,7 @@ No end time in the model today — display shows start only; "add to calendar" a
 ## Business rules
 
 1. **Read-only projection.** Scheduling, editing, cancelling all happen in Google Calendar. This app has no event-management use cases and must never grow them.
-2. Events are displayed soonest-first; the landing shows the next 3, the events page shows all upcoming.
+2. Events are displayed soonest-first; the events page shows all upcoming. The landing's «Події» block is static copy and shows no event data (brief §2.4).
 3. Content language: whatever the owners type into Google Calendar (Ukrainian in practice) — displayed as-is in both locales, same policy as catalog content ([i18n.md](i18n.md)).
 
 ## "Registration" is not registration (from the code — `components/event-card.tsx`)
