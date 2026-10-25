@@ -18,7 +18,8 @@ Work {
   artist        Artists context link (display-name string); null for 23 works
   price         UAH, customer price
   category      CRM category id as string; categoryLabel is its Ukrainian name
-  inStock       boolean — see rule 1
+  available     units not yet reserved (CRM instock) — see rule 1
+  inStock       available > 0
   size          decoded dimensions, e.g. "30 × 21 см"; null when unset
   sku           CRM article; null when blank
 }
@@ -32,9 +33,9 @@ Category { slug (CRM category id), label }
 
 ## Business rules
 
-1. **Availability is boolean** (available / sold), never a quantity — decided 2026-08-12. The CRM does carry real quantities and 102 works have more than one in stock, so this is a deliberate simplification: a buyer cannot order two of the same candle. Revisit if the owners report lost sales.
+1. **Availability is a count, capped by the CRM.** `available` = `stock[].instock` (reservations already subtracted); `inStock` = `available > 0`. A buyer may order 1…`available` of a work — client brief 2026-10 (`task/TASK.md` §4.2), replacing the 2026-08-12 boolean rule. Displayed stock is advisory; checkout and the webhook re-check it fresh.
 
-   The one quantity fact that does reach the UI is `isLast` (`quantity === 1`), shown as «Остання» — 92 works today. Scarcity is real information for a buyer; it does not reopen the rule, since one-left and many-left both mean "available".
+   `isLast` (`instock === 1`) drives «Остання». Brief §3.3 limits it to the product page; cards still show it until P2 lands.
 2. **Price selection**: customer price is `sale_price` when set and > 0, otherwise `price`. A work with no positive price is dropped from the catalog entirely.
 3. **The CRM `description` field renders verbatim, and the CRM is where it gets cleaned.** Decided 2026-08-12 by the owners' side, reversing an earlier decision to suppress it.
 
@@ -70,6 +71,7 @@ CRM → domain mapping (verified against live data):
 | `inStock` | `stock[].instock > 0` | **Not `quantity`.** `instock` is what is available to sell; `quantity` is physical stock on hand. They read identically until an order reserves a unit — verified live 2026-08-13, one reservation moved `instock` 29 → 28 while `quantity` stayed 29. Reading `quantity` re-offers works that are already spoken for, which is how you double-sell a one-off. |
 | `categories` | `category[]` | the whole chain, leaf first — see category filtering above |
 | `artistId`, `artistSlug` | `brand.id`, `brand.name` | the Artists join ([artists.md](artists.md)) |
+| `available` | `stock[].instock` | rule 1; floored at 0 |
 | `isLast` | `stock[].instock === 1` | rule 1; same reasoning as `inStock` |
 | `size` | `size` | packed as `"AxBxC"` with blanks for unset (`"30xx21x"` → 30 × 21, `"xxx"` → none). Unit is **centimetres**, confirmed 2026-08-12. 195 of 258 have no dimensions at all. |
 | `description` | `description` | verbatim, trimmed; rule 3 |

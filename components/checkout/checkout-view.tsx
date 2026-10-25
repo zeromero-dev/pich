@@ -30,7 +30,7 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 
 export function CheckoutView() {
   const { t } = useLocale()
-  const { items, subtotal } = useCart()
+  const { items, subtotal, setQty } = useCart()
   const [values, setValues] = useState<Record<Fields, string>>({
     name: '',
     email: '',
@@ -95,14 +95,21 @@ export function CheckoutView() {
       const body = await res.json()
 
       if (!res.ok) {
+        if (body?.error === 'insufficient' && Array.isArray(body.short)) {
+          for (const line of body.short as { workId: string; available: number }[]) {
+            setQty(line.workId, line.available)
+          }
+        }
         setSubmitError(
           body?.error === 'unavailable'
             ? t.checkout.errorUnavailable
-            : body?.error === 'repriced'
-              ? t.checkout.errorRepriced
-              : body?.error === 'payments_disabled'
-                ? t.checkout.errorPaymentsDisabled
-                : t.checkout.errorGeneric,
+            : body?.error === 'insufficient'
+              ? t.checkout.errorInsufficient
+              : body?.error === 'repriced'
+                ? t.checkout.errorRepriced
+                : body?.error === 'payments_disabled'
+                  ? t.checkout.errorPaymentsDisabled
+                  : t.checkout.errorGeneric,
         )
         setSubmitting(false)
         return

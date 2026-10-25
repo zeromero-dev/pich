@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/format'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
+import { QtyStepper } from '@/components/qty-stepper'
 
 /* Mirrors Tailwind's max-sm breakpoint — the drawer is a bottom sheet below it. */
 function useIsBottomSheet() {
@@ -24,7 +25,7 @@ function useIsBottomSheet() {
 }
 
 export function CartDrawer() {
-  const { items, subtotal, isOpen, close, remove } = useCart()
+  const { items, subtotal, isOpen, close, remove, setQty } = useCart()
   const { t } = useLocale()
   const reduced = useReducedMotion()
   const bottomSheet = useIsBottomSheet()
@@ -88,7 +89,7 @@ export function CartDrawer() {
             ) : (
               <>
                 <ul className="flex-1 divide-y divide-hairline overflow-y-auto px-6">
-                  {items.map(({ product }) => (
+                  {items.map(({ product, qty }) => (
                     <li key={product.id} className="flex gap-4 py-4">
                       <Link
                         href={`/shop/${product.slug}`}
@@ -116,11 +117,19 @@ export function CartDrawer() {
                             {t.cart.remove}
                           </button>
                         </div>
-                        {/* No qty stepper — one of each work per order, and
-                            Ordering rejects qty > 1 anyway (catalog.md rule 1). */}
-                        <div className="mt-auto flex items-center justify-end">
+                        <div className="mt-auto flex items-center justify-between gap-2">
+                          {product.available > 1 ? (
+                            <QtyStepper
+                              size="sm"
+                              value={qty}
+                              max={product.available}
+                              onChange={(n) => setQty(product.id, n)}
+                            />
+                          ) : (
+                            <span />
+                          )}
                           <span className="text-sm font-semibold text-ink tabular-nums">
-                            {formatPrice(product.price)}
+                            {formatPrice(product.price * qty)}
                           </span>
                         </div>
                       </div>

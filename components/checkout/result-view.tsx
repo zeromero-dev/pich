@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { spring } from '@/lib/motion'
 import { useCart, useLocale } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
@@ -37,7 +37,7 @@ export function ResultView({ status }: { status: LiqPayStatus }) {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
-      <motion.div
+      <m.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={spring.snap}
@@ -48,7 +48,7 @@ export function ResultView({ status }: { status: LiqPayStatus }) {
         ) : (
           <X className="size-7 text-surface" aria-hidden="true" />
         )}
-      </motion.div>
+      </m.div>
       <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-ink">
         {paid ? t.checkout.resultSuccessTitle : t.checkout.resultFailedTitle}
       </h1>

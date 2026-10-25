@@ -20,6 +20,7 @@ type CheckoutRequest = {
 }
 
 const MAX_ITEMS = 20
+const MAX_QTY = 99
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function badRequest(error: string, extra: Record<string, unknown> = {}) {
@@ -33,7 +34,7 @@ function parse(body: unknown): CheckoutRequest | null {
   if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) return null
   for (const item of items) {
     if (typeof item?.workId !== 'string' || !item.workId) return null
-    if (item.qty !== 1) return null
+    if (!Number.isInteger(item.qty) || item.qty < 1 || item.qty > MAX_QTY) return null
     if (typeof item.price !== 'number' || !Number.isFinite(item.price)) return null
   }
 
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
   const parsed = parse(body)
   if (!parsed) return badRequest('invalid')
 
-  // Duplicate lines would mean qty > 1 by the back door.
+  // Duplicate lines would split one work's qty past the stock check.
   const ids = parsed.items.map((i) => i.workId)
   if (new Set(ids).size !== ids.length) return badRequest('invalid')
 
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
   const fresh = await Promise.all(parsed.items.map((i) => getFreshProduct(i.workId)))
 
   const unavailable: string[] = []
+  const short: { workId: string; available: number }[] = []
   const repriced: { workId: string; name: string; was: number; now: number }[] = []
   const lines: LockedLine[] = []
 
@@ -91,6 +93,10 @@ export async function POST(request: Request) {
     const product = fresh[index]
     if (!product || !product.inStock) {
       unavailable.push(item.workId)
+      return
+    }
+    if (product.available < item.qty) {
+      short.push({ workId: item.workId, available: product.available })
       return
     }
     if (product.price !== item.price) {
@@ -102,11 +108,14 @@ export async function POST(request: Request) {
       })
       return
     }
-    lines.push({ productId: product.id, price: product.price, qty: 1 })
+    lines.push({ productId: product.id, price: product.price, qty: item.qty })
   })
 
   if (unavailable.length > 0) {
     return NextResponse.json({ error: 'unavailable', unavailable }, { status: 409 })
+  }
+  if (short.length > 0) {
+    return NextResponse.json({ error: 'insufficient', short }, { status: 409 })
   }
   if (repriced.length > 0) {
     return NextResponse.json({ error: 'repriced', repriced }, { status: 409 })
