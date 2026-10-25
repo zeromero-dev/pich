@@ -27,7 +27,11 @@ export const dictionaries = {
         'Плай Піч — арт-центр і крамничка сучасного українського мистецтва. Приходьте дивитися, залишайтеся творити, забирайте роботи додому.',
       heroCtaShop: 'До крамнички',
       heroCtaEvents: 'Найближчі події',
-      eventsTitle: 'Найближчі події',
+      eventsTitle: 'Події',
+      eventsBody: [
+        'Ми беремо участь у ярмарках і виставках та влаштовуємо зустрічі з авторами крамнички. Це нагода побачити вироби наживо, обрати щось для себе чи на подарунок або просто поспілкуватися.',
+        'Тут розповідаємо, де й коли можна зустрітися з нами, та ділимося тим, що вже відбулося.',
+      ],
       eventsAll: 'Усі події',
       featuredAll: 'Уся крамничка',
       prev: 'Попередні',
@@ -36,10 +40,6 @@ export const dictionaries = {
       artistsTitle: 'Люди, які створюють ці роботи',
       artistsAll: 'Усі митці',
       next: 'Наступні',
-      aboutTitle: 'Місце, а не лише вітрина',
-      aboutBody:
-        'Ми відкрили Плай Піч, щоб мистецтво було не за склом, а поруч — у розмовах, майстер-класах і чашці кави. Тут виставляються митці, народжуються ідеї та знаходять дім нові роботи.',
-      aboutCta: 'Дізнатися більше',
     },
     shop: {
       title: 'Крамничка',
@@ -180,7 +180,11 @@ export const dictionaries = {
         'Plai Pich is an art center and shop for contemporary Ukrainian art. Come to look, stay to create, take the work home.',
       heroCtaShop: 'Visit the shop',
       heroCtaEvents: 'Upcoming events',
-      eventsTitle: 'Upcoming events',
+      eventsTitle: 'Events',
+      eventsBody: [
+        'We take part in fairs and exhibitions and organize meetings with the artists whose work is featured in our store. It’s an opportunity to see the pieces in person, choose something for yourself or as a gift, or simply have a conversation.',
+        'Here we share where and when you can meet us, along with stories from events that have already taken place.',
+      ],
       eventsAll: 'All events',
       featuredAll: 'Browse the shop',
       prev: 'Previous',
@@ -189,10 +193,6 @@ export const dictionaries = {
       artistsTitle: 'The people behind these works',
       artistsAll: 'All artists',
       next: 'Next',
-      aboutTitle: 'A place, not just a storefront',
-      aboutBody:
-        'We opened Plai Pich so art would live beside you — in conversations, workshops and a cup of coffee. Artists exhibit here, ideas take shape, and new works find a home.',
-      aboutCta: 'Learn more',
     },
     shop: {
       title: 'Shop',
