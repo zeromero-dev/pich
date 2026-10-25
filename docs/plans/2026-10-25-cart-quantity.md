@@ -31,20 +31,20 @@
 **Interfaces:**
 - Produces: `Product.available: number`. `CartItem = { product: Product; qty: number }`. `useCart().add(product: Product, qty?: number): void` (increments an existing line, clamps to `available`). `useCart().setQty(id: string, qty: number): void` (clamps to 1…`available`).
 
-- [ ] **Step 1: Add `available` to `Product`** in `lib/data.ts`, directly above `inStock: boolean`:
+- [x] **Step 1: Add `available` to `Product`** in `lib/data.ts`, directly above `inStock: boolean`:
 
 ```ts
   /** CRM `instock`: units not yet reserved. Caps cart qty; checkout re-checks it fresh. */
   available: number
 ```
 
-- [ ] **Step 2: Map it** in `lib/hugeprofit/map.ts` `toProduct`. Add after the `inStock` line:
+- [x] **Step 2: Map it** in `lib/hugeprofit/map.ts` `toProduct`. Add after the `inStock` line:
 
 ```ts
     available: Math.max(0, stock.instock),
 ```
 
-- [ ] **Step 3: Rewrite the cart types and reducers** in `components/providers.tsx`.
+- [x] **Step 3: Rewrite the cart types and reducers** in `components/providers.tsx`.
 
 Replace the `CartItem` doc comment and type with:
 
@@ -104,12 +104,12 @@ Replace the whole `add` callback with:
 
 In the `cartValue` memo, add `setQty,` after `add,` in the returned object, and add `setQty` to the dependency array: `[items, isOpen, bump, add, setQty, remove, clear]`.
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 Run: `npm run build`
 Expected: PASS. (`checkout-view.tsx` already sends `qty` from the item. `CartItem.qty` widening from `1` to `number` breaks nothing.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/data.ts lib/hugeprofit/map.ts components/providers.tsx
@@ -130,7 +130,7 @@ git commit -m "feat(cart): carry CRM available stock and allow qty up to it"
 - Consumes: `Product.available`, `useCart().setQty` (Task 1).
 - Produces: `POST /api/checkout` → `409 { error: 'insufficient', short: { workId: string; available: number }[] }` when any line asks for more than fresh stock.
 
-- [ ] **Step 1: Shape validation** in `app/api/checkout/route.ts`. Add below `const MAX_ITEMS = 20`:
+- [x] **Step 1: Shape validation** in `app/api/checkout/route.ts`. Add below `const MAX_ITEMS = 20`:
 
 ```ts
 const MAX_QTY = 99
@@ -144,7 +144,7 @@ Replace `if (item.qty !== 1) return null` with:
 
 Change the comment `// Duplicate lines would mean qty > 1 by the back door.` to `// Duplicate lines would split one work's qty past the stock check.`
 
-- [ ] **Step 2: Fresh-stock check.** Replace the block from `const unavailable: string[] = []` through the `repriced` early return with:
+- [x] **Step 2: Fresh-stock check.** Replace the block from `const unavailable: string[] = []` through the `repriced` early return with:
 
 ```ts
   const unavailable: string[] = []
@@ -187,7 +187,7 @@ Change the comment `// Duplicate lines would mean qty > 1 by the back door.` to 
 
 (The `payload.length > 1844` guard stays. It fails before payment, so a larger qty string can only cause a safe rejection.)
 
-- [ ] **Step 3: Webhook re-check** in `app/api/checkout/liqpay-callback/route.ts`. Replace:
+- [x] **Step 3: Webhook re-check** in `app/api/checkout/liqpay-callback/route.ts`. Replace:
 
 ```ts
     const stillAvailable = fresh.every((product) => product?.inStock)
@@ -201,7 +201,7 @@ with:
     )
 ```
 
-- [ ] **Step 4: i18n.** In `lib/i18n.ts`, add after `errorRepriced` in `uk.checkout`:
+- [x] **Step 4: i18n.** In `lib/i18n.ts`, add after `errorRepriced` in `uk.checkout`:
 
 ```ts
       errorInsufficient: 'Деяких робіт залишилося менше, ніж ви обрали. Ми оновили кількість — перевірте замовлення.',
@@ -215,7 +215,7 @@ and in `en.checkout`:
 
 (This is developer-written UI microcopy, like the other checkout errors. List it for owner review in the PR description.)
 
-- [ ] **Step 5: Client handling** in `components/checkout/checkout-view.tsx`. Change `const { items, subtotal } = useCart()` to `const { items, subtotal, setQty } = useCart()`. In `handleSubmit`, replace the `if (!res.ok) { ... }` block with:
+- [x] **Step 5: Client handling** in `components/checkout/checkout-view.tsx`. Change `const { items, subtotal } = useCart()` to `const { items, subtotal, setQty } = useCart()`. In `handleSubmit`, replace the `if (!res.ok) { ... }` block with:
 
 ```ts
       if (!res.ok) {
@@ -240,7 +240,7 @@ and in `en.checkout`:
       }
 ```
 
-- [ ] **Step 6: Verify the route with curl.** This needs LiqPay sandbox keys in `.env.local` (without them the route returns 503 before validating). Run `npm run dev`, pick an in-stock work id and its `available` from the dev catalog (warehouse 51630), then:
+- [x] **Step 6: Verify the route with curl.** This needs LiqPay sandbox keys in `.env.local` (without them the route returns 503 before validating). Run `npm run dev`, pick an in-stock work id and its `available` from the dev catalog (warehouse 51630), then:
 
 ```bash
 curl -s -X POST localhost:3000/api/checkout -H 'Content-Type: application/json' \
@@ -250,7 +250,7 @@ curl -s -X POST localhost:3000/api/checkout -H 'Content-Type: application/json' 
 Expected: `{"error":"insufficient","short":[{"workId":"<ID>","available":<AVAILABLE>}]}`.
 Repeat with `qty: <AVAILABLE>`. Expected: 200 with `checkoutUrl`. Repeat with `qty: 0` and `qty: 1.5`. Expected: `{"error":"invalid"}`.
 
-- [ ] **Step 7: react-doctor, lint, build, commit**
+- [x] **Step 7: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -271,7 +271,7 @@ git commit -m "feat(checkout): accept qty up to fresh CRM stock, recheck in webh
 - Consumes: `useCart().add(product, qty)`, `useCart().setQty`, `useCart().items`, `Product.available`.
 - Produces: `QtyStepper({ value: number; max: number; onChange: (n: number) => void; size?: 'sm' | 'lg' })`.
 
-- [ ] **Step 1: Create `components/qty-stepper.tsx`**
+- [x] **Step 1: Create `components/qty-stepper.tsx`**
 
 ```tsx
 'use client'
@@ -334,7 +334,7 @@ export function QtyStepper({
 
 (`t.cart.increase` / `t.cart.decrease` already exist in `lib/i18n.ts`.)
 
-- [ ] **Step 2: Product page.** In `components/shop/product-detail.tsx`:
+- [x] **Step 2: Product page.** In `components/shop/product-detail.tsx`:
 
 Add the import `import { QtyStepper } from '@/components/qty-stepper'`.
 
@@ -376,7 +376,7 @@ Replace `<div className="mt-6">` (the wrapper of the add `PillButton`) and its `
 
 (The button's children and closing tags stay unchanged.)
 
-- [ ] **Step 3: Cart drawer.** In `components/cart-drawer.tsx`:
+- [x] **Step 3: Cart drawer.** In `components/cart-drawer.tsx`:
 
 Add `import { QtyStepper } from '@/components/qty-stepper'`. Change `const { items, subtotal, isOpen, close, remove } = useCart()` to also destructure `setQty`. Change `{items.map(({ product }) => (` to `{items.map(({ product, qty }) => (`. Replace the comment `{/* No qty stepper — ... */}` and the `<div className="mt-auto flex items-center justify-end">…</div>` after it with:
 
@@ -398,7 +398,7 @@ Add `import { QtyStepper } from '@/components/qty-stepper'`. Change `const { ite
                         </div>
 ```
 
-- [ ] **Step 3b: If P2 shipped first.** Run `grep -n "inCart > 0\|add(product)" components/product-card.tsx`. If it matches, restore P2's full version: `add(product, 1)` and `const full = inCart >= product.available`.
+- [x] **Step 3b: If P2 shipped first.** Run `grep -n "inCart > 0\|add(product)" components/product-card.tsx`. If it matches, restore P2's full version: `add(product, 1)` and `const full = inCart >= product.available`.
 
 - [ ] **Step 4: Manual check** (`npm run dev`, 375px and 1280px):
   1. A work with `available ≥ 3`: the stepper shows. − is disabled at 1, + is disabled at `available`. Add 2: the drawer opens with qty 2 and line total = 2 × price. The header badge shows 2.
@@ -407,7 +407,7 @@ Add `import { QtyStepper } from '@/components/qty-stepper'`. Change `const { ite
   4. Drawer stepper: change qty, the subtotal updates. Reload: qty persists (`plai-pich-cart-v3` in localStorage).
   5. Keyboard: Tab reaches −/+, Space/Enter work, the focus ring is visible. The screen reader announces the value (`aria-live`).
 
-- [ ] **Step 5: react-doctor, lint, build, commit**
+- [x] **Step 5: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -462,7 +462,7 @@ git commit -m "feat(cart): quantity stepper on product page and in cart drawer"
 
   Record the result (date, order id, before/after `instock`) as one paragraph in `.claude/docs/domain/checkout.md`.
 
-- [ ] **Step 2: Rewrite `catalog.md` rule 1** to:
+- [x] **Step 2: Rewrite `catalog.md` rule 1** to:
 
 ```md
 1. **Availability is a count, capped by the CRM.** `available` = `stock[].instock` (reservations already subtracted); `inStock` = `available > 0`. A buyer may order 1…`available` of a work — client brief 2026-10 (`task/TASK.md` §4.2), replacing the 2026-08-12 boolean rule. Displayed stock is advisory; checkout and the webhook re-check it fresh.
@@ -472,11 +472,11 @@ git commit -m "feat(cart): quantity stepper on product page and in cart drawer"
 
 Also add `available` to the model block and to the mapping table (`available | stock[].instock | rule 1`).
 
-- [ ] **Step 3: Rewrite `cart.md`**: rule 1 → "One line per work; adding a present work adds to its qty, clamped to the snapshot's `available`." Replace the "Tension with the boolean-availability rule" bullet and the "Resolved 2026-08-12" qty bullet with: "**Qty is capped at the snapshot's `available`** (brief 2026-10). The server re-checks against fresh stock and answers `insufficient` with the real counts; the checkout page clamps the cart to them." Change the key note to `plai-pich-cart-v3`.
+- [x] **Step 3: Rewrite `cart.md`**: rule 1 → "One line per work; adding a present work adds to its qty, clamped to the snapshot's `available`." Replace the "Tension with the boolean-availability rule" bullet and the "Resolved 2026-08-12" qty bullet with: "**Qty is capped at the snapshot's `available`** (brief 2026-10). The server re-checks against fresh stock and answers `insufficient` with the real counts; the checkout page clamps the cart to them." Change the key note to `plai-pich-cart-v3`.
 
-- [ ] **Step 4: Update `checkout.md`**: rule 2 → "Each line's `qty` must be ≤ the work's fresh `available`; shortfalls return `409 insufficient` with per-line counts." Flow step 2 → "Shape-validate; reject qty outside 1–99 (integers), duplicate work ids, >20 items, bad email, blank fields". Add the webhook re-check (`available >= qty`) to the webhook section.
+- [x] **Step 4: Update `checkout.md`**: rule 2 → "Each line's `qty` must be ≤ the work's fresh `available`; shortfalls return `409 insufficient` with per-line counts." Flow step 2 → "Shape-validate; reject qty outside 1–99 (integers), duplicate work ids, >20 items, bad email, blank fields". Add the webhook re-check (`available >= qty`) to the webhook section.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/docs/domain
