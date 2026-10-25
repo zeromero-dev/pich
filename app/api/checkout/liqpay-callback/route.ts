@@ -55,7 +55,9 @@ export async function POST(request: Request) {
     }
 
     const fresh = await Promise.all(locked.map((line) => getFreshProduct(line.productId)))
-    const stillAvailable = fresh.every((product) => product?.inStock)
+    const stillAvailable = fresh.every(
+      (product, index) => !!product && product.available >= locked[index].qty,
+    )
 
     if (!stillAvailable) {
       // Paid but sold out in the meantime — no automated refund exists.
