@@ -1,16 +1,16 @@
 # LiqPay Production Cutover Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Work through the tasks in order. Each task ends with a verify step and a commit. Tick `- [ ]` → `- [x]` as you go.
 
 **Goal:** Take the sandbox-verified LiqPay checkout live — real keys, real catalogue, one real purchase — and leave the site taking money for real works.
 
-**Architecture:** No source changes are planned. The payment flow is built and verified end to end; this plan moves credentials and configuration, merges `feat/payments` to `master`, and proves the deployed result with one real payment. Every code change it might need is contingent on a check failing.
+**Architecture:** No source changes are planned. The payment flow is built and verified end to end; this plan moves credentials and configuration, redeploys `master` (the payment code is already merged, `6f05794`), and proves the deployed result with one real payment. Every code change it might need is contingent on a check failing.
 
 **Tech Stack:** Next.js 16 on Vercel (Hobby plan), HUGEPROFIT CRM as the only backend, LiqPay hosted checkout. No test framework in this repo and none is being added; verification is `npm run build`, `curl`, and real transactions.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-liqpay-payment-design.md`
+**Spec:** the LiqPay design record was removed 2026-10-25; its rules live in `.claude/docs/domain/checkout.md`.
 
-**Supersedes:** Task 5 of `docs/superpowers/plans/2026-09-06-liqpay-go-live.md`. That task's Steps 1–3 (restore local env, correct the two "never exercised" comments, typecheck) were completed on 2026-09-08 as Task 7 of the rehearsal plan, commit `d7a35bf`. Its Steps 4–8 are re-stated here with what the rehearsal learned. **Do not execute that task; execute this plan instead.**
+**Status (2026-10-25):** the only open payments plan. The earlier LiqPay plans (integration, go-live, dev-shop rehearsal, merge-ready) were fully executed and removed. Their ledgers are in `.superpowers/sdd/`. If P1 (`2026-10-25-cart-quantity.md`) has shipped, Task 4's purchase can be done at qty 1 as written. Multi-unit reservation is covered by P1's own sandbox run.
 
 ## Global Constraints
 
@@ -25,7 +25,7 @@
 
 ## What is already true
 
-Verified during the rehearsal (`docs/superpowers/plans/2026-09-07-liqpay-dev-shop-rehearsal.md`, all seven tasks complete, ledger at `.superpowers/sdd/2026-09-07-liqpay-dev-shop-rehearsal/progress.md`):
+Verified during the 2026-09-07/08 dev-shop rehearsal (plan since removed, ledger at `.superpowers/sdd/2026-09-07-liqpay-dev-shop-rehearsal/progress.md`):
 
 | Question | Answer | How |
 |---|---|---|
@@ -36,7 +36,7 @@ Verified during the rehearsal (`docs/superpowers/plans/2026-09-07-liqpay-dev-sho
 | Stock reservation | Works, into the warehouse the **integration settings** name | `is_reserved: true`, `reserved_pids`, `mid: "51630"`, `instock 1 → 0` |
 | Duplicate `order_id` | **Upserts** — overwrites in place, blanks omitted fields | Direct probe against the CRM |
 
-`feat/payments` is 29 commits ahead of `master`, `master` is not ahead of it, and 12 source files differ.
+The payment code is on `master` (squash-merged `6f05794`). Production has not yet been switched to live keys: `CLAUDE.md` still describes checkout as unpaid.
 
 ## The two things that make this dangerous
 
@@ -124,8 +124,9 @@ In the Vercel project → Settings → Environment Variables, **Production** sco
 | `LIQPAY_PRIVATE_KEY` | the **live** private key |
 | `HUGEPROFIT_API_KEY` | the full-access token from Task 1 Step 2 |
 | `CRM_WAREHOUSE_ID` | `34998` — **required**; the site throws at import without it, and serves the wrong stock silently if it is `51630` |
-| `GOOGLE_CALENDAR_API_KEY` | unchanged if already set |
-| `GOOGLE_CALENDAR_ID` | unchanged if already set |
+| `EVENTS_SHEET_CSV_URL` | the owners' published Google Sheet CSV link, once P4 has shipped (unset = no events, no error) |
+
+Delete `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID` if present: events are detached from the calendar (P4).
 
 - [ ] **Step 2: Confirm the three forbidden variables are absent**
 
@@ -143,29 +144,24 @@ Confirm neither key begins with `sandbox_`. A sandbox key pair in production pro
 
 ---
 
-## Task 3: Merge and deploy
+## Task 3: Deploy
 
 **Files:**
-- Merge: `feat/payments` → `master`
+- None. `feat/payments` is already on `master`: squash-merged as `6f05794 feat: LiqPay checkout (#1)`. Its only remaining diff against `master` is dead unpaid-flow code that `master` deliberately dropped, so **do not merge `feat/payments` again**. The branch can be deleted.
 
-- [ ] **Step 1: Confirm the working tree is clean and the branch is current**
+- [ ] **Step 1: Confirm the working tree is clean**
 
 ```bash
 git status --short
-git rev-list --count HEAD..master
 ```
 
-Expected: no output from the first (nothing uncommitted, `.env.local` gitignored), and `0` from the second (master has nothing this branch lacks).
+Expected: no output (`.env.local` is gitignored).
 
-- [ ] **Step 2: Merge to master and push**
+- [ ] **Step 2: Redeploy production with the new environment**
 
-```bash
-git checkout master
-git merge feat/payments
-git push origin master
-```
+Environment variables only take effect on a new deployment. In Vercel → Deployments → the latest Production deployment of `master` → Redeploy (without the build cache), or push the next `master` commit.
 
-**This is the irreversible, outward-facing step of this plan** — it publishes to the repository that deploys the live site. Confirm with the owners before running it.
+**This is the outward-facing step of this plan:** with live keys set, the site starts taking real money. Confirm with the owners before running it.
 
 - [ ] **Step 3: Wait for the Vercel deployment and check it did not throw**
 
@@ -268,13 +264,15 @@ Then check the work's page shows it in stock, allowing up to 5 minutes for `CATA
 
 - [ ] **Step 1: Update the current-state paragraph**
 
-In `CLAUDE.md`, in the **Current state** paragraph, replace:
+In `CLAUDE.md`, in the **Current state** paragraph, replace the sentence about unpaid checkout. Today it reads:
 
 > Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Still mock or missing: events (`lib/data.ts` → Google Calendar), artist bios (`artistProfiles`, empty), and online payment.
 
 with:
 
-> Checkout takes real payment through LiqPay and creates the CRM order from the payment webhook, live since 2026-09-09 and verified with a real purchase. Still mock or missing: events (`lib/data.ts` → Google Calendar) and artist bios (`artistProfiles`, empty).
+> Checkout takes real payment through LiqPay and creates the CRM order from the payment webhook, live since <date of Task 4> and verified with a real purchase.
+
+and remove "online payment" from whatever the "still mock or missing" list says at that point (P4 may already have removed events from it).
 
 - [ ] **Step 2: Update Scope item 6**
 
@@ -284,7 +282,7 @@ Replace:
 
 with:
 
-> 6. **Online payment** — BUILT: LiqPay hosted checkout, live 2026-09-09. Payment settles before the CRM order is created; the `server_url` webhook is the only code path that creates one. Stock reservation follows the warehouse named in the CRM integration settings, not anything this code sends.
+> 6. **Online payment** — BUILT: LiqPay hosted checkout, live since <date of Task 4>. Payment settles before the CRM order is created; the `server_url` webhook is the only code path that creates one. Stock reservation follows the warehouse named in the CRM integration settings, not anything this code sends.
 
 - [ ] **Step 3: Commit**
 
