@@ -43,6 +43,21 @@ function Portrait({ artist }: { artist: Artist }) {
   )
 }
 
+export function ArtistCard({ artist, heading: Heading = 'h2' }: { artist: Artist; heading?: 'h2' | 'h3' }) {
+  const { t } = useLocale()
+  return (
+    <Link href={`/artists/${artist.slug}`} className="group block">
+      <Portrait artist={artist} />
+      <Heading className="mt-3 text-base font-semibold leading-snug text-ink text-pretty transition-colors group-hover:text-ink-soft">
+        {artist.name}
+      </Heading>
+      <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
+        {t.about.worksCount(artist.workCount)}
+      </p>
+    </Link>
+  )
+}
+
 export function ArtistsView({ artists }: { artists: Artist[] }) {
   const { t } = useLocale()
 
@@ -60,15 +75,7 @@ export function ArtistsView({ artists }: { artists: Artist[] }) {
       <StaggerGroup className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
         {artists.map((artist) => (
           <StaggerItem key={artist.slug}>
-            <Link href={`/artists/${artist.slug}`} className="group block">
-              <Portrait artist={artist} />
-              <h2 className="mt-3 text-base font-semibold leading-snug text-ink text-pretty transition-colors group-hover:text-ink-soft">
-                {artist.name}
-              </h2>
-              <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
-                {t.about.worksCount(artist.workCount)}
-              </p>
-            </Link>
+            <ArtistCard artist={artist} />
           </StaggerItem>
         ))}
       </StaggerGroup>
