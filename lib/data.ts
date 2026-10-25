@@ -36,8 +36,10 @@ export type Product = {
    * this chain, so picking a parent finds works filed under its children.
    */
   categories: Category[]
+  /** CRM `instock`: units not yet reserved. Caps cart qty; checkout re-checks it fresh. */
+  available: number
   inStock: boolean
-  /** Exactly one left. Drives the "остання" marker; availability stays boolean. */
+  /** Exactly one left. Drives the "остання" marker; product page only. */
   isLast: boolean
   images: string[]
   /**

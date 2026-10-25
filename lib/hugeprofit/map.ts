@@ -103,6 +103,7 @@ export function toProduct(crm: CrmProduct, warehouseId: number): Product | null 
     // reservation took instock 29 → 28 while quantity stayed 29). Reading
     // `quantity` here would re-offer works that are already spoken for.
     inStock: stock.instock > 0,
+    available: Math.max(0, stock.instock),
     isLast: stock.instock === 1,
     images: crm.images,
     description: crm.description?.trim() || null,
