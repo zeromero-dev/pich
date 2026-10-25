@@ -1,41 +1,67 @@
 # Events
 
-Exhibitions, майстер-класи, and talks at the center. **Google Calendar is the scheduling system**; the owners create and edit events there. This app is a read-only display — it never writes to the calendar.
+Store events: fairs, exhibitions, meetings with the shop's artists. **Detached from the calendar** (client brief 2026-10):
 
-## Model (from the code — `PlaiEvent` in `lib/data.ts`)
+> Відв’язати їх від календаря ( ми публікуватимемо тут події по’язані з крамничкою)
+
+**State: built 2026-10-25.** The owners keep events in a Google Sheet published as CSV (`EVENTS_SHEET_CSV_URL`). `lib/events.ts` fetches it with a 5-minute revalidate and maps rows to `PlaiEvent`. This replaces the Google Calendar plan, which was never built. The site is read-only; editing happens in the sheet.
+
+## Model (from the code — `PlaiEvent` in `lib/events.ts`)
 
 ```
-Event {
-  id           calendar event id
+PlaiEvent {
+  slug      permanent URL identity: /events/<slug>
   title
-  start        ISO datetime
-  location     free text ("Плай Піч, студія")
-  description
+  date      'YYYY-MM-DD', the day or first day
+  endDate?  'YYYY-MM-DD', multi-day events only
+  summary   card text and event page body
+  image?    https:// URL or /images/... path
 }
 ```
 
-No end time in the model today — display shows start only; "add to calendar" assumes 2 hours (see below).
+## The sheet
+
+Row 1 holds the headers (case-insensitive, trimmed, any column order). One row = one event.
+
+| Header | Required | Format | Notes |
+|---|---|---|---|
+| `Назва` | yes | text | |
+| `Дата` | yes | `2026-11-21` or `21.11.2026` | the day of the event, or its first day |
+| `Дата завершення` | no | same | only for multi-day events, so the status stays «Незабаром» until the last day |
+| `Короткий опис` | yes | text | card and event page; line breaks are kept on the event page |
+| `Фото` | no | any `https://` image URL, `/images/...`, or a Google Drive share link | Drive links are rewritten to `lh3.googleusercontent.com/d/<id>` — **unverified**, see below |
+| `Slug` | no | Latin, e.g. `zymovyi-yarmarok-2026` | permanent URL. Empty → derived from title + date, so editing the title changes the URL |
 
 ## Business rules
 
-1. **Read-only projection.** Scheduling, editing, cancelling all happen in Google Calendar. This app has no event-management use cases and must never grow them.
-2. Events are displayed soonest-first; the events page shows all upcoming. The landing's «Події» block is static copy and shows no event data (brief §2.4).
-3. Content language: whatever the owners type into Google Calendar (Ukrainian in practice) — displayed as-is in both locales, same policy as catalog content ([i18n.md](i18n.md)).
+| Brief | Implementation |
+|---|---|
+| Detach from the calendar; the store publishes its own events | Source is the owners' sheet. Mocks and all calendar code are gone. The homepage «Події» block is static copy (`components/landing/events-teaser.tsx`) |
+| «Майбутні події» / «Минулі події» | `EventsView` sections (`components/events/events-view.tsx`) |
+| No upcoming → only past, no empty block | the upcoming section renders only when non-empty |
+| Card: event date + clear status | `formatEventDate` + `EventStatus` «Незабаром» / «Відбулася»; past photos in greyscale |
+| Event page: title, date, short description | `/events/[slug]` (`app/events/[slug]/page.tsx`) |
+| Events don't disappear, they stay as news | no date cut-off anywhere; a page lives as long as its row |
+| First = nearest or most recent | `splitEvents`: upcoming soonest-first, then past newest-first |
 
-## "Registration" is not registration (from the code — `components/event-card.tsx`)
+- **Past** = from the day after the last day (`endDate ?? date`), `Europe/Kyiv`. Decided at render time; pages regenerate every 5 minutes, so finished events move to «Минулі події» on their own.
+- **Dates are never passed through `new Date()` for display** — `formatEventDate` splits the string, so a UTC server can't shift the day.
+- **Bad rows are skipped, never fatal.** Missing title/date/summary, an impossible date, an end before the start, or a duplicate slug → the row is skipped with a `console.warn` naming its sheet row. Blank rows are ignored silently.
+- **Unset URL = no events**, one warning, no throw — a missing sheet must not break the shop build.
+- **A non-200 from Google throws** on purpose: during ISR Next keeps serving the last good page.
+- Content language: whatever the owners type (Ukrainian in practice), shown as-is in both locales ([i18n.md](i18n.md)).
 
-The "Записатись" button builds a Google Calendar *template* link (`calendar.google.com/render?action=TEMPLATE`) — it adds the event to the **visitor's own calendar** with an assumed 2-hour duration. Nothing is recorded on our side; the owners don't know who "registered". This is a deliberate v1 simplification — treat any request for real signup (headcount, contact capture, limited seats like "кількість місць обмежена") as a new feature needing a decision, since we have no DB to store registrations.
+Verified 2026-10-25 with a local fixture CSV: ordering, the multi-day range, `DD.MM.YYYY` input, quoted commas/newlines/`""`, the three skip warnings, all-past and empty sheets, 404 for an unknown slug, the sitemap entries, and the loud failure on a 404 sheet URL. **Not verified:** Google Drive photo links (needs a real shared file) — until checked, tell the owners to use a direct `https://` image link if a Drive photo doesn't show.
 
-## Boundary: `lib/calendar/` (planned; today mocked in `lib/data.ts`)
+## Owner setup (send to the owners as-is)
 
-Server-only fetch of a public calendar via API key — `GOOGLE_CALENDAR_API_KEY` + `GOOGLE_CALENDAR_ID` env vars (never `NEXT_PUBLIC_`). Spec:
+1. Create a Google Sheet «Події крамнички». Row 1 headers: `Назва | Дата | Дата завершення | Короткий опис | Фото | Slug`.
+2. Select columns `Дата` and `Дата завершення` → Format → Number → Plain text. Enter dates as `2026-11-21` or `21.11.2026`. `Дата завершення` only for multi-day events.
+3. `Фото`: a public image link. A Google Drive link to an image shared "Anyone with the link" should also work; if the photo doesn't appear on the site, use a direct image link instead.
+4. File → Share → Publish to web → choose this tab → "Comma-separated values (.csv)" → Publish. Send the link to the developer.
+5. A new row appears on the site within about 10 minutes. Past events move to «Минулі події» by themselves.
+6. Don't delete rows of past events: they stay on the site as news. Don't change a published event's `Slug`. If `Slug` is empty, don't change its `Назва` either, because that changes its link.
 
-- Google Calendar API `events.list`: `singleEvents=true` (expands recurring events), `orderBy=startTime`, `timeMin=now` — upcoming only.
-- Mapping: `summary` → title, `start.dateTime` → start, `location`, `description`. All-day events (`start.date`, no time) need a display decision when one first appears — assume none for now.
-- Cache ~5–15 min, same politeness reasoning as the catalog.
-- The calendar must be set public; API-key access only reads public calendars. (Setup step for the owners, not code.)
+## Not built (not in the brief)
 
-## Open decisions
-
-- Real registration flow (see above) — out of scope for v1 unless the owners ask.
-- Event end times: read `end.dateTime` from the calendar instead of assuming 2 hours? Trivial once `lib/calendar/` exists — do it then.
+Start time, location, long description, registration, drafts. Each is one more sheet column plus one line in `toEvents` if the owners ask.

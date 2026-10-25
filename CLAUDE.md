@@ -2,9 +2,9 @@
 
 # Plai Pich
 
-Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events calendar, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events come from Google Calendar.
+Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events page, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events are published by the owners in a Google Sheet (detached from the calendar, per the client brief).
 
-**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Still mock or missing: events (`lib/data.ts` → Google Calendar), artist bios (`artistProfiles`, empty), and online payment. Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 11:00–21:00, confirmed 2026-09-06) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). All local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Still mock or missing: artist bios (`artistProfiles`, empty), and online payment. Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 11:00–21:00, confirmed 2026-09-06) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). All local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
 
 ## Stack
 
@@ -18,7 +18,7 @@ Plai Pich is a local art center — a place for people to gather and display the
 1. **Landing** — about the art center
 2. **Крамничка (Shop)** — catalog from CRM, product pages, cart, checkout that creates an order in the CRM
 3. **Product search** — implemented in-app (the CRM API has no search endpoint)
-4. **Events calendar** — Google Calendar integration to schedule and display events
+4. **Events** — BUILT: store events from the owners' published Google Sheet (`lib/events.ts`), «Майбутні»/«Минулі» split, permanent `/events/[slug]` pages.
 5. **Artist pages** — BUILT: roster derived from CRM brands, per-artist pages at `/artists/[slug]`. Bios/portraits are repo content (`artistProfiles`), still unwritten
 6. **Online payment** — a Ukrainian payment provider (LiqPay / monobank / Fondy / WayForPay — which one is not decided yet). Checkout must be structured so the payment step runs before order creation in the CRM.
 
@@ -50,8 +50,7 @@ WEBSITE_URL=https://plaipich.art  # required — production builds throw without
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
 CRM_WAREHOUSE_ID=51630            # required — warehouse the site sells from: 51630 (mock "dev") locally/Preview,
                                   # 34998 in production. Throws at import if unset; crmFetch refuses reads for any other
-GOOGLE_CALENDAR_API_KEY=...       # server-only
-GOOGLE_CALENDAR_ID=...
+EVENTS_SHEET_CSV_URL=...          # server-only — published Google Sheet CSV; unset = no events
 LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
 LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
 LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
@@ -66,15 +65,15 @@ visibly. **It must be set in the Vercel project settings, not just locally.**
 
 ## Architecture
 
-Server-first for backends: all CRM and Google Calendar calls happen in Server Components / Route Handlers so tokens never reach the browser.
+Server-first for backends: all CRM and events-sheet calls happen in Server Components / Route Handlers so tokens never reach the browser.
 
 ```
-app/                 # BUILT: /, /shop, /shop/[slug], /events, /about, /artists, /artists/[slug], /checkout
+app/                 # BUILT: /, /shop, /shop/[slug], /events, /events/[slug], /about, /artists, /artists/[slug], /checkout
 components/          # BUILT: header, footer, cart-drawer, per-page views, motion primitives (reveal.tsx)
 lib/data.ts          # BUILT: domain types + mock events (catalog and artist mocks are gone)
 lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
-lib/calendar/        # PLANNED: Google Calendar fetch (public events, API-key access)
+lib/events.ts        # BUILT: Google Sheet CSV → events; lib/csv.ts parser; lib/slug.ts shared transliteration
 app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
 lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
 ```
@@ -83,7 +82,7 @@ lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment 
 - **Cart**: client-side only (localStorage / context). No server session.
 - **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to LiqPay's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. `order_id` is `Date.now()` (the API documents an int, so no UUID).
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
-- **Events**: read-only fetch from a public Google Calendar; scheduling happens in Google Calendar itself, the site only displays.
+- **Events**: read-only fetch of the owners' published Google Sheet (CSV), revalidated every 5 min; editing happens in the sheet.
 
 ## Knowledge Base
 
@@ -97,7 +96,7 @@ All AI context docs live under `.claude/docs/` — don't scatter `.md` files els
     ├── catalog.md        # Work entity, pricing rules, net_price rule, CRM mapping spec
     ├── cart.md           # draft-order semantics, snapshot staleness, never-authoritative policy
     ├── checkout.md       # ordering flow spec, payment-before-order rule, PaymentProvider interface
-    ├── events.md         # Google Calendar projection, "registration" caveat
+    ├── events.md         # store events from the owners' sheet, upcoming/past rules, owner setup
     ├── artists.md        # content-as-code policy, fragile name join to catalog
     └── i18n.md           # UI-bilingual/content-single-language rule, formatting rules
 ```
