@@ -32,7 +32,7 @@
 **Interfaces:**
 - Produces: `CONTACTS: { email: string; instagramHandle: string; instagramUrl: string }`. Route `/collaboration` (default A10), consumed by `NAV` in Task 2.
 
-- [ ] **Step 1: Create `lib/contacts.ts`**
+- [x] **Step 1: Create `lib/contacts.ts`**
 
 ```ts
 /* Contact details the owners have not confirmed yet (overview §4). Every value
@@ -46,7 +46,7 @@ export const CONTACTS = {
 } as const
 ```
 
-- [ ] **Step 2: i18n.** Add a `collaboration` block after `about` in both dictionaries. uk (verbatim from `task/TASK_UK.md` «Співпраця»):
+- [x] **Step 2: i18n.** Add a `collaboration` block after `about` in both dictionaries. uk (verbatim from `task/TASK_UK.md` «Співпраця»):
 
 ```ts
     collaboration: {
@@ -94,11 +94,11 @@ en (from `task/TASK.md` §7.2):
 
 (Both locales must have two paragraphs per `…Body`, because `DeepString` keeps `as const` tuples. If the build rejects arrays, split them into `sellBody1`/`sellBody2` etc.)
 
-- [ ] **Step 3: Check the form link.**
+- [x] **Step 3: Check the form link.**
 Run: `curl -sIL "https://docs.google.com/forms/d/e/1FAIpQLSe7xIA2MXdiSKVmJOR7gqA91c3H7jY2CtdZZSohL82H0PyHCQ/viewform" | grep -i "^HTTP"`
 Expected: the last line is `HTTP/2 200`. Otherwise stop and report: the brief's form link is broken.
 
-- [ ] **Step 4: Create `components/collaboration-view.tsx`**
+- [x] **Step 4: Create `components/collaboration-view.tsx`**
 
 ```tsx
 'use client'
@@ -177,7 +177,7 @@ export function CollaborationView() {
 
 (The email stays readable as text: `mailto:` doesn't work in every context.)
 
-- [ ] **Step 5: Create `app/collaboration/page.tsx`**
+- [x] **Step 5: Create `app/collaboration/page.tsx`**
 
 ```tsx
 import type { Metadata } from 'next'
@@ -194,11 +194,11 @@ export default function CollaborationPage() {
 }
 ```
 
-- [ ] **Step 6: Sitemap.** Add `'/collaboration'` to `staticRoutes` in `app/sitemap.ts`.
+- [x] **Step 6: Sitemap.** Add `'/collaboration'` to `staticRoutes` in `app/sitemap.ts`.
 
 - [ ] **Step 7: Verify.** Open `/collaboration` (not linked from the menu yet) at 375 and 1280 px. Headings go h1 → h2 → h2. «Залишити заявку» opens the Google Form in a new tab. The email reads as text and its link opens the mail app. «@pich.prostir» opens Instagram in a new tab. The EN locale shows the English block. `grep -rn PLACEHOLDER lib` lists the two `lib/contacts.ts` lines.
 
-- [ ] **Step 8: react-doctor, lint, build, commit**
+- [x] **Step 8: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -220,9 +220,9 @@ git commit -m "feat: collaboration page (Співпраця)"
 - Consumes: `/collaboration` (Task 1), `CONTACTS` (Task 1).
 - Produces: `export const NAV` from `components/header.tsx`. Items have the shape `{ href: string; key: 'shop' | 'artists' | 'events' | 'about' | 'collaboration' }`.
 
-- [ ] **Step 1: i18n.** `nav`: uk `collaboration: 'Співпраця',` en `collaboration: 'Collaboration',`.
+- [x] **Step 1: i18n.** `nav`: uk `collaboration: 'Співпраця',` en `collaboration: 'Collaboration',`.
 
-- [ ] **Step 2: Shared list.** In `components/header.tsx`, below `LOCALE_OPTIONS`:
+- [x] **Step 2: Shared list.** In `components/header.tsx`, below `LOCALE_OPTIONS`:
 
 ```tsx
 /* Order is the client's (brief «Структура»); the footer reuses this list. */
@@ -241,14 +241,14 @@ In `Header`, replace the `const nav = [ … ]` array with:
   const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
 ```
 
-- [ ] **Step 3: Footer.** In `components/footer.tsx`: `import { NAV } from '@/components/header'` and `import { CONTACTS } from '@/lib/contacts'`. Replace its `const nav = [ … ]` with the same one-liner. In `SOCIALS`, change the Instagram `href: 'https://instagram.com'` to `href: CONTACTS.instagramUrl`. The Telegram entry stays as is (still a placeholder from before this brief. Add `// PLACEHOLDER: no Telegram URL supplied` above it so the launch grep finds it).
+- [x] **Step 3: Footer.** In `components/footer.tsx`: `import { NAV } from '@/components/header'` and `import { CONTACTS } from '@/lib/contacts'`. Replace its `const nav = [ … ]` with the same one-liner. In `SOCIALS`, change the Instagram `href: 'https://instagram.com'` to `href: CONTACTS.instagramUrl`. The Telegram entry stays as is (still a placeholder from before this brief. Add `// PLACEHOLDER: no Telegram URL supplied` above it so the launch grep finds it).
 
-- [ ] **Step 4: Breakpoint check.** In `npm run dev`, look at the desktop nav at **768 px** and **1024 px**, in both locales (EN labels are longer). If the five links + locale switch + cart wrap or overlap at 768 px, move the desktop/mobile switch from `md` to `lg` in `components/header.tsx`: the desktop `<nav>` `hidden md:flex` → `hidden lg:flex`, the `<div className="hidden md:block">` around `LocaleSwitch` → `hidden lg:block`, the burger button `md:hidden` → `lg:hidden`, and the menu overlay `md:hidden` → `lg:hidden`.
+- [x] **Step 4: Breakpoint check.** In `npm run dev`, look at the desktop nav at **768 px** and **1024 px**, in both locales (EN labels are longer). If the five links + locale switch + cart wrap or overlap at 768 px, move the desktop/mobile switch from `md` to `lg` in `components/header.tsx`: the desktop `<nav>` `hidden md:flex` → `hidden lg:flex`, the `<div className="hidden md:block">` around `LocaleSwitch` → `hidden lg:block`, the burger button `md:hidden` → `lg:hidden`, and the menu overlay `md:hidden` → `lg:hidden`.
 Expected afterwards: no wrap or overlap at 768/1024/1280. At 375 px, the mobile menu lists the five items in order and closes on link tap and on Esc. The active state highlights the current page, `/collaboration` included. The footer «Навігація» shows the same order.
 
-- [ ] **Step 5: Docs.** `.claude/docs/ui-ux-guidelines.md` §5 Header: "nav (Крамничка / Митці / Події / Про нас / Співпраця, from `NAV` in `components/header.tsx`)", plus the breakpoint if it changed.
+- [x] **Step 5: Docs.** `.claude/docs/ui-ux-guidelines.md` §5 Header: "nav (Крамничка / Митці / Події / Про нас / Співпраця, from `NAV` in `components/header.tsx`)", plus the breakpoint if it changed.
 
-- [ ] **Step 6: react-doctor, lint, build, commit**
+- [x] **Step 6: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -272,7 +272,7 @@ git commit -m "feat(nav): client menu order with Співпраця, shared head
 - Consumes: `CONTACTS.email`.
 - Produces: `InfoPage = { title: string; description: string; placeholder: boolean; sections: { heading?: string; paragraphs: string[] }[] }`. `infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage>`. `InfoPageView({ page: InfoPage })`.
 
-- [ ] **Step 1: Create `lib/info-pages.ts`**
+- [x] **Step 1: Create `lib/info-pages.ts`**
 
 ```ts
 /**
@@ -314,7 +314,7 @@ export const infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage> = {
 
 (Titles are verbatim from the brief («Політику конфіденційності» in the brief's list is the accusative case, so the page title uses the nominative). When the owners send text: replace `sections` with their headings and paragraphs character for character and set `placeholder: false`. Checkout already collects name, email, phone and address, so the privacy text is the one to chase first.)
 
-- [ ] **Step 2: Create `components/info-page.tsx`** (server component)
+- [x] **Step 2: Create `components/info-page.tsx`** (server component)
 
 ```tsx
 import { CONTACTS } from '@/lib/contacts'
@@ -352,7 +352,7 @@ export function InfoPageView({ page }: { page: InfoPage }) {
 }
 ```
 
-- [ ] **Step 3: Three routes.** `app/delivery/page.tsx`:
+- [x] **Step 3: Three routes.** `app/delivery/page.tsx`:
 
 ```tsx
 import type { Metadata } from 'next'
@@ -374,9 +374,9 @@ export default function DeliveryPage() {
 
 `app/returns/page.tsx`: identical with `infoPages.returns` and `ReturnsPage`. `app/privacy/page.tsx`: `infoPages.privacy` and `PrivacyPage`.
 
-- [ ] **Step 4: i18n.** `footer`: uk `customers: 'Покупцям', delivery: 'Доставка та оплата', returns: 'Обмін та повернення', privacy: 'Політика конфіденційності',` en `customers: 'Customers', delivery: 'Delivery & payment', returns: 'Exchanges & returns', privacy: 'Privacy policy',` («Покупцям» is our column heading. The brief only lists the links.)
+- [x] **Step 4: i18n.** `footer`: uk `customers: 'Покупцям', delivery: 'Доставка та оплата', returns: 'Обмін та повернення', privacy: 'Політика конфіденційності',` en `customers: 'Customers', delivery: 'Delivery & payment', returns: 'Exchanges & returns', privacy: 'Privacy policy',` («Покупцям» is our column heading. The brief only lists the links.)
 
-- [ ] **Step 5: Footer links.** In `components/footer.tsx`, inside the «Навігація» column, after its `</ul>`:
+- [x] **Step 5: Footer links.** In `components/footer.tsx`, inside the «Навігація» column, after its `</ul>`:
 
 ```tsx
             <h3 className="mt-6 text-sm font-semibold text-ink">{t.footer.customers}</h3>
@@ -397,7 +397,7 @@ export default function DeliveryPage() {
             </ul>
 ```
 
-- [ ] **Step 6: Sitemap.** In `app/sitemap.ts`: `import { infoPages } from '@/lib/info-pages'`, and append to `staticRoutes`:
+- [x] **Step 6: Sitemap.** In `app/sitemap.ts`: `import { infoPages } from '@/lib/info-pages'`, and append to `staticRoutes`:
 
 ```ts
     ...Object.entries(infoPages)
@@ -407,9 +407,9 @@ export default function DeliveryPage() {
 
 (While all three are placeholders, none are listed. If `staticRoutes` is built from a `.map`, append this as a separate array in the return value instead.)
 
-- [ ] **Step 7: Verify.** All three footer links open their page. Each shows the title, «Інформація на цій сторінці готується.» and the email. `curl -s localhost:3000/privacy | grep -o '<meta name="robots"[^>]*>'` prints a `noindex` tag. `/sitemap.xml` has none of the three. Footer columns align at 768/1280, and at 375 px the columns stack.
+- [x] **Step 7: Verify.** All three footer links open their page. Each shows the title, «Інформація на цій сторінці готується.» and the email. `curl -s localhost:3000/privacy | grep -o '<meta name="robots"[^>]*>'` prints a `noindex` tag. `/sitemap.xml` has none of the three. Footer columns align at 768/1280, and at 375 px the columns stack.
 
-- [ ] **Step 8: react-doctor, lint, build, commit**
+- [x] **Step 8: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -425,7 +425,7 @@ git commit -m "feat: delivery, returns, privacy pages (placeholder text) with fo
 - Modify: `lib/i18n.ts` (`landing.heroTitle`, `landing.heroLead`, `landing.heroCtaShop`; remove `landing.heroCtaEvents`. `about.lead`, `about.body1`, `about.body2`, `about.artistsLead`)
 - Modify: `components/landing/hero.tsx` (one CTA)
 
-- [ ] **Step 1: Hero copy.** uk (verbatim, `task/TASK_UK.md` hero block):
+- [x] **Step 1: Hero copy.** uk (verbatim, `task/TASK_UK.md` hero block):
 
 ```ts
       heroTitle: 'Мистецька крамничка ПІЧ',
@@ -445,9 +445,9 @@ en:
 
 (The brief's «→» is the existing `ArrowRight` icon, so it stays out of the string. The logo, `<title>` template and JSON-LD keep «Плай Піч», per default A2.)
 
-- [ ] **Step 2: One CTA.** The brief's hero has one button. In `components/landing/hero.tsx`, delete the second `<PillLink href="/events" size="hero" variant="secondary">…</PillLink>`. Then delete `landing.heroCtaEvents` from both locales: `grep -rn heroCtaEvents app components lib` should print nothing.
+- [x] **Step 2: One CTA.** The brief's hero has one button. In `components/landing/hero.tsx`, delete the second `<PillLink href="/events" size="hero" variant="secondary">…</PillLink>`. Then delete `landing.heroCtaEvents` from both locales: `grep -rn heroCtaEvents app components lib` should print nothing.
 
-- [ ] **Step 3: Про нас.** `AboutView` renders `lead` (large) + `body1` + `body2`, which map one-to-one onto the brief's three paragraphs. No component change. uk (verbatim, «Про нас»):
+- [x] **Step 3: Про нас.** `AboutView` renders `lead` (large) + `body1` + `body2`, which map one-to-one onto the brief's three paragraphs. No component change. uk (verbatim, «Про нас»):
 
 ```ts
       lead: 'Мистецька крамничка ПІЧ — це роботи понад 50 авторів з різних куточків України, зібрані у Вінниці. У нас можна обрати кераміку й посуд, прикраси, одяг та аксесуари, картини, книги й листівки. Роздивитися їх можна онлайн або наживо у крамничці на Сковороди, 25.',
@@ -467,7 +467,7 @@ en (`task/TASK.md` §7.3):
         'The store is part of the PICH cultural space, founded in 2020 during the pandemic by the NGO “PLAI Art Association.” Artists from different fields meet, collaborate, and develop joint projects here. The space hosts cultural events, educational and media projects, and a specialty coffee shop operates next to the store.',
 ```
 
-- [ ] **Step 4: Митці intro.** `about.artistsLead`. uk (verbatim, «Митці»): `'Знайомтеся з авторами, чиї роботи представлені у мистецькій крамничці ПІЧ. Дізнавайтеся, з чим вони працюють, що їх надихає, та обирайте їхні вироби.'` en: `'Meet the creators whose works are featured at PICH Art Store. Discover the materials they use, what inspires them, and choose their creations.'`
+- [x] **Step 4: Митці intro.** `about.artistsLead`. uk (verbatim, «Митці»): `'Знайомтеся з авторами, чиї роботи представлені у мистецькій крамничці ПІЧ. Дізнавайтеся, з чим вони працюють, що їх надихає, та обирайте їхні вироби.'` en: `'Meet the creators whose works are featured at PICH Art Store. Discover the materials they use, what inspires them, and choose their creations.'`
 
 - [ ] **Step 5: Verbatim check.** Every UA string added by this plan must occur in the source unchanged:
 
@@ -477,9 +477,9 @@ for s in 'Мистецька крамничка ПІЧ відкрита до з�
 
 Expected: every count ≥ 1. A `0` means an apostrophe or dash was altered while copying, so re-copy from the source.
 
-- [ ] **Step 6: Visual check.** `/`: one hero button, and the title «Мистецька крамничка ПІЧ» wraps cleanly at 375 px (`text-balance`). `/about`: the three paragraphs in order. `/artists`: the new lead. Both locales.
+- [x] **Step 6: Visual check.** `/`: one hero button, and the title «Мистецька крамничка ПІЧ» wraps cleanly at 375 px (`text-balance`). `/about`: the three paragraphs in order. `/artists`: the new lead. Both locales.
 
-- [ ] **Step 7: react-doctor, lint, build, commit**
+- [x] **Step 7: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -487,4 +487,4 @@ git add lib/i18n.ts components/landing/hero.tsx
 git commit -m "content: hero, about and artists copy from client brief"
 ```
 
-- [ ] **Step 8: Docs.** `CLAUDE.md`: add `/collaboration`, `/delivery`, `/returns`, `/privacy` to the `app/` line of the architecture tree. In "Current state", note: "Співпраця page built. Delivery/returns/privacy pages exist with placeholder text (`lib/info-pages.ts`, `noindex` until filled). Unconfirmed contacts in `lib/contacts.ts`. `grep -rn PLACEHOLDER app components lib` lists what's left." Commit: `git commit -am "docs: content pages and placeholders"` (check `git status` first).
+- [x] **Step 8: Docs.** `CLAUDE.md`: add `/collaboration`, `/delivery`, `/returns`, `/privacy` to the `app/` line of the architecture tree. In "Current state", note: "Співпраця page built. Delivery/returns/privacy pages exist with placeholder text (`lib/info-pages.ts`, `noindex` until filled). Unconfirmed contacts in `lib/contacts.ts`. `grep -rn PLACEHOLDER app components lib` lists what's left." Commit: `git commit -am "docs: content pages and placeholders"` (check `git status` first).
