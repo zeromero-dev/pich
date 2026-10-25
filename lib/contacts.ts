@@ -1,4 +1,4 @@
-/* Contact details the owners have not confirmed yet (overview §4). Every value
+/* Contact details the owners have not confirmed yet. Every value
    marked PLACEHOLDER must be checked before launch. */
 export const CONTACTS = {
   // PLACEHOLDER: address from the client brief; the footer still shows hello@plaipich.art.

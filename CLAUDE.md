@@ -134,7 +134,17 @@ Endpoints we care about:
 
 ## Open Decisions (do not build these without confirming)
 
-- **Artist roster**: `lib/data.ts` still has 3 invented artists while the CRM has 71 real brand names, so `/artists` currently shows fiction. Needs owner input on who gets a page.
+- **Product photo frames** (client brief §3.2): A keep `object-contain` (nothing cropped, current), B `object-cover` (crops artwork edges, no focal-point data), C contain with less padding. One class in `components/product-card.tsx`.
+- **Artist video** (brief §5): A YouTube/Instagram link in `artistProfiles` as a click-to-load embed (recommended), B self-hosted MP4 (not on Vercel Hobby bandwidth).
+- **«Кожна — єдина»** (`shop.lead`) is false for a craft catalog with a quantity selector. Not in the brief; ask the owners.
+
+### Before launch (client brief 2026-10, built 2026-10-25)
+
+- `grep -rn PLACEHOLDER app components lib` — unconfirmed contacts (`lib/contacts.ts`: email, Instagram URL; footer Telegram link) and the delivery/returns/privacy text (`lib/info-pages.ts`; privacy first — checkout collects personal data).
+- Vercel (Production + Preview): add `EVENTS_SHEET_CSV_URL`, remove `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
+- qty > 1 CRM reservation is unverified — see `.claude/docs/domain/checkout.md`.
+- Google Drive photo links in the events sheet are unverified — see `.claude/docs/domain/events.md`.
+- UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error.
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider is LiqPay (decided 2026-08-16).
 

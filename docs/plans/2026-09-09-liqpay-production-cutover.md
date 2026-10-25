@@ -10,7 +10,7 @@
 
 **Spec:** the LiqPay design record was removed 2026-10-25; its rules live in `.claude/docs/domain/checkout.md`.
 
-**Status (2026-10-25):** the only open payments plan. The earlier LiqPay plans (integration, go-live, dev-shop rehearsal, merge-ready) were fully executed and removed. Their ledgers are in `.superpowers/sdd/`. If P1 (`2026-10-25-cart-quantity.md`) has shipped, Task 4's purchase can be done at qty 1 as written. Multi-unit reservation is covered by P1's own sandbox run.
+**Status (2026-10-25):** the only open payments plan. The earlier LiqPay plans (integration, go-live, dev-shop rehearsal, merge-ready) were fully executed and removed. Their ledgers are in `.superpowers/sdd/`. Cart quantity (qty > 1) shipped 2026-10-25 (PR #3). Task 4's purchase can be done at qty 1 as written; multi-unit CRM reservation is still unverified (`.claude/docs/domain/checkout.md`).
 
 ## Global Constraints
 
