@@ -31,6 +31,8 @@ export const dictionaries = {
       eventsAll: 'Усі події',
       featuredTitle: 'Вибрані роботи',
       featuredAll: 'Уся крамничка',
+      prev: 'Попередні',
+      next: 'Наступні',
       aboutTitle: 'Місце, а не лише вітрина',
       aboutBody:
         'Ми відкрили Плай Піч, щоб мистецтво було не за склом, а поруч — у розмовах, майстер-класах і чашці кави. Тут виставляються митці, народжуються ідеї та знаходять дім нові роботи.',
@@ -179,6 +181,8 @@ export const dictionaries = {
       eventsAll: 'All events',
       featuredTitle: 'Selected works',
       featuredAll: 'Browse the shop',
+      prev: 'Previous',
+      next: 'Next',
       aboutTitle: 'A place, not just a storefront',
       aboutBody:
         'We opened Plai Pich so art would live beside you — in conversations, workshops and a cup of coffee. Artists exhibit here, ideas take shape, and new works find a home.',
