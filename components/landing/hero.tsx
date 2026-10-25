@@ -28,9 +28,6 @@ export function Hero() {
               {t.landing.heroCtaShop}
               <ArrowRight className="size-4" aria-hidden="true" />
             </PillLink>
-            <PillLink href="/events" size="hero" variant="secondary">
-              {t.landing.heroCtaEvents}
-            </PillLink>
           </div>
         </m.div>
 

@@ -1,6 +1,6 @@
 /**
- * Domain types + mock events. Works and artists come from the CRM via
- * `lib/hugeprofit/`; events will come from Google Calendar. Content is
+ * Domain types. Works and artists come from the CRM via `lib/hugeprofit/`;
+ * events come from the owners' sheet (`lib/events.ts`). Content is
  * single-language (as the CRM provides it), per the i18n note — we don't
  * promise a translated catalog.
  */
@@ -15,6 +15,11 @@ export type Category = {
 export type CategoryFilter = Category & {
   /** Works in this category *including its descendants* — see catalog.md. */
   count: number
+}
+
+/** A homepage category tile: a root category with a cover from its newest work. */
+export type CategoryTile = CategoryFilter & {
+  cover: string
 }
 
 /**
@@ -53,14 +58,6 @@ export type Product = {
   sku: string | null
 }
 
-export type PlaiEvent = {
-  id: string
-  title: string
-  start: string // ISO
-  location: string
-  description: string
-}
-
 /**
  * An artist, derived from the CRM brand on their works. Bios and portraits are
  * repo content (content-as-code) keyed by slug — see `artistProfiles`.
@@ -83,54 +80,3 @@ export type Artist = {
  * a page listing their works.
  */
 export const artistProfiles: Record<string, { portrait?: string; bio: string }> = {}
-
-/** Upcoming events, sorted by start date. Stand-in for Google Calendar. */
-function daysFromNow(days: number, hour: number, minute = 0): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  d.setHours(hour, minute, 0, 0)
-  return d.toISOString()
-}
-
-export const events: PlaiEvent[] = [
-  {
-    id: 'e1',
-    title: 'Відкриття виставки «Нічний приплив»',
-    start: daysFromNow(4, 18),
-    location: 'Плай Піч, головна зала',
-    description:
-      'Урочисте відкриття персональної виставки Оксани Мельник. Знайомство з мисткинею, келих вина та перший погляд на нову серію робіт.',
-  },
-  {
-    id: 'e2',
-    title: 'Майстер-клас з акварелі',
-    start: daysFromNow(9, 15),
-    location: 'Плай Піч, студія',
-    description:
-      'Дводенний майстер-клас для початківців. Усі матеріали надаємо. Кількість місць обмежена.',
-  },
-  {
-    id: 'e3',
-    title: 'Артист-ток: сучасний український пейзаж',
-    start: daysFromNow(16, 19),
-    location: 'Плай Піч, лекторій',
-    description:
-      'Розмова з Андрієм Ковальчуком про традицію і сучасність у пейзажному живописі. Вхід вільний.',
-  },
-  {
-    id: 'e4',
-    title: 'Недільний живопис для всіх',
-    start: daysFromNow(20, 12),
-    location: 'Плай Піч, студія',
-    description:
-      'Розслаблена сесія живопису у неділю. Приходьте з друзями, кава та полотно — за нами.',
-  },
-  {
-    id: 'e5',
-    title: 'Вечір графіки та друку',
-    start: daysFromNow(34, 18, 30),
-    location: 'Плай Піч, майстерня',
-    description:
-      'Демонстрація технік лінодруку й офорту. Спробуйте зробити власний відбиток разом із митцями.',
-  },
-]

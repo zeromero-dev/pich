@@ -1,10 +1,12 @@
-import { getCatalog } from '@/lib/hugeprofit'
+import { artistsOf, getCatalog, rootCategoriesOf } from '@/lib/hugeprofit'
+import { withProfiles } from '@/lib/artists'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { BRAND, WEBSITE_URL } from '@/lib/site'
 import { Hero } from '@/components/landing/hero'
-import { EventsPreview } from '@/components/landing/events-preview'
-import { FeaturedWorks } from '@/components/landing/featured-works'
-import { AboutTeaser } from '@/components/landing/about-teaser'
+import { CategoriesCarousel } from '@/components/landing/categories-carousel'
+import { NewArrivals } from '@/components/landing/new-arrivals'
+import { EventsTeaser } from '@/components/landing/events-teaser'
+import { ArtistsCarousel } from '@/components/landing/artists-carousel'
 
 // Organization goes on the homepage only — Google reads it there, and repeating
 // it site-wide would collide with the per-page Event/Product schemas.
@@ -29,6 +31,10 @@ const jsonLd = {
 
 export default async function Page() {
   const products = await getCatalog()
+  // Catalog order is CRM order, newest first, with in-stock works first.
+  const arrivals = products.filter((p) => p.inStock).slice(0, 12)
+  const artists = artistsOf(products).slice(0, 16).map(withProfiles)
+
   return (
     <>
       <script
@@ -37,9 +43,10 @@ export default async function Page() {
       />
       <main>
         <Hero />
-        <EventsPreview />
-        <FeaturedWorks products={products} />
-        <AboutTeaser />
+        <CategoriesCarousel categories={rootCategoriesOf(products)} />
+        <NewArrivals products={arrivals} />
+        <EventsTeaser />
+        <ArtistsCarousel artists={artists} />
       </main>
     </>
   )

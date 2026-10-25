@@ -1,30 +1,17 @@
 import type { Metadata } from 'next'
-import { serializeJsonLd } from '@/lib/json-ld'
-import { events } from '@/lib/data'
+import { getEvents, splitEvents } from '@/lib/events'
 import { EventsView } from '@/components/events/events-view'
 
 export const metadata: Metadata = {
   title: 'Події',
-  description: 'Виставки, майстер-класи та зустрічі в арт-центрі Плай Піч.',
+  description: 'Ярмарки, виставки та зустрічі з авторами мистецької крамнички ПІЧ.',
 }
 
-export default function EventsPage() {
-  const jsonLd = events.map((e) => ({
-    '@context': 'https://schema.org',
-    '@type': 'Event',
-    name: e.title,
-    startDate: e.start,
-    description: e.description,
-    location: { '@type': 'Place', name: e.location },
-  }))
+// Upcoming/past is decided at render time, so a short regeneration window both
+// moves finished events to «Минулі події» and picks up new sheet rows.
+export const revalidate = 300
 
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
-      />
-      <EventsView />
-    </>
-  )
+export default async function EventsPage() {
+  const { upcoming, past } = splitEvents(await getEvents())
+  return <EventsView upcoming={upcoming} past={past} />
 }

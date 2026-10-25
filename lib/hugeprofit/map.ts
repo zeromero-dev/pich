@@ -1,36 +1,15 @@
 import type { Product } from '@/lib/data'
+import { slugBase } from '@/lib/slug'
 import type { CrmProduct, CrmStock } from './types'
 
 /* -------------------------------------------------------------------------- */
 /* Slugs                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const TRANSLIT: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh',
-  з: 'z', и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n',
-  о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts',
-  ч: 'ch', ш: 'sh', щ: 'shch', ь: '', ю: 'iu', я: 'ia', ъ: '', ы: 'y', э: 'e',
-  ё: 'e', '’': '', "'": '', ʼ: '',
-}
-
-function transliterate(input: string): string {
-  return input
-    .toLowerCase()
-    .split('')
-    .map((ch) => TRANSLIT[ch] ?? ch)
-    .join('')
-}
-
 /**
  * Slugs are permanent URLs, so they carry the CRM id: names repeat in this
  * catalog ("Чокер" ×3) and the owners rename products in the CRM.
  */
-function slugBase(name: string): string {
-  return transliterate(name)
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
 export function toSlug(name: string, id: number): string {
   const base = slugBase(name)
   return base ? `${base}-${id}` : String(id)

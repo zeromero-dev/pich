@@ -46,6 +46,14 @@ export function ShopView({
     return () => clearTimeout(id)
   }, [rawQuery])
 
+  // Homepage tiles link to /shop?category=<id>. Read after mount: useSearchParams
+  // would push the whole grid out of the prerendered HTML (needs Suspense).
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('category')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the URL is only readable after mount
+    if (slug && categories.some((c) => c.slug === slug)) setCategory(slug)
+  }, [categories])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matches = products.filter((p) => {

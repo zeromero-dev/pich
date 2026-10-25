@@ -23,19 +23,37 @@ export function ArtistDetail({ artist, works }: { artist: Artist; works: Product
         {t.about.backToArtists}
       </Link>
 
-      <Reveal className="mt-6 mb-10 max-w-[65ch]">
-        <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink md:text-5xl">
-          {artist.name}
-        </h1>
-        <p className="mt-2 text-sm text-ink-faint tabular-nums">
-          {t.about.worksCount(artist.workCount)}
-        </p>
-        {/* Bios are repo content and most artists have none yet — see artists.md. */}
-        {artist.bio && (
-          <p className="mt-4 text-base leading-relaxed text-ink-soft text-pretty">
-            {artist.bio}
-          </p>
+      <Reveal
+        className={
+          artist.portrait
+            ? 'mt-6 mb-12 grid items-start gap-8 md:grid-cols-2 md:gap-12'
+            : 'mt-6 mb-10 max-w-[65ch]'
+        }
+      >
+        {artist.portrait && (
+          <div className="relative aspect-square overflow-hidden rounded-3xl bg-surface-alt">
+            <img
+              src={artist.portrait}
+              alt={artist.name}
+              fetchPriority="high"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
         )}
+        <div className="max-w-[65ch] md:pt-2">
+          <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink md:text-5xl">
+            {artist.name}
+          </h1>
+          <p className="mt-2 text-sm text-ink-faint tabular-nums">
+            {t.about.worksCount(artist.workCount)}
+          </p>
+          {/* Bios are repo content and most artists have none yet — see artists.md. */}
+          {artist.bio && (
+            <p className="mt-6 text-base leading-relaxed whitespace-pre-line text-ink-soft text-pretty">
+              {artist.bio}
+            </p>
+          )}
+        </div>
       </Reveal>
 
       <h2 className="mb-4 text-sm font-semibold text-ink">{t.about.artistWorks}</h2>

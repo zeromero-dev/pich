@@ -1,70 +1,63 @@
 'use client'
 
-import { m, useReducedMotion } from 'motion/react'
-import { MapPin, Clock } from 'lucide-react'
-import { spring } from '@/lib/motion'
-import { eventDateParts, formatEventDateTime } from '@/lib/format'
+import Link from 'next/link'
+import { CalendarDays } from 'lucide-react'
+import { formatEventDate } from '@/lib/format'
 import { useLocale } from '@/components/providers'
-import { PillButton } from '@/components/pill-button'
-import type { PlaiEvent } from '@/lib/data'
+import { cn } from '@/lib/utils'
+import type { PlaiEvent } from '@/lib/events'
 
-/** Build a Google Calendar "add event" link from a PlaiEvent. */
-function googleCalendarUrl(event: PlaiEvent): string {
-  const start = new Date(event.start)
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
-  const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, '')
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: event.title,
-    dates: `${fmt(start)}/${fmt(end)}`,
-    details: event.description,
-    location: event.location,
-  })
-  return `https://calendar.google.com/calendar/render?${params.toString()}`
+export function EventStatus({ past }: { past: boolean }) {
+  const { t } = useLocale()
+  return (
+    <span
+      className={cn(
+        'inline-flex self-start rounded-full px-2.5 py-1 text-[11px] font-medium',
+        past ? 'bg-surface-alt text-ink-soft' : 'bg-ink text-surface',
+      )}
+    >
+      {past ? t.events.statusPast : t.events.statusUpcoming}
+    </span>
+  )
 }
 
-export function EventCard({ event }: { event: PlaiEvent }) {
+/* The title link stretches over the whole card (::after): one Tab stop per event. */
+export function EventCard({ event, past }: { event: PlaiEvent; past: boolean }) {
   const { t, locale } = useLocale()
-  const reduced = useReducedMotion()
-  const { day, month } = eventDateParts(event.start, locale)
 
   return (
-    <m.article
-      whileHover={reduced ? undefined : { y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
-      transition={spring.settle}
-      className="flex h-full gap-5 rounded-2xl border border-hairline bg-surface p-5"
-    >
-      <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-surface-alt">
-        <span className="text-2xl font-semibold leading-none text-ink tabular-nums">{day}</span>
-        <span className="mt-1 text-[11px] font-medium tracking-wide text-ink-soft">{month}</span>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <h3 className="text-base font-semibold leading-snug text-ink text-pretty">
-          {event.title}
-        </h3>
-        <div className="mt-2 flex flex-col gap-1 text-sm text-ink-soft">
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-            {formatEventDateTime(event.start, locale)}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <MapPin className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-            {event.location}
-          </span>
+    <article className="relative grid gap-5 rounded-2xl border border-hairline bg-surface p-4 transition-shadow focus-within:ring-2 focus-within:ring-ink hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:p-5">
+      {event.image && (
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-surface-alt">
+          <img
+            src={event.image}
+            alt=""
+            loading="lazy"
+            className={cn('absolute inset-0 h-full w-full object-cover', past && 'grayscale')}
+          />
         </div>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft text-pretty">
-          {event.description}
-        </p>
-        <div className="mt-auto pt-4">
-          <PillButton
-            variant="secondary"
-            size="sm"
-            onClick={() => window.open(googleCalendarUrl(event), '_blank', 'noopener')}
+      )}
+      <div className={cn('flex min-w-0 flex-col', !event.image && 'sm:col-span-2')}>
+        <EventStatus past={past} />
+        <h3 className="mt-3 text-lg font-semibold leading-snug text-ink text-pretty md:text-xl">
+          <Link
+            href={`/events/${event.slug}`}
+            className="outline-none after:absolute after:inset-0 after:rounded-2xl"
           >
-            {t.events.register}
-          </PillButton>
-        </div>
+            {event.title}
+          </Link>
+        </h3>
+        <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-soft">
+          <CalendarDays className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+          {formatEventDate(event, locale)}
+        </p>
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft text-pretty">
+          {event.summary}
+        </p>
+        <span aria-hidden="true" className="mt-auto pt-4 text-sm font-medium text-ink">
+          {t.events.more} →
+        </span>
       </div>
-    </m.article>
+    </article>
   )
 }

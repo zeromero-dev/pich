@@ -92,26 +92,29 @@ The target feel is *tactile and instant* — Nintendo Switch, not luxury-brand s
 
 ## 5. Core components
 
-- **Header**: sticky, `bg-white/80` + `backdrop-blur`, hairline bottom border appears after scrolling. Contains: logo, nav (Крамничка / Події / Про нас / Митці), locale switch (УКР/EN, pill toggle), cart button with count badge. Mobile: logo + cart + hamburger opening a full-screen menu (staggered link entrance).
+- **Header**: sticky, `bg-white/80` + `backdrop-blur`, hairline bottom border appears after scrolling. Contains: logo, nav (Крамничка / Митці / Події / Про нас / Співпраця, from `NAV` in `lib/nav.ts`; the footer reuses it. Fits on one line from `md` up in both locales — measured 2026-10-25), locale switch (УКР/EN, pill toggle), cart button with count badge. Mobile: logo + cart + hamburger opening a full-screen menu (staggered link entrance).
 - **Buttons**: pill-shaped. Primary — white on `ink`, hover `#2a2a2a`; Secondary — `ink` text, hairline border, transparent bg; Ghost — `ink-soft` text only. Heights: 44px (default) / 52px (hero CTA). All get the press-scale.
-- **Product card**: image frame with fixed `aspect-[4/5]`, `surface-alt` backdrop, `object-contain` — paintings keep their true proportions, and contain-on-a-uniform-backdrop unifies the inconsistent CRM photos better than crop-to-cover. Below: name (`h3`, max 2 lines), price (`small`, 600 weight, "₴1 200" format, space as thousands separator). Whole card is the link.
-- **Event card**: date block on the left (day number large, month small — like a calendar leaf), title, time + location line, "Записатись" ghost button. Sourced from Google Calendar.
+- **Product card**: image frame with fixed `aspect-[4/5]`, `surface-alt` backdrop, `object-contain` — paintings keep their true proportions, and contain-on-a-uniform-backdrop unifies the inconsistent CRM photos better than crop-to-cover. Below: name (`h3`, max 2 lines), price (`small`, 600 weight, "₴1 200" format, space as thousands separator). Image and title both link to the work (the image link is `aria-hidden`, out of Tab order). Add-to-cart button on the image: mouse = full-width bar revealed on hover/focus; touch = always-visible round '+' (`pointer-fine:` variant). Adds 1, does not open the drawer; disabled as «У кошику» once the cart holds all `available`. No «Остання» badge on cards (brief §3.3).
+- **Event card**: optional photo left (greyscale once past), status pill «Незабаром»/«Відбулася», title (its link stretches over the whole card — one Tab stop), date line, 3-line summary. Sourced from the owners' sheet.
 - **Search**: input in the shop toolbar (not the header, in v1), pill-shaped, expands slightly on focus. Client-side filtering over the already-fetched catalog — results update as you type (debounce ~150ms), grid animates re-order. Empty state: friendly, offers to clear filters.
 - **Inputs (checkout)**: pill/rounded fields, labels above (never placeholder-as-label), 2px `ink` focus ring. Validate on blur, re-validate on change after first error ("reward early, punish late").
 - **Footer**: `surface-alt`, generous, address + hours + socials + mini-nav. The place where the art-center-as-a-place identity shows.
 
 ## 6. Page blueprints (v1)
 
-**Landing** — the sales pitch for the place:
+**Landing** — the sales pitch for the place (client brief 2026-10, §2):
 1. Hero: `display` statement in black on white, one strong photo of the space/art, primary CTA → shop, secondary → events.
-2. "Найближчі події" — next 3 events as cards, link to full calendar.
-3. Featured works — 6–8 product cards, link to shop.
-4. About teaser — short text + photo, link to about/artist.
-5. Footer.
+2. «Категорії» — carousel of root-category tiles (photo + overlaid label) → `/shop?category=<id>`.
+3. «Новинки» — carousel of the 12 newest in-stock works + «Уся крамничка».
+4. «Події» — static text + photo block, link to `/events`. Never reads event data (brief §2.4).
+5. «Люди, які створюють ці роботи» — carousel of up to 16 roster cards + «Усі митці».
+6. Footer.
+
+**Carousel rule** (`components/carousel.tsx`): native CSS scroll-snap, no library. Fractional item widths so the next card peeks on mobile; prev/next arrows from `md` up; smooth scroll unless reduced motion.
 
 **Shop (Крамничка)**: toolbar (search + category chips from CRM categories, horizontally scrollable on mobile) → product grid `2 / 3 / 4` columns (mobile / tablet / desktop). Product page: image gallery left (all CRM images, thumbnails), right column: name, price, description, add-to-cart, stock hint ("В наявності" — advisory, per CLAUDE.md gotcha). Cart is a drawer, not a page. Checkout: single page, one column, cart summary + contact + delivery fields, payment step (stub in v1 — provider TBD).
 
-**Events (Події)**: list grouped by month, event cards, each expandable or linking to a detail view with description + "add to my calendar" link. A month-grid calendar view is **v2** — list-first ships v1.
+**Events (Події)**: «Майбутні події» (soonest first) then «Минулі події» (newest first); the upcoming section is omitted when empty. Each card links to `/events/[slug]`: status, title, date, photo, summary. No calendar view (brief: detached from the calendar).
 
 **Artist / About (Митці / Про нас)**: portrait, bio (content lives in the repo), selected works linking into the shop. Layout is a simple editorial column — `65ch` text, full-bleed images between sections.
 

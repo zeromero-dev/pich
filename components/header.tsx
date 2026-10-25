@@ -11,6 +11,7 @@ import { useFocusTrap } from '@/lib/use-focus-trap'
 import { useCart, useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 import type { Locale } from '@/lib/i18n'
+import { NAV } from '@/lib/nav'
 
 const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
   { value: 'uk', label: 'УКР' },
@@ -94,12 +95,7 @@ export function Header() {
   const pathname = usePathname()
   const menuRef = useFocusTrap<HTMLDivElement>(menuOpen, () => setMenuOpen(false))
 
-  const nav = [
-    { href: '/shop', label: t.nav.shop },
-    { href: '/events', label: t.nav.events },
-    { href: '/about', label: t.nav.about },
-    { href: '/artists', label: t.nav.artists },
-  ]
+  const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)

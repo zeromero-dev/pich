@@ -8,6 +8,8 @@ What the shop sells and how buyers find it. Source of truth: HUGEPROFIT CRM. The
 
 258 products, of which **252 reach the shop** (1 has no price, 5 have no image — rules 2 and 6). One warehouse ("Крамничка ПІЧ", id 34998 — a second warehouse "Події в ПІЧі" (35002) exists and is empty). 71 brands, all Ukrainian personal names. 19 categories, 15 of them in use. This is a **craft shop**, not a gallery of unique originals: 95 works at qty 1, 81 at qty 2–5, 21 at qty 6+, 61 sold out. Prices 20–210 000 ₴, always integers, `sale_price` always equal to `price`. 53 products have no description, 33 have clean copy, 171 hold internal notes (rule 3).
 
+**Root categories (checked 2026-10-25, all 315 rows of 34998, sellable or not):** 13 roots, every product has a category — Хенд мейд 110, Прикраси 86, Картини 55, Поліграфія 16, Інші предмети 16, Одяг 12, Посуд 6, Скло 5, Стікери 3, книжка 2, Лінографюра 2, Фігурки пластмас. 1, Трави 1. These are the homepage category tiles (`rootCategoriesOf`). The bottom four are thin and «книжка» is lowercase — owners may want to tidy them in the CRM.
+
 ## Model (from the code — `Product`, `Category` in `lib/data.ts`)
 
 ```
@@ -35,7 +37,7 @@ Category { slug (CRM category id), label }
 
 1. **Availability is a count, capped by the CRM.** `available` = `stock[].instock` (reservations already subtracted); `inStock` = `available > 0`. A buyer may order 1…`available` of a work — client brief 2026-10 (`task/TASK.md` §4.2), replacing the 2026-08-12 boolean rule. Displayed stock is advisory; checkout and the webhook re-check it fresh.
 
-   `isLast` (`instock === 1`) drives «Остання». Brief §3.3 limits it to the product page; cards still show it until P2 lands.
+   `isLast` (`instock === 1`) drives «Остання». Brief §3.3 limits it to the product page; cards dropped it 2026-10-25 (P2).
 2. **Price selection**: customer price is `sale_price` when set and > 0, otherwise `price`. A work with no positive price is dropped from the catalog entirely.
 3. **The CRM `description` field renders verbatim, and the CRM is where it gets cleaned.** Decided 2026-08-12 by the owners' side, reversing an earlier decision to suppress it.
 

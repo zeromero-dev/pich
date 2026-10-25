@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
-import { ShoppingBag, X } from 'lucide-react'
+import { ShoppingBag, Trash2, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useFocusTrap } from '@/lib/use-focus-trap'
@@ -112,9 +112,11 @@ export function CartDrawer() {
                           <button
                             type="button"
                             onClick={() => remove(product.id)}
-                            className="text-xs text-ink-faint transition-colors hover:text-ink"
+                            aria-label={`${t.cart.remove}: ${product.name}`}
+                            title={t.cart.remove}
+                            className="-mt-1 -mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-alt hover:text-ink"
                           >
-                            {t.cart.remove}
+                            <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
                           </button>
                         </div>
                         <div className="mt-auto flex items-center justify-between gap-2">
