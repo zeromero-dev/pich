@@ -11,20 +11,12 @@ import { useFocusTrap } from '@/lib/use-focus-trap'
 import { useCart, useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 import type { Locale } from '@/lib/i18n'
+import { NAV } from '@/lib/nav'
 
 const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
   { value: 'uk', label: 'УКР' },
   { value: 'en', label: 'EN' },
 ]
-
-/* Order is the client's (brief «Структура»); the footer reuses this list. */
-export const NAV = [
-  { href: '/shop', key: 'shop' },
-  { href: '/artists', key: 'artists' },
-  { href: '/events', key: 'events' },
-  { href: '/about', key: 'about' },
-  { href: '/collaboration', key: 'collaboration' },
-] as const
 
 function LocaleSwitch() {
   const { locale, setLocale } = useLocale()

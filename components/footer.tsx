@@ -5,7 +5,7 @@ import { Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
-import { NAV } from '@/components/header'
+import { NAV } from '@/lib/nav'
 import { CONTACTS } from '@/lib/contacts'
 
 /* lucide-react 1.x removed brand icons; this replicates the old Instagram glyph. */
