@@ -35,7 +35,7 @@ Category { slug (CRM category id), label }
 
 1. **Availability is a count, capped by the CRM.** `available` = `stock[].instock` (reservations already subtracted); `inStock` = `available > 0`. A buyer may order 1…`available` of a work — client brief 2026-10 (`task/TASK.md` §4.2), replacing the 2026-08-12 boolean rule. Displayed stock is advisory; checkout and the webhook re-check it fresh.
 
-   `isLast` (`instock === 1`) drives «Остання». Brief §3.3 limits it to the product page; cards still show it until P2 lands.
+   `isLast` (`instock === 1`) drives «Остання». Brief §3.3 limits it to the product page; cards dropped it 2026-10-25 (P2).
 2. **Price selection**: customer price is `sale_price` when set and > 0, otherwise `price`. A work with no positive price is dropped from the catalog entirely.
 3. **The CRM `description` field renders verbatim, and the CRM is where it gets cleaned.** Decided 2026-08-12 by the owners' side, reversing an earlier decision to suppress it.
 
