@@ -8,8 +8,8 @@ export function InfoPageView({ page }: { page: InfoPage }) {
         {page.title}
       </h1>
       <div className="mt-8 flex flex-col gap-8">
-        {page.sections.map((section, index) => (
-          <section key={section.heading ?? index}>
+        {page.sections.map((section) => (
+          <section key={section.heading ?? section.paragraphs[0]}>
             {section.heading && (
               <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">{section.heading}</h2>
             )}
