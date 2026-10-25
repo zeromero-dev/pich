@@ -114,7 +114,7 @@ export function CartDrawer() {
                             onClick={() => remove(product.id)}
                             aria-label={`${t.cart.remove}: ${product.name}`}
                             title={t.cart.remove}
-                            className="-mt-1 -mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-surface-alt hover:text-ink"
+                            className="-mt-1 -mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-alt hover:text-ink"
                           >
                             <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
                           </button>
