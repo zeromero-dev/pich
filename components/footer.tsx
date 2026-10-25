@@ -5,6 +5,8 @@ import { Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
+import { NAV } from '@/components/header'
+import { CONTACTS } from '@/lib/contacts'
 
 /* lucide-react 1.x removed brand icons; this replicates the old Instagram glyph. */
 export function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -26,7 +28,8 @@ export function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 const SOCIALS = [
-  { href: 'https://instagram.com', label: 'Instagram', Icon: InstagramIcon },
+  { href: CONTACTS.instagramUrl, label: 'Instagram', Icon: InstagramIcon },
+  // PLACEHOLDER: no Telegram URL supplied
   { href: 'https://t.me', label: 'Telegram', Icon: Send },
 ]
 
@@ -34,12 +37,7 @@ export function Footer() {
   const { t } = useLocale()
   const year = new Date().getFullYear()
 
-  const nav = [
-    { href: '/shop', label: t.nav.shop },
-    { href: '/events', label: t.nav.events },
-    { href: '/about', label: t.nav.about },
-    { href: '/artists', label: t.nav.artists },
-  ]
+  const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
 
   // Funder marks keep their brand colors (donor visibility) — the one colored
   // UI element besides photography. Heights preserve the composite's ratios.

@@ -17,6 +17,15 @@ const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
   { value: 'en', label: 'EN' },
 ]
 
+/* Order is the client's (brief «Структура»); the footer reuses this list. */
+export const NAV = [
+  { href: '/shop', key: 'shop' },
+  { href: '/artists', key: 'artists' },
+  { href: '/events', key: 'events' },
+  { href: '/about', key: 'about' },
+  { href: '/collaboration', key: 'collaboration' },
+] as const
+
 function LocaleSwitch() {
   const { locale, setLocale } = useLocale()
   return (
@@ -94,12 +103,7 @@ export function Header() {
   const pathname = usePathname()
   const menuRef = useFocusTrap<HTMLDivElement>(menuOpen, () => setMenuOpen(false))
 
-  const nav = [
-    { href: '/shop', label: t.nav.shop },
-    { href: '/events', label: t.nav.events },
-    { href: '/about', label: t.nav.about },
-    { href: '/artists', label: t.nav.artists },
-  ]
+  const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
