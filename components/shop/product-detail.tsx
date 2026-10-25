@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton } from '@/components/pill-button'
 import { ProductCard } from '@/components/product-card'
+import { QtyStepper } from '@/components/qty-stepper'
 import { StaggerGroup, StaggerItem } from '@/components/reveal'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/data'
@@ -21,16 +22,7 @@ export function ProductDetail({
   related: Product[]
 }) {
   const { t } = useLocale()
-  const { add, open } = useCart()
   const [active, setActive] = useState(0)
-  const [added, setAdded] = useState(false)
-
-  const handleAdd = () => {
-    add(product)
-    open()
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
-  }
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
@@ -102,34 +94,7 @@ export function ProductDetail({
             {formatPrice(product.price)}
           </p>
 
-          <div className="mt-6">
-            <PillButton
-              size="hero"
-              disabled={!product.inStock}
-              onClick={handleAdd}
-              className="w-full sm:w-auto"
-            >
-              <m.span
-                key={added ? 'added' : 'add'}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={spring.snap}
-                className="inline-flex items-center gap-2"
-              >
-                {added ? (
-                  <>
-                    <Check className="size-4" aria-hidden="true" />
-                    {t.cart.title}
-                  </>
-                ) : (
-                  <>
-                    <Plus className="size-4" aria-hidden="true" />
-                    {t.shop.addToCart}
-                  </>
-                )}
-              </m.span>
-            </PillButton>
-          </div>
+          <AddToCart product={product} />
 
           <p className="mt-3 text-sm text-ink-soft">
             <span
@@ -186,5 +151,57 @@ export function ProductDetail({
         </section>
       )}
     </main>
+  )
+}
+
+function AddToCart({ product }: { product: Product }) {
+  const { t } = useLocale()
+  const { add, open, items } = useCart()
+  const [added, setAdded] = useState(false)
+  const [qty, setQty] = useState(1)
+  const inCart = items.find((i) => i.product.id === product.id)?.qty ?? 0
+  const remaining = Math.max(0, product.available - inCart)
+
+  const handleAdd = () => {
+    add(product, Math.min(qty, remaining))
+    open()
+    setQty(1)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1500)
+  }
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* A single unit needs no stepper — the button alone says it. */}
+      {product.available > 1 && remaining > 0 && (
+        <QtyStepper value={Math.min(qty, remaining)} max={remaining} onChange={setQty} />
+      )}
+      <PillButton
+        size="hero"
+        disabled={!product.inStock || remaining === 0}
+        onClick={handleAdd}
+        className="w-full sm:w-auto"
+      >
+        <m.span
+          key={added ? 'added' : 'add'}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring.snap}
+          className="inline-flex items-center gap-2"
+        >
+          {added ? (
+            <>
+              <Check className="size-4" aria-hidden="true" />
+              {t.cart.title}
+            </>
+          ) : (
+            <>
+              <Plus className="size-4" aria-hidden="true" />
+              {t.shop.addToCart}
+            </>
+          )}
+        </m.span>
+      </PillButton>
+    </div>
   )
 }
