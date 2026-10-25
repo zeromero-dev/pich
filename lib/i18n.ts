@@ -23,11 +23,10 @@ export const dictionaries = {
       close: 'Закрити',
     },
     landing: {
-      heroTitle: 'Простір, де мистецтво живе поруч із вами.',
+      heroTitle: 'Мистецька крамничка ПІЧ',
       heroLead:
-        'Плай Піч — арт-центр і крамничка сучасного українського мистецтва. Приходьте дивитися, залишайтеся творити, забирайте роботи додому.',
+        'Кераміка, прикраси, картини й інші авторські речі від майстрів з усієї України. Ми зібрали їх у ПІЧ у Вінниці, а тепер знайомимо з ними й онлайн. Роздивляйтеся роботи, знайомтеся з авторами та обирайте для себе або на подарунок.',
       heroCtaShop: 'До крамнички',
-      heroCtaEvents: 'Найближчі події',
       eventsTitle: 'Події',
       eventsBody: [
         'Ми беремо участь у ярмарках і виставках та влаштовуємо зустрічі з авторами крамнички. Це нагода побачити вироби наживо, обрати щось для себе чи на подарунок або просто поспілкуватися.',
@@ -85,15 +84,15 @@ export const dictionaries = {
     },
     about: {
       title: 'Про нас',
-      lead: 'Плай Піч — простір, де сучасне українське мистецтво живе поруч із людьми.',
+      lead: 'Мистецька крамничка ПІЧ — це роботи понад 50 авторів з різних куточків України, зібрані у Вінниці. У нас можна обрати кераміку й посуд, прикраси, одяг та аксесуари, картини, книги й листівки. Роздивитися їх можна онлайн або наживо у крамничці на Сковороди, 25.',
       body1:
-        'Ми відкрили Плай Піч, щоб мистецтво було не за склом, а поруч — у розмовах, майстер-класах і чашці кави. Тут виставляються митці, народжуються ідеї та знаходять дім нові роботи.',
+        'Ми хочемо знайомити вас і з роботами, і з людьми, які їх створюють. Тому на сайті розповідаємо про наших авторів, їхні матеріали, техніки та ідеї.',
       body2:
-        'У нашій крамничці — лише оригінальні роботи. Кожна купівля напряму підтримує митця і допомагає простору жити далі: проводити виставки, події та відкриті студії.',
+        'Крамничка — частина культурного простору ПІЧ, який громадська організація «Мистецьке об’єднання PLAI» створила у 2020 році, під час пандемії. Тут митці різних напрямків зустрічаються, співпрацюють і реалізують спільні проєкти. У просторі відбуваються культурні події, освітні та медіапроєкти, а поруч із крамничкою працює спешелті-кав’ярня.',
       ctaArtists: 'Познайомитися з митцями',
       ctaEvents: 'Найближчі події',
       artistsTitle: 'Митці',
-      artistsLead: 'Люди, чиї роботи живуть у нашому просторі.',
+      artistsLead: 'Знайомтеся з авторами, чиї роботи представлені у мистецькій крамничці ПІЧ. Дізнавайтеся, з чим вони працюють, що їх надихає, та обирайте їхні вироби.',
       selectedWorks: 'Вибрані роботи',
       viewInShop: 'Дивитися в крамничці',
       allArtists: 'Усі митці',
@@ -203,11 +202,10 @@ export const dictionaries = {
       close: 'Close',
     },
     landing: {
-      heroTitle: 'A place where art lives right beside you.',
+      heroTitle: 'PICH Art Store',
       heroLead:
-        'Plai Pich is an art center and shop for contemporary Ukrainian art. Come to look, stay to create, take the work home.',
-      heroCtaShop: 'Visit the shop',
-      heroCtaEvents: 'Upcoming events',
+        'Ceramics, jewelry, paintings, and other original creations by makers from all over Ukraine. We’ve brought them together at PICH in Vinnytsia, and now we’re introducing them to you online. Explore the works, get to know their creators, and find something for yourself or as a gift.',
+      heroCtaShop: 'Go to the Store',
       eventsTitle: 'Events',
       eventsBody: [
         'We take part in fairs and exhibitions and organize meetings with the artists whose work is featured in our store. It’s an opportunity to see the pieces in person, choose something for yourself or as a gift, or simply have a conversation.',
@@ -265,15 +263,15 @@ export const dictionaries = {
     },
     about: {
       title: 'About',
-      lead: 'Plai Pich is a place where contemporary Ukrainian art lives right beside people.',
+      lead: 'PICH Art Store brings together work by more than 50 creators from across Ukraine, all in Vinnytsia. Here you’ll find ceramics and tableware, jewelry, clothing and accessories, paintings, books, and postcards. You can explore them online or visit our store in person at 25 Skovorody Street.',
       body1:
-        'We opened Plai Pich so art would live beside you — in conversations, workshops and a cup of coffee. Artists exhibit here, ideas take shape, and new works find a home.',
+        'We want to introduce you not only to the works but also to the people who make them. That’s why our website shares stories about our artists, their materials, techniques, and ideas.',
       body2:
-        'Our shop carries original works only. Every purchase directly supports the artist and keeps the space alive — running exhibitions, events and open studios.',
+        'The store is part of the PICH cultural space, founded in 2020 during the pandemic by the NGO “PLAI Art Association.” Artists from different fields meet, collaborate, and develop joint projects here. The space hosts cultural events, educational and media projects, and a specialty coffee shop operates next to the store.',
       ctaArtists: 'Meet the artists',
       ctaEvents: 'Upcoming events',
       artistsTitle: 'Artists',
-      artistsLead: 'The people whose works live in our space.',
+      artistsLead: 'Meet the creators whose works are featured at PICH Art Store. Discover the materials they use, what inspires them, and choose their creations.',
       selectedWorks: 'Selected works',
       viewInShop: 'View in shop',
       allArtists: 'All artists',
