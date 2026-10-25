@@ -100,6 +100,24 @@ export const dictionaries = {
       worksCount: (n: number) => `${n} ${plural(n, 'робота', 'роботи', 'робіт')}`,
       artistWorks: 'Роботи',
     },
+    collaboration: {
+      title: 'Співпраця',
+      lead: 'Мистецька крамничка ПІЧ відкрита до знайомств із новими авторами та спільних проєктів.',
+      sellTitle: 'Ваші роботи у крамничці',
+      sellBody: [
+        'Запрошуємо митців, майстрів і авторські майстерні запропонувати свої роботи для продажу в ПІЧ та нашій онлайн-крамничці.',
+        'Розкажіть трохи про себе й те, що створюєте. Додайте фотографії робіт або посилання на портфоліо, сайт чи сторінку в соцмережах. Ми розглянемо заявку й обговоримо можливість та умови співпраці.',
+      ],
+      sellCta: 'Залишити заявку',
+      inviteTitle: 'Запросити крамничку',
+      inviteBody: [
+        'Ми також відкриті до участі в ярмарках, виставках та інших подіях, де можна представити роботи наших авторів і познайомитися з новою аудиторією.',
+        'Якщо хочете запросити крамничку ПІЧ або маєте ідею спільного проєкту — напишіть нам. Розкажіть про формат, місце, дати й умови участі.',
+      ],
+      contactLabel: 'Запропонувати співпрацю:',
+      emailLabel: 'імейл:',
+      instagramLabel: 'напишіть у дірект:',
+    },
     cart: {
       title: 'Кошик',
       empty: 'Кошик порожній',
@@ -256,6 +274,24 @@ export const dictionaries = {
       backToArtists: 'Back to artists',
       worksCount: (n: number) => `${n} ${n === 1 ? 'work' : 'works'}`,
       artistWorks: 'Works',
+    },
+    collaboration: {
+      title: 'Collaboration',
+      lead: 'PICH Art Store is open to meeting new creators and working on collaborative projects.',
+      sellTitle: 'Your Work in Our Store',
+      sellBody: [
+        'We invite artists, craftspeople, and independent studios to offer their work for sale at PICH and in our online store.',
+        'Tell us a little about yourself and what you create. Add photos of your work or links to your portfolio, website, or social media page. We’ll review your application and discuss possible terms of collaboration.',
+      ],
+      sellCta: 'Submit an Application',
+      inviteTitle: 'Invite the Store',
+      inviteBody: [
+        'We’re also open to joining fairs, exhibitions, and other events where we can present our artists’ work and connect with new audiences.',
+        'If you’d like to invite PICH Art Store or have an idea for a joint project, write to us. Tell us about the format, venue, dates, and participation terms.',
+      ],
+      contactLabel: 'Propose a Collaboration:',
+      emailLabel: 'Email:',
+      instagramLabel: 'Instagram:',
     },
     cart: {
       title: 'Cart',

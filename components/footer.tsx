@@ -7,7 +7,7 @@ import { useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
 
 /* lucide-react 1.x removed brand icons; this replicates the old Instagram glyph. */
-function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
+export function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"

@@ -5,7 +5,7 @@ import { WEBSITE_URL } from '@/lib/site'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await getCatalog()
-  const staticRoutes = ['', '/shop', '/events', '/about', '/artists'].map((path) => ({
+  const staticRoutes = ['', '/shop', '/events', '/about', '/artists', '/collaboration'].map((path) => ({
     url: `${WEBSITE_URL}${path}`,
   }))
   const productRoutes = products.map((p) => ({
