@@ -76,17 +76,21 @@ export function ProductDetail({
 
         {/* Info */}
         <div className="md:pt-2">
-          {product.artist &&
-            (product.artistSlug ? (
-              <Link
-                href={`/artists/${product.artistSlug}`}
-                className="text-sm text-ink-soft transition-colors hover:text-ink"
-              >
-                {product.artist}
-              </Link>
-            ) : (
-              <p className="text-sm text-ink-soft">{product.artist}</p>
-            ))}
+          {product.artist && (
+            <p className="text-sm text-ink-soft">
+              {t.shop.author}{' '}
+              {product.artistSlug ? (
+                <Link
+                  href={`/artists/${product.artistSlug}`}
+                  className="font-medium text-ink underline decoration-ink/30 underline-offset-4 transition-colors hover:decoration-ink"
+                >
+                  {product.artist}
+                </Link>
+              ) : (
+                <span className="text-ink">{product.artist}</span>
+              )}
+            </p>
+          )}
           <h1 className="mt-1 text-3xl font-semibold tracking-[-0.02em] text-ink text-balance md:text-4xl">
             {product.name}
           </h1>
