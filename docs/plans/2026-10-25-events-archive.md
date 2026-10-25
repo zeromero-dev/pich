@@ -80,7 +80,7 @@ Nothing is wired to pages yet, so the build stays green.
 
 - [ ] **Step 1: Snapshot URLs before touching slugs.** `npm run dev`, then `curl -s localhost:3000/sitemap.xml > "$TMPDIR/sitemap-before.xml"` (any temp path outside the repo).
 
-- [ ] **Step 2: Create `lib/slug.ts`.** Move `TRANSLIT`, `transliterate` and `slugBase` out of `lib/hugeprofit/map.ts` unchanged, exporting `slugBase`:
+- [x] **Step 2: Create `lib/slug.ts`.** Move `TRANSLIT`, `transliterate` and `slugBase` out of `lib/hugeprofit/map.ts` unchanged, exporting `slugBase`:
 
 ```ts
 const TRANSLIT: Record<string, string> = {
@@ -111,7 +111,7 @@ In `lib/hugeprofit/map.ts`, delete those three definitions and add `import { slu
 
 - [ ] **Step 3: Prove product/artist URLs did not move.** `curl -s localhost:3000/sitemap.xml | diff "$TMPDIR/sitemap-before.xml" - && echo same`. Expected: `same`.
 
-- [ ] **Step 4: Create `lib/csv.ts`**
+- [x] **Step 4: Create `lib/csv.ts`**
 
 ```ts
 /**
@@ -152,7 +152,7 @@ export function parseCsv(text: string): string[][] {
 }
 ```
 
-- [ ] **Step 5: Create `lib/events.ts`**
+- [x] **Step 5: Create `lib/events.ts`**
 
 ```ts
 import 'server-only'
@@ -297,7 +297,7 @@ export function splitEvents(list: PlaiEvent[], now = new Date()) {
 }
 ```
 
-- [ ] **Step 6: Add `formatEventDate` to `lib/format.ts`** (below `UK_MONTHS`. Old helpers are removed in Task 2):
+- [x] **Step 6: Add `formatEventDate` to `lib/format.ts`** (below `UK_MONTHS`. Old helpers are removed in Task 2):
 
 ```ts
 const EN_MONTHS = [
@@ -320,7 +320,7 @@ export function formatEventDate(event: { date: string; endDate?: string }, local
 }
 ```
 
-- [ ] **Step 7: react-doctor, lint, build, commit**
+- [x] **Step 7: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -344,7 +344,7 @@ git commit -m "feat(events): store events from the owners' sheet, shared slug he
 - Consumes: `getEvents`, `splitEvents`, `PlaiEvent`, `formatEventDate` (Task 1).
 - Produces: `EventStatus({ past: boolean })`, `EventCard({ event: PlaiEvent; past: boolean })`, `EventsView({ upcoming: PlaiEvent[]; past: PlaiEvent[] })`.
 
-- [ ] **Step 1: i18n.** Replace the `events` block in both locales:
+- [x] **Step 1: i18n.** Replace the `events` block in both locales:
 
 ```ts
     // uk
@@ -378,7 +378,7 @@ git commit -m "feat(events): store events from the owners' sheet, shared slug he
 
 (`lead` is the brief's second «Події» paragraph, verbatim. `upcoming`/`past` are verbatim. `statusUpcoming`, `statusPast`, `more`, `back` and `empty` are our UI labels: list them in the PR for owner review. `register`, `addToCalendar` and `location` go away with the calendar button.)
 
-- [ ] **Step 2: Rewrite `components/event-card.tsx`**
+- [x] **Step 2: Rewrite `components/event-card.tsx`**
 
 ```tsx
 'use client'
@@ -446,7 +446,7 @@ export function EventCard({ event, past }: { event: PlaiEvent; past: boolean }) 
 }
 ```
 
-- [ ] **Step 3: Rewrite `components/events/events-view.tsx`**
+- [x] **Step 3: Rewrite `components/events/events-view.tsx`**
 
 ```tsx
 'use client'
@@ -502,7 +502,7 @@ export function EventsView({ upcoming, past }: { upcoming: PlaiEvent[]; past: Pl
 }
 ```
 
-- [ ] **Step 4: Rewrite `app/events/page.tsx`**
+- [x] **Step 4: Rewrite `app/events/page.tsx`**
 
 ```tsx
 import type { Metadata } from 'next'
@@ -526,10 +526,10 @@ export default async function EventsPage() {
 
 (Before writing it, confirm `revalidate` semantics in `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/`. Per-event JSON-LD moves to the detail page.)
 
-- [ ] **Step 5: Delete the mocks and the calendar code.** In `lib/data.ts`: delete `PlaiEvent`, `daysFromNow`, `events` and their comments, and change the header sentence "events will come from Google Calendar" to "events come from the owners' sheet (`lib/events.ts`)". In `lib/format.ts`: delete `UK_MONTHS_NOMINATIVE`, `EN_MONTHS_SHORT`, `formatEventDateTime`, `eventDateParts`, `monthLabel`, `monthKey`.
+- [x] **Step 5: Delete the mocks and the calendar code.** In `lib/data.ts`: delete `PlaiEvent`, `daysFromNow`, `events` and their comments, and change the header sentence "events will come from Google Calendar" to "events come from the owners' sheet (`lib/events.ts`)". In `lib/format.ts`: delete `UK_MONTHS_NOMINATIVE`, `EN_MONTHS_SHORT`, `formatEventDateTime`, `eventDateParts`, `monthLabel`, `monthKey`.
 Then run `grep -rni "formatEventDateTime\|eventDateParts\|monthLabel\|monthKey\|addToCalendar\|events\.register\|googleCalendarUrl\|calendar.google" app components lib`. Expected: no output.
 
-- [ ] **Step 6: react-doctor, lint, build, commit**
+- [x] **Step 6: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -551,7 +551,7 @@ Expected build output: `/events` builds. If `.env.local` has no sheet yet, the l
 **Interfaces:**
 - Consumes: `getEvents`, `getEvent`, `isPast`, `formatEventDate`, `EventStatus`, `serializeJsonLd`, `WEBSITE_URL`.
 
-- [ ] **Step 1: Create `components/events/event-detail.tsx`**
+- [x] **Step 1: Create `components/events/event-detail.tsx`**
 
 ```tsx
 'use client'
@@ -602,7 +602,7 @@ export function EventDetail({ event, past }: { event: PlaiEvent; past: boolean }
 }
 ```
 
-- [ ] **Step 2: Create `app/events/[slug]/page.tsx`**
+- [x] **Step 2: Create `app/events/[slug]/page.tsx`**
 
 ```tsx
 import type { Metadata } from 'next'
@@ -661,7 +661,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
 (`serializeJsonLd` already escapes `</script>` inside sheet text, see `lib/json-ld.ts`. Confirm in the Next 16 docs that `generateStaticParams` returning `[]` is valid with the default `dynamicParams`. It must not fail the build when the sheet is empty or unset.)
 
-- [ ] **Step 3: Sitemap.** In `app/sitemap.ts`: `import { getEvents } from '@/lib/events'`, then
+- [x] **Step 3: Sitemap.** In `app/sitemap.ts`: `import { getEvents } from '@/lib/events'`, then
 
 ```ts
   const eventRoutes = (await getEvents()).map((e) => ({ url: `${WEBSITE_URL}/events/${e.slug}` }))
@@ -669,7 +669,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
 and return `[...staticRoutes, ...productRoutes, ...artistRoutes, ...eventRoutes]`.
 
-- [ ] **Step 4: react-doctor, lint, build, commit**
+- [x] **Step 4: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -685,7 +685,7 @@ git commit -m "feat(events): permanent event pages"
 - Temporary, never committed: `public/events-fixture.csv`
 - Modify: `.env.example`, `CLAUDE.md`, `.claude/docs/domain/events.md` (rewrite)
 
-- [ ] **Step 1: Fixture.** Create `public/events-fixture.csv`, replacing `D-2`, `D-1`, `D0`, `D+1`, `D+3`, `D+4` with real dates relative to **today in Kyiv** (`YYYY-MM-DD`), and `D+10` with that date in `DD.MM.YYYY` form:
+- [x] **Step 1: Fixture.** Create `public/events-fixture.csv`, replacing `D-2`, `D-1`, `D0`, `D+1`, `D+3`, `D+4` with real dates relative to **today in Kyiv** (`YYYY-MM-DD`), and `D+10` with that date in `DD.MM.YYYY` form:
 
 ```csv
 Назва,Дата,Дата завершення,Короткий опис,Фото,Slug
@@ -714,15 +714,15 @@ Set `EVENTS_SHEET_CSV_URL=http://localhost:3000/events-fixture.csv` in `.env.loc
 
 - [ ] **Step 3: Drive photo check.** Upload a test image to Google Drive, share it "Anyone with the link", and put the share link in a fixture row's `Фото`. Expected: the card shows the image. If it doesn't render, drop the Drive branch from `toImage`, and the owner guide says photos must be direct `https://` image links.
 
-- [ ] **Step 4: Clean up.** `rm public/events-fixture.csv`. Remove `EVENTS_SHEET_CSV_URL` from `.env.local`, or set the owners' real URL if you have it. `git status` must show neither file.
+- [x] **Step 4: Clean up.** `rm public/events-fixture.csv`. Remove `EVENTS_SHEET_CSV_URL` from `.env.local`, or set the owners' real URL if you have it. `git status` must show neither file.
 
-- [ ] **Step 5: `.env.example`.** Delete `GOOGLE_CALENDAR_API_KEY=` and `GOOGLE_CALENDAR_ID=`. Add:
+- [x] **Step 5: `.env.example`.** Delete `GOOGLE_CALENDAR_API_KEY=` and `GOOGLE_CALENDAR_ID=`. Add:
 
 ```bash
 EVENTS_SHEET_CSV_URL=             # server-only — owners' Google Sheet → File → Share → Publish to web → CSV link
 ```
 
-- [ ] **Step 6: Rewrite `.claude/docs/domain/events.md`.** Cover:
+- [x] **Step 6: Rewrite `.claude/docs/domain/events.md`.** Cover:
   - **Source:** store events, detached from the calendar (client brief 2026-10, verbatim quote). Published by the owners in a Google Sheet (CSV, `EVENTS_SHEET_CSV_URL`), fetched in `lib/events.ts` with 5-min revalidate. Replaces the never-built Google Calendar plan.
   - **Model:** `PlaiEvent` and the sheet table from this plan.
   - **Rules:** the requirement → implementation table from this plan. Past = day after last day, Kyiv. Invalid rows are skipped with a warning naming the sheet row. Unset URL = no events. A Google error keeps the last good page.
@@ -736,7 +736,7 @@ EVENTS_SHEET_CSV_URL=             # server-only — owners' Google Sheet → Fil
   - **Not built (not in the brief):** time, location, long description, registration. Each would be one more column.
   - Remove the old «Записатись» section and the `lib/calendar/` boundary section.
 
-- [ ] **Step 7: `CLAUDE.md`.**
+- [x] **Step 7: `CLAUDE.md`.**
   - Opening paragraph: "Events come from Google Calendar" → "Events are published by the owners in a Google Sheet (detached from the calendar, per the client brief)".
   - Scope item 4 → "**Events** — BUILT: store events from the owners' published Google Sheet (`lib/events.ts`), «Майбутні»/«Минулі» split, permanent `/events/[slug]` pages."
   - Architecture tree: `lib/calendar/ # PLANNED …` → `lib/events.ts # BUILT: Google Sheet CSV → events; lib/csv.ts parser; lib/slug.ts shared transliteration`. Add `/events/[slug]` to the `app/` line.
@@ -746,7 +746,7 @@ EVENTS_SHEET_CSV_URL=             # server-only — owners' Google Sheet → Fil
 
 - [ ] **Step 8: Vercel.** Tell the user to add `EVENTS_SHEET_CSV_URL` to Vercel **Production and Preview**, and delete `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID` there if present. This can't be done from the repo.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git status   # no .env*, no events-fixture.csv
