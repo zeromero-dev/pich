@@ -30,9 +30,9 @@
 - Consumes: `useCart().add(product, 1)`, `useCart().items`, `Product.available` (P1).
 - Produces: `ProductCard({ product })`, same props as today, so every call site (shop grid, related works, artist page, homepage) gets the button.
 
-- [ ] **Step 1: i18n.** In `lib/i18n.ts` add after `shop.addToCart` → uk: `inCart: 'У кошику',` en: `inCart: 'In cart',`.
+- [x] **Step 1: i18n.** In `lib/i18n.ts` add after `shop.addToCart` → uk: `inCart: 'У кошику',` en: `inCart: 'In cart',`.
 
-- [ ] **Step 2: Rewrite `components/product-card.tsx`**
+- [x] **Step 2: Rewrite `components/product-card.tsx`**
 
 ```tsx
 'use client'
@@ -145,7 +145,7 @@ export function ProductCard({ product }: { product: Product }) {
   5. A sold work: «Продано» badge, no button. No card anywhere shows «Остання».
   6. Reduced motion on: no lift or zoom, the button still works.
 
-- [ ] **Step 4: react-doctor, lint, build, commit**
+- [x] **Step 4: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -161,9 +161,9 @@ git commit -m "feat(shop): add-to-cart on product cards, drop «Остання»
 - Modify: `components/shop/product-detail.tsx` (artist block at the top of the info column)
 - Modify: `lib/i18n.ts` (`shop.author`, both locales)
 
-- [ ] **Step 1: i18n.** Add to `shop`: uk `author: 'Автор:',` en `author: 'Author:',`.
+- [x] **Step 1: i18n.** Add to `shop`: uk `author: 'Автор:',` en `author: 'Author:',`.
 
-- [ ] **Step 2: Replace the artist block.** In `components/shop/product-detail.tsx`, replace the whole `{product.artist && (product.artistSlug ? ( <Link …/> ) : ( <p …/> ))}` expression with:
+- [x] **Step 2: Replace the artist block.** In `components/shop/product-detail.tsx`, replace the whole `{product.artist && (product.artistSlug ? ( <Link …/> ) : ( <p …/> ))}` expression with:
 
 ```tsx
           {product.artist && (
@@ -185,7 +185,7 @@ git commit -m "feat(shop): add-to-cart on product cards, drop «Остання»
 
 - [ ] **Step 3: Manual check:** a product with an artist shows «Автор: <underlined name>», and the link goes to `/artists/<slug>`. A product without an artist (22 live works) shows no line. The EN locale shows "Author:".
 
-- [ ] **Step 4: react-doctor, lint, build, commit**
+- [x] **Step 4: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -200,7 +200,7 @@ git commit -m "feat(shop): «Автор:» label and underlined artist link on p
 **Files:**
 - Modify: `components/artists/artist-detail.tsx` (the `<Reveal>` header block)
 
-- [ ] **Step 1: Replace the header `<Reveal className="mt-6 mb-10 max-w-[65ch]">…</Reveal>`** with:
+- [x] **Step 1: Replace the header `<Reveal className="mt-6 mb-10 max-w-[65ch]">…</Reveal>`** with:
 
 ```tsx
       <Reveal
@@ -241,7 +241,7 @@ The works grid below stays exactly as it is (brief §5: "keep the artist's produ
 
 - [ ] **Step 2: Manual check with a throwaway profile (do not commit).** Temporarily add to `artistProfiles` in `lib/data.ts`: `'<a real slug from /artists>': { portrait: '/images/template.jpg', bio: 'Тест.\n\nДругий абзац.' }`. At 1280px: square photo left, name/count/bio right, works below. At 375px: photo stacked above the text. Remove the entry and confirm `git diff lib/data.ts` is empty. An artist without a profile looks exactly as before.
 
-- [ ] **Step 3: react-doctor, lint, build, commit**
+- [x] **Step 3: react-doctor, lint, build, commit**
 
 ```bash
 npx react-doctor@latest && npm run lint && npm run build
@@ -249,7 +249,7 @@ git add components/artists/artist-detail.tsx
 git commit -m "feat(artists): portrait + bio header when a profile exists"
 ```
 
-- [ ] **Step 4: Docs.** In `.claude/docs/domain/catalog.md` rule 1, note that cards no longer show «Остання» (P1 Task 4 already wrote it; confirm). In `.claude/docs/ui-ux-guidelines.md` §5 add: "Product card: add-to-cart button. Mouse = full-width bar revealed on hover/focus; touch = always-visible round '+' (`pointer-fine:` variant). Adds 1, does not open the drawer." Commit:
+- [x] **Step 4: Docs.** In `.claude/docs/domain/catalog.md` rule 1, note that cards no longer show «Остання» (P1 Task 4 already wrote it; confirm). In `.claude/docs/ui-ux-guidelines.md` §5 add: "Product card: add-to-cart button. Mouse = full-width bar revealed on hover/focus; touch = always-visible round '+' (`pointer-fine:` variant). Adds 1, does not open the drawer." Commit:
 
 ```bash
 git add .claude/docs
