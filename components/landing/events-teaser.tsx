@@ -12,10 +12,10 @@ export function EventsTeaser() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
       <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
-        <Reveal className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-surface-alt md:order-last">
+        <Reveal className="relative aspect-4/3 overflow-hidden rounded-3xl bg-surface-alt md:order-last">
           <img
-            src="/images/template.jpg"
-            alt="Інтерʼєр арт-центру Плай Піч: стіна, завішана картинами"
+            src="/images/events/events-teaser.jpg"
+            alt="Намет ПІЧ на ярмарку в парку: кавовий бар, стенд з прикрасами й картини на мольбертах"
             loading="lazy"
             className="absolute inset-0 h-full w-full object-cover"
           />
