@@ -52,6 +52,8 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
+  // Dev reads fresh so CRM edits show on reload; production keeps the cache.
+  if (process.env.NODE_ENV === 'development') revalidate = 0
   // Every read stays inside the configured warehouse: `products` without
   // `warehouse_id` returns every warehouse the token can reach.
   if (Number(params.warehouse_id) !== SHOP_WAREHOUSE_ID) {

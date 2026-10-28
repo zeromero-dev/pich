@@ -44,7 +44,8 @@ export type CrmProduct = {
   /** Leaf first, then ancestors. Empty for none (unused in this account). */
   category: CrmCategory[]
   attr: CrmAttr[]
-  af: unknown
+  /** Free-text custom fields, label → value, e.g. `{ 'Показувати на сайті': 'так' }`. */
+  af?: Record<string, string | null | undefined> | null
   /**
    * Internal notes in this account — 167 of 258 rows hold artists' card
    * numbers, legal names and phone numbers. Never mapped, never rendered.
