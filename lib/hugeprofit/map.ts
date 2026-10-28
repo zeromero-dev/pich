@@ -44,6 +44,24 @@ export function toSize(raw: string | null | undefined): string | null {
   return parts.length ? `${parts.join(' × ')} см` : null
 }
 
+const SHOW_FIELD = 'Показувати на сайті'
+// Typed by hand in the CRM: case, whitespace and trailing dots are stripped first.
+const YES = new Set(['так', 'т', 'tak', 'да', 'yes', 'y', 'true', '1', '+', '✓', '✔', '✅'])
+const NO = new Set(['ні', 'нi', 'hі', 'hi', 'н', 'ni', 'ne', 'нет', 'no', 'n', 'false', '0', '-', '✗', '✘', '❌'])
+
+/**
+ * Field unset → shown (the catalog predates it). Anything that is neither a
+ * known yes nor a known no → hidden: a typo must not publish a work.
+ */
+export function isShownOnSite(af: CrmProduct['af']): boolean {
+  const raw = af?.[SHOW_FIELD]
+  if (raw == null || raw.trim() === '') return true
+  const value = raw.trim().toLowerCase().replace(/[.!\s]+$/, '')
+  if (YES.has(value)) return true
+  if (!NO.has(value)) console.warn(`[crm] unrecognised "${SHOW_FIELD}": ${JSON.stringify(raw)}`)
+  return false
+}
+
 /** The one stock row that matters. Every product in this account has exactly one. */
 function stockFor(product: CrmProduct, warehouseId: number): CrmStock | undefined {
   return product.stock.find((s) => s.mid === warehouseId) ?? product.stock[0]
@@ -58,6 +76,7 @@ function stockFor(product: CrmProduct, warehouseId: number): CrmStock | undefine
  * home in the return type, so no page or API response can carry it.
  */
 export function toProduct(crm: CrmProduct, warehouseId: number): Product | null {
+  if (!isShownOnSite(crm.af)) return null
   const stock = stockFor(crm, warehouseId)
   if (!stock) return null
 
