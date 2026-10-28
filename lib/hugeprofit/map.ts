@@ -49,13 +49,10 @@ const SHOW_FIELD = 'Показувати на сайті'
 const YES = new Set(['так', 'т', 'tak', 'да', 'yes', 'y', 'true', '1', '+', '✓', '✔', '✅'])
 const NO = new Set(['ні', 'нi', 'hі', 'hi', 'н', 'ni', 'ne', 'нет', 'no', 'n', 'false', '0', '-', '✗', '✘', '❌'])
 
-/**
- * Field unset → shown (the catalog predates it). Anything that is neither a
- * known yes nor a known no → hidden: a typo must not publish a work.
- */
+/** Opt-in: only a known yes publishes a work. Unset, no or a typo all hide it. */
 export function isShownOnSite(af: CrmProduct['af']): boolean {
   const raw = af?.[SHOW_FIELD]
-  if (raw == null || raw.trim() === '') return true
+  if (raw == null || raw.trim() === '') return false
   const value = raw.trim().toLowerCase().replace(/[.!\s]+$/, '')
   if (YES.has(value)) return true
   if (!NO.has(value)) console.warn(`[crm] unrecognised "${SHOW_FIELD}": ${JSON.stringify(raw)}`)
