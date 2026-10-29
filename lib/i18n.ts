@@ -74,8 +74,10 @@ export const dictionaries = {
     events: {
       title: 'Події',
       lead: 'Тут розповідаємо, де й коли можна зустрітися з нами, та ділимося тим, що вже відбулося.',
+      current: 'Поточні події',
       upcoming: 'Майбутні події',
       past: 'Минулі події',
+      statusCurrent: 'Триває',
       statusUpcoming: 'Незабаром',
       statusPast: 'Відбулася',
       more: 'Детальніше',
@@ -253,9 +255,11 @@ export const dictionaries = {
     events: {
       title: 'Events',
       lead: 'Here we share where and when you can meet us, along with stories from events that have already taken place.',
+      current: 'Happening now',
       upcoming: 'Upcoming events',
       past: 'Past events',
-      statusUpcoming: 'Upcoming',
+      statusCurrent: 'On now',
+      statusUpcoming: 'Coming soon',
       statusPast: 'Took place',
       more: 'Details',
       back: 'Back to events',
