@@ -65,7 +65,9 @@ export function Footer() {
               <br />
               {t.footer.city}
               <br />
-              hello@plaipich.art
+              <a href={`mailto:${CONTACTS.email}`} className="hover:text-ink">
+                {CONTACTS.email}
+              </a>
             </address>
           </div>
 
