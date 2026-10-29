@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/providers'
 import { Logo } from '@/components/logo'
@@ -29,8 +28,6 @@ export function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
 
 const SOCIALS = [
   { href: CONTACTS.instagramUrl, label: 'Instagram', Icon: InstagramIcon },
-  // PLACEHOLDER: no Telegram URL supplied
-  { href: 'https://t.me', label: 'Telegram', Icon: Send },
 ]
 
 export function Footer() {

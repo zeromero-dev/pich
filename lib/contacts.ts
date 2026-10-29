@@ -1,8 +1,6 @@
-/* Contact details the owners have not confirmed yet. Every value
-   marked PLACEHOLDER must be checked before launch. */
+/* Instagram is the only social channel (owners, 2026-10-29). */
 export const CONTACTS = {
   email: 'art.store.pich@gmail.com',
   instagramHandle: '@pich.prostir',
-  // PLACEHOLDER: profile URL derived from the handle — the brief linked a single post.
   instagramUrl: 'https://www.instagram.com/pich.prostir/',
 } as const
