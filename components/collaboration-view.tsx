@@ -17,7 +17,7 @@ export function CollaborationView() {
   const c = t.collaboration
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
+    <main className="mx-auto w-full max-w-3xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
       <Reveal>
         <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink text-balance md:text-5xl">
           {c.title}
