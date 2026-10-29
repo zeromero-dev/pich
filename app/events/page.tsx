@@ -7,11 +7,10 @@ export const metadata: Metadata = {
   description: 'Ярмарки, виставки та зустрічі з авторами мистецької крамнички ПІЧ.',
 }
 
-// Upcoming/past is decided at render time, so a short regeneration window both
-// moves finished events to «Минулі події» and picks up new sheet rows.
+// Current/upcoming/past is decided at render time, so a short regeneration window
+// moves events between sections and picks up new sheet rows.
 export const revalidate = 300
 
 export default async function EventsPage() {
-  const { upcoming, past } = splitEvents(await getEvents())
-  return <EventsView upcoming={upcoming} past={past} />
+  return <EventsView {...splitEvents(await getEvents())} />
 }

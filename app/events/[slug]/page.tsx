@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getEvent, getEvents, isPast } from '@/lib/events'
+import { eventBadge, getEvent, getEvents, splitEvents } from '@/lib/events'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { WEBSITE_URL } from '@/lib/site'
 import { EventDetail } from '@/components/events/event-detail'
@@ -30,7 +30,8 @@ export async function generateMetadata({
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const event = await getEvent(slug)
+  const events = await getEvents()
+  const event = events.find((e) => e.slug === slug)
   if (!event) notFound()
 
   const jsonLd = {
@@ -46,7 +47,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <EventDetail event={event} past={isPast(event)} />
+      <EventDetail event={event} badge={eventBadge(event, splitEvents(events).upcoming[0]?.date)} />
     </>
   )
 }
