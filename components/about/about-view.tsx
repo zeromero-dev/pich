@@ -9,7 +9,7 @@ export function AboutView() {
   const { t } = useLocale()
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
+    <main className="mx-auto w-full max-w-6xl px-4 pt-10 pb-16 md:px-6 md:pt-14 md:pb-24">
       <Reveal className="mx-auto max-w-2xl">
         <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink text-balance md:text-5xl">
           {t.about.title}
