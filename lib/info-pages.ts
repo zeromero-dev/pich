@@ -23,7 +23,6 @@ export const infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage> = {
       {
         heading: 'Опрацювання замовлень',
         paragraphs: [
-          // Order handling starts an hour after the shop opens (footer: 11:00) — intended, per the owners.
           'Опрацьовуємо замовлення щодня з 12:00 до 21:00 — у години роботи мистецької крамнички ПІЧ.',
           'Якщо потрібно уточнити наявність товару, адресу або інші деталі, напишемо чи зателефонуємо за контактами, вказаними під час оформлення замовлення.',
         ],
@@ -117,7 +116,7 @@ export const infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage> = {
       {
         heading: 'Загальні положення',
         paragraphs: [
-          // PLACEHOLDER: owners named ГО «Плай» as the controller "for now" — confirm the registered name.
+          // PLACEHOLDER: names no data controller yet — add the legal entity once the owners confirm it.
           'Ця політика пояснює, які персональні дані збирає мистецька крамничка ПІЧ (вул. Григорія Сковороди, 25, Вінниця; далі — «ми») під час користування сайтом, з якою метою та як ми їх захищаємо.',
           'Ми обробляємо персональні дані відповідно до Закону України «Про захист персональних даних». Оформлюючи замовлення, ви погоджуєтеся з обробкою своїх даних на умовах цієї політики.',
         ],
