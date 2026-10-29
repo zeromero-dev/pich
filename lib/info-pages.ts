@@ -1,16 +1,10 @@
 import { CONTACTS } from '@/lib/contacts'
 
-/**
- * Informational/legal text, single-language (i18n.md content policy).
- * Delivery and returns are owner-supplied (2026-10-29); privacy is a generic
- * template we wrote at the owners' request.
- */
 export type InfoPage = {
   title: string
   description: string
   /** true = owner text not supplied yet: page is noindex and left out of the sitemap. */
   placeholder: boolean
-  /** A string is a paragraph; a string[] is a bulleted list. */
   sections: { heading?: string; paragraphs: (string | string[])[] }[]
 }
 
