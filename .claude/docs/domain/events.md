@@ -40,7 +40,7 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 |---|---|---|---|
 | `Назва` | yes | text | |
 | `Дата` | yes | `2026-11-21` or `21.11.2026` | the day of the event, or its first day |
-| `Дата завершення` | no | same | only for multi-day events, so the status stays «Незабаром» until the last day |
+| `Дата завершення` | no | same | only for multi-day events, so the event stays «Триває» until its last day |
 | `Короткий опис` | yes | text | card and event page; line breaks are kept on the event page |
 | `Фото` | no | any `https://` image URL, `/images/...`, or a Google Drive share link | Drive links are rewritten to `lh3.googleusercontent.com/d/<id>` — **unverified**, see below |
 | `Slug` | no | Latin, e.g. `zymovyi-yarmarok-2026` | permanent URL. Empty → derived from title + date, so editing the title changes the URL |
@@ -50,14 +50,14 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 | Brief | Implementation |
 |---|---|
 | Detach from the calendar; the store publishes its own events | Source is the owners' sheet. Mocks and all calendar code are gone. The homepage «Події» block is static copy (`components/landing/events-teaser.tsx`) |
-| «Майбутні події» / «Минулі події» | `EventsView` sections (`components/events/events-view.tsx`) |
-| No upcoming → only past, no empty block | the upcoming section renders only when non-empty |
-| Card: event date + clear status | `formatEventDate` + `EventStatus` «Незабаром» / «Відбулася»; past photos in greyscale |
+| «Поточні події» / «Майбутні події» / «Минулі події» (owners, 2026-10-29: current events on top, past in a dropdown) | `EventsView` sections (`components/events/events-view.tsx`); past events sit in a collapsed native `<details>` with a count |
+| No upcoming → only past, no empty block | each section renders only when non-empty; with nothing current or upcoming, the past dropdown starts open |
+| Card: event date + clear status | `formatEventDate` + `EventStatus` (`eventBadge` in `lib/events.ts`): «Триває» on current events, «Незабаром» only on the nearest upcoming date (every event on that date; later ones get no badge), «Відбулася» on past. Past cards grey the text (`text-ink-soft`), not the photo |
 | Event page: title, date, short description | `/events/[slug]` (`app/events/[slug]/page.tsx`) |
 | Events don't disappear, they stay as news | no date cut-off anywhere; a page lives as long as its row |
-| First = nearest or most recent | `splitEvents`: upcoming soonest-first, then past newest-first |
+| First = nearest or most recent | `splitEvents`: current and upcoming soonest-first, past newest-first |
 
-- **Past** = from the day after the last day (`endDate ?? date`), `Europe/Kyiv`. Decided at render time; pages regenerate every 5 minutes, so finished events move to «Минулі події» on their own.
+- **Phase** (`eventPhase`), `Europe/Kyiv` days: **current** from the first through the last day (a one-day event is current on its day), **upcoming** before it, **past** from the day after the last day (`endDate ?? date`). Decided at render time; pages regenerate every 5 minutes, so events move between sections on their own.
 - **Dates are never passed through `new Date()` for display** — `formatEventDate` splits the string, so a UTC server can't shift the day.
 - **Bad rows are skipped, never fatal.** Missing title/date/summary, an impossible date, an end before the start, or a duplicate slug → the row is skipped with a `console.warn` naming its sheet row. Blank rows are ignored silently.
 - **Unset URL = no events**, one warning, no throw — a missing sheet must not break the shop build.
@@ -66,14 +66,9 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 
 Verified 2026-10-25 with a local fixture CSV: ordering, the multi-day range, `DD.MM.YYYY` input, quoted commas/newlines/`""`, the three skip warnings, all-past and empty sheets, 404 for an unknown slug, the sitemap entries, and the loud failure on a 404 sheet URL. **Not verified:** Google Drive photo links (needs a real shared file) — until checked, tell the owners to use a direct `https://` image link if a Drive photo doesn't show.
 
-## Owner setup (send to the owners as-is)
+## Owner setup
 
-1. Create a Google Sheet «Події крамнички». Row 1 headers: `Назва | Дата | Дата завершення | Короткий опис | Фото | Slug`.
-2. Select columns `Дата` and `Дата завершення` → Format → Number → Plain text. Enter dates as `2026-11-21` or `21.11.2026`. `Дата завершення` only for multi-day events.
-3. `Фото`: a public image link. A Google Drive link to an image shared "Anyone with the link" should also work; if the photo doesn't appear on the site, use a direct image link instead.
-4. Keep the events tab first. Share → General access → "Anyone with the link" → Viewer → Copy link. Send the link to the developer.
-5. A new row appears on the site within about 5 minutes. Past events move to «Минулі події» by themselves.
-6. Don't delete rows of past events: they stay on the site as news. Don't change a published event's `Slug`. If `Slug` is empty, don't change its `Назва` either, because that changes its link.
+The owners get a ready template, `podii-kramnychky.xlsx`, to upload to Google Drive and open with Google Sheets. Its «Події» tab has the headers and every cell set to plain text. Its «Інструкція» tab is a short owner guide in Ukrainian: one line per column, how to add a photo from Google Drive (a folder shared "Anyone with the link: Viewer", copy each file's link; depends on the unverified Drive rewrite above), a privacy warning (the sheet is readable by anyone with the link), don't delete past events, don't rename headers, and an example row. On `Slug` it says only this: it's the end of the event's address; it's optional (built from title + date); if filled, use Latin with hyphens and never change it after publishing. It isn't in the repo yet (it was made in a session scratchpad); add it when we hand it over.
 
 ## Not built (not in the brief)
 

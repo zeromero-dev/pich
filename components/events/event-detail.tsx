@@ -6,9 +6,9 @@ import { formatEventDate } from '@/lib/format'
 import { useLocale } from '@/components/providers'
 import { EventStatus } from '@/components/event-card'
 import { Reveal } from '@/components/reveal'
-import type { PlaiEvent } from '@/lib/events'
+import type { EventBadge, PlaiEvent } from '@/lib/events'
 
-export function EventDetail({ event, past }: { event: PlaiEvent; past: boolean }) {
+export function EventDetail({ event, badge }: { event: PlaiEvent; badge?: EventBadge }) {
   const { t, locale } = useLocale()
 
   return (
@@ -22,8 +22,8 @@ export function EventDetail({ event, past }: { event: PlaiEvent; past: boolean }
       </Link>
 
       <Reveal className="mt-6 flex flex-col">
-        <EventStatus past={past} />
-        <h1 className="mt-3 text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink text-balance md:text-5xl">
+        <EventStatus badge={badge} />
+        <h1 className="mt-3 first:mt-0 text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink text-balance md:text-5xl">
           {event.title}
         </h1>
         <p className="mt-4 inline-flex items-center gap-2 text-base text-ink-soft">

@@ -139,16 +139,31 @@ const kyivDay = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
-/** Past from the day after its last day, Kyiv time. ISO dates compare as strings. */
-export function isPast(event: PlaiEvent, now = new Date()): boolean {
-  return (event.endDate ?? event.date) < kyivDay.format(now)
+export type EventPhase = 'current' | 'upcoming' | 'past'
+
+/** Current from its first through its last day, past from the day after; Kyiv time. ISO dates compare as strings. */
+export function eventPhase(event: PlaiEvent, now = new Date()): EventPhase {
+  const today = kyivDay.format(now)
+  if ((event.endDate ?? event.date) < today) return 'past'
+  return event.date <= today ? 'current' : 'upcoming'
 }
 
-/** Brief: «Першою є завжди найновіша подія або найближча» — nearest upcoming, then latest past. */
+/** Brief: «Першою є завжди найновіша подія або найближча» — soonest first, then latest past. */
 export function splitEvents(list: PlaiEvent[], now = new Date()) {
-  const upcoming = list.filter((e) => !isPast(e, now)).sort((a, b) => a.date.localeCompare(b.date))
-  const past = list
-    .filter((e) => isPast(e, now))
-    .sort((a, b) => (b.endDate ?? b.date).localeCompare(a.endDate ?? a.date))
-  return { upcoming, past }
+  const of = (phase: EventPhase) => list.filter((e) => eventPhase(e, now) === phase)
+  const soonest = (a: PlaiEvent, b: PlaiEvent) => a.date.localeCompare(b.date)
+  return {
+    current: of('current').sort(soonest),
+    upcoming: of('upcoming').sort(soonest),
+    past: of('past').sort((a, b) => (b.endDate ?? b.date).localeCompare(a.endDate ?? a.date)),
+  }
+}
+
+export type EventBadge = 'current' | 'soon' | 'past'
+
+/** «Незабаром» goes only to the nearest upcoming date (every event on it); later ones get no badge. */
+export function eventBadge(event: PlaiEvent, nearestUpcoming: string | undefined, now = new Date()): EventBadge | undefined {
+  const phase = eventPhase(event, now)
+  if (phase !== 'upcoming') return phase
+  return event.date === nearestUpcoming ? 'soon' : undefined
 }
