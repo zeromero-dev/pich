@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
-import { Search, X } from 'lucide-react'
+import { ChevronDown, Search, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import type { CategoryFilter, Product } from '@/lib/data'
 import { useLocale } from '@/components/providers'
@@ -125,25 +125,28 @@ export function ShopView({
             />
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">
             <label htmlFor="shop-sort" className="sr-only">
               {t.shop.sortLabel}
             </label>
-            <select
-              id="shop-sort"
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as SortKey)
-                resetPaging()
-              }}
-              className="h-11 rounded-full border border-ink/15 bg-surface px-4 text-sm text-ink outline-none focus:border-ink"
-            >
-              {SORT_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {t.shop.sort[key]}
-                </option>
-              ))}
-            </select>
+            <div className="relative grow sm:grow-0">
+              <select
+                id="shop-sort"
+                value={sort}
+                onChange={(e) => {
+                  setSort(e.target.value as SortKey)
+                  resetPaging()
+                }}
+                className="h-11 w-full appearance-none rounded-full border border-ink/15 bg-surface pr-10 pl-4 text-sm text-ink outline-none focus:border-ink"
+              >
+                {SORT_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t.shop.sort[key]}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-ink-soft" />
+            </div>
 
             <button
               type="button"
@@ -153,7 +156,7 @@ export function ShopView({
               }}
               aria-pressed={availableOnly}
               className={cn(
-                'h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors',
+                'h-11 grow rounded-full border px-4 text-sm font-medium transition-colors sm:grow-0',
                 availableOnly
                   ? 'border-ink bg-ink text-surface'
                   : 'border-ink/15 text-ink-soft hover:border-ink/30 hover:text-ink',
