@@ -43,7 +43,7 @@ function toIsoDate(raw: string): string | null {
 }
 
 /* Drive "share" links are HTML pages, not images. The lh3 form serves the file
-   itself for files shared "anyone with the link" — unofficial; Task 4 checks it. */
+   itself for files shared "anyone with the link" — unofficial and unverified. */
 function toImage(raw: string): string | undefined {
   const drive = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/.exec(raw)
   if (drive) return `https://lh3.googleusercontent.com/d/${drive[1]}`
@@ -102,6 +102,16 @@ export function toEvents(rows: string[][]): PlaiEvent[] {
   return events
 }
 
+/* A "Share" / edit link serves the editor HTML. Its export URL serves the same tab
+   (the first one without a gid) as CSV to anyone with view access.
+   "Publish to web" links (/d/e/…) and other URLs pass through unchanged. */
+export function toCsvUrl(url: string): string {
+  const id = /docs\.google\.com\/spreadsheets\/d\/(?!e\/)([\w-]+)/.exec(url)
+  if (!id) return url
+  const gid = /[?#&]gid=(\d+)/.exec(url)
+  return `https://docs.google.com/spreadsheets/d/${id[1]}/export?format=csv${gid ? `&gid=${gid[1]}` : ''}`
+}
+
 export async function getEvents(): Promise<PlaiEvent[]> {
   const url = process.env.EVENTS_SHEET_CSV_URL
   if (!url) {
@@ -109,8 +119,12 @@ export async function getEvents(): Promise<PlaiEvent[]> {
     return []
   }
   // Throws on a bad response on purpose: during ISR Next keeps the last good page.
-  const res = await fetch(url, { cache: 'force-cache', next: { revalidate: EVENTS_REVALIDATE } })
+  const res = await fetch(toCsvUrl(url), { cache: 'force-cache', next: { revalidate: EVENTS_REVALIDATE } })
   if (!res.ok) throw new Error(`[events] sheet responded ${res.status}`)
+  // A sheet that isn't shared answers 200 with Google's sign-in page.
+  if (res.headers.get('content-type')?.includes('text/html')) {
+    throw new Error('[events] got HTML, not CSV — share the sheet "Anyone with the link: Viewer"')
+  }
   return toEvents(parseCsv(await res.text()))
 }
 
