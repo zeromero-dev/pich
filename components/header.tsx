@@ -91,9 +91,21 @@ function CartButton() {
 export function Header() {
   const { t } = useLocale()
   const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
-  const menuRef = useFocusTrap<HTMLDivElement>(menuOpen, () => setMenuOpen(false))
+  const [menuPath, setMenuPath] = useState<string | null>(null)
+  const [instantExit, setInstantExit] = useState(false)
+  // A menu link closes the menu only once the new route renders: fading it out
+  // on tap showed it ghosting over whichever page was underneath.
+  if (menuPath !== null && menuPath !== pathname) {
+    setMenuPath(null)
+    setInstantExit(true)
+  }
+  const menuOpen = menuPath !== null
+  const closeMenu = () => setMenuPath(null)
+  const closeIfCurrent = (href: string) => {
+    if (href === pathname) closeMenu()
+  }
+  const menuRef = useFocusTrap<HTMLDivElement>(menuOpen, closeMenu)
 
   const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
 
@@ -147,7 +159,10 @@ export function Header() {
           <CartButton />
           <button
             type="button"
-            onClick={() => setMenuOpen(true)}
+            onClick={() => {
+              setInstantExit(false)
+              setMenuPath(pathname)
+            }}
             aria-label={t.nav.menu}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt md:hidden"
           >
@@ -159,7 +174,7 @@ export function Header() {
 
     {/* Outside <header>: its backdrop-filter would become the containing block
         for this fixed overlay, shrinking inset-0 to the 64px header bar. */}
-    <AnimatePresence>
+    <AnimatePresence custom={instantExit}>
         {menuOpen && (
           <m.div
             ref={menuRef}
@@ -167,17 +182,22 @@ export function Header() {
             role="dialog"
             aria-modal="true"
             aria-label={t.nav.menu}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            custom={instantExit}
+            variants={{
+              hidden: { opacity: 0 },
+              shown: { opacity: 1, transition: { duration: 0.2 } },
+              exit: (instant: boolean) => ({ opacity: 0, transition: { duration: instant ? 0 : 0.2 } }),
+            }}
+            initial="hidden"
+            animate="shown"
+            exit="exit"
             className="fixed inset-0 z-50 flex flex-col bg-surface md:hidden"
           >
             <div className="flex h-16 items-center justify-between px-4">
-              <Logo onClick={() => setMenuOpen(false)} />
+              <Logo onClick={() => closeIfCurrent('/')} />
               <button
                 type="button"
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenu}
                 aria-label={t.nav.close}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface-alt"
               >
@@ -201,7 +221,7 @@ export function Header() {
                 >
                   <Link
                     href={item.href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => closeIfCurrent(item.href)}
                     className="block py-2 text-3xl font-semibold tracking-[-0.02em] text-ink"
                   >
                     {item.label}
