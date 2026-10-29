@@ -26,7 +26,7 @@ const jsonLd = {
     addressLocality: 'Вінниця',
     addressCountry: 'UA',
   },
-  openingHours: 'Mo-Su 11:00-21:00',
+  openingHours: 'Mo-Su 12:00-21:00',
 }
 
 export default async function Page() {
