@@ -1,4 +1,4 @@
-import { getCatalog, rootCategoriesOf } from '@/lib/hugeprofit'
+import { categoryTilesOf, getCatalog } from '@/lib/hugeprofit'
 import { getArtistProfiles, homepageArtists, rosterOf, withArtistNames } from '@/lib/artists'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { BRAND, WEBSITE_URL } from '@/lib/site'
@@ -43,7 +43,7 @@ export default async function Page() {
       />
       <main>
         <Hero />
-        <CategoriesCarousel categories={rootCategoriesOf(products)} />
+        <CategoriesCarousel categories={categoryTilesOf(products)} />
         <NewArrivals products={arrivals} />
         <EventsTeaser />
         <ArtistsCarousel artists={artists} />

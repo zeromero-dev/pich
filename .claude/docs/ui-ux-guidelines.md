@@ -105,7 +105,7 @@ The target feel is *tactile and instant* — Nintendo Switch, not luxury-brand s
 
 **Landing** — the sales pitch for the place (client brief 2026-10, §2):
 1. Hero: `display` statement in black on white, one strong photo of the space/art, primary CTA → shop, secondary → events.
-2. «Категорії» — carousel of root-category tiles (photo + overlaid label) → `/shop?category=<id>`.
+2. «Категорії» — carousel of tiles for every CRM category holding a work, subcategories included (photo + overlaid label, `categoryTilesOf`) → `/shop?category=<id>`; empty categories stay hidden. No «all» end card on any homepage row (removed 2026-11-01): «Дивитись усі» (works) / «Дивитись усіх» (artists) are pill buttons under the row.
 3. «Новинки» — carousel of the 12 newest in-stock works + «Уся крамничка».
 4. «Події» — static text + photo block, link to `/events`. Never reads event data (brief §2.4).
 5. «Люди, які створюють ці роботи» — carousel of up to 16 roster cards + «Усі митці».

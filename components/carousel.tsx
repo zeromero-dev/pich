@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { Children, useRef } from 'react'
 import { useReducedMotion } from 'motion/react'
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLocale } from '@/components/providers'
 import { Reveal } from '@/components/reveal'
 import { cn } from '@/lib/utils'
@@ -63,21 +62,5 @@ export function Carousel({
         ))}
       </ul>
     </div>
-  )
-}
-
-/** Last card of a row: a 4/5 tile linking to the full list. `className` sets the fill against the section. */
-export function CarouselEndCard({ href, label, className }: { href: string; label: string; className: string }) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'group flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-2xl px-3 text-center text-ink transition-colors',
-        className,
-      )}
-    >
-      <span className="text-base font-semibold">{label}</span>
-      <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-    </Link>
   )
 }

@@ -1,9 +1,10 @@
 'use client'
 
-import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import type { Artist } from '@/lib/data'
 import { useLocale } from '@/components/providers'
-import { Carousel, CarouselEndCard } from '@/components/carousel'
+import { Carousel } from '@/components/carousel'
+import { PillLink } from '@/components/pill-button'
 import { ArtistCard } from '@/components/artists/artists-view'
 
 export function ArtistsCarousel({ artists }: { artists: Artist[] }) {
@@ -13,17 +14,17 @@ export function ArtistsCarousel({ artists }: { artists: Artist[] }) {
       <Carousel
         title={t.landing.artistsTitle}
         itemClassName="w-[42%] sm:w-[30%] lg:w-[calc((100%-4rem)/5)]"
-        action={
-          <Link href="/artists" className="mr-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink">
-            {t.landing.artistsAll}
-          </Link>
-        }
       >
         {artists.map((artist) => (
           <ArtistCard key={artist.slug} artist={artist} heading="h3" />
         ))}
-        <CarouselEndCard href="/artists" label={t.landing.artistsAll} className="bg-surface-alt hover:bg-surface-alt/70" />
       </Carousel>
+      <div className="mt-8 flex justify-center">
+        <PillLink href="/artists" variant="secondary">
+          {t.landing.artistsAll}
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </PillLink>
+      </div>
     </section>
   )
 }
