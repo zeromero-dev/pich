@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { CategoryTile } from '@/lib/data'
 import { useLocale } from '@/components/providers'
-import { Carousel } from '@/components/carousel'
+import { Carousel, CarouselEndCard } from '@/components/carousel'
 
 /* Tiles crop with object-cover: a mood image, not the work itself (the
    no-crop question in brief §3.2 is about product cards). */
@@ -33,6 +33,7 @@ export function CategoriesCarousel({ categories }: { categories: CategoryTile[] 
             </span>
           </Link>
         ))}
+        <CarouselEndCard href="/shop" label={t.landing.featuredAll} className="bg-surface-alt hover:bg-surface-alt/70" />
       </Carousel>
     </section>
   )

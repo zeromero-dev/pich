@@ -1,5 +1,5 @@
-import { artistsOf, getCatalog, rootCategoriesOf } from '@/lib/hugeprofit'
-import { withProfiles } from '@/lib/artists'
+import { getCatalog, rootCategoriesOf } from '@/lib/hugeprofit'
+import { getArtistProfiles, homepageArtists, rosterOf, withArtistNames } from '@/lib/artists'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { BRAND, WEBSITE_URL } from '@/lib/site'
 import { Hero } from '@/components/landing/hero'
@@ -30,10 +30,10 @@ const jsonLd = {
 }
 
 export default async function Page() {
-  const products = await getCatalog()
+  const [products, profiles] = await Promise.all([getCatalog(), getArtistProfiles()])
   // Catalog order is CRM order, newest first, with in-stock works first.
-  const arrivals = products.filter((p) => p.inStock).slice(0, 12)
-  const artists = artistsOf(products).slice(0, 16).map(withProfiles)
+  const arrivals = withArtistNames(products.filter((p) => p.inStock).slice(0, 12), profiles)
+  const artists = homepageArtists(rosterOf(products, profiles), profiles)
 
   return (
     <>

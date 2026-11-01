@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { artistsOf, getCatalog } from '@/lib/hugeprofit'
-import { withProfiles } from '@/lib/artists'
+import { getCatalog } from '@/lib/hugeprofit'
+import { getArtistProfiles, rosterOf } from '@/lib/artists'
 import { ArtistsView } from '@/components/artists/artists-view'
 
 export const metadata: Metadata = {
@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ArtistsPage() {
-  const artists = artistsOf(await getCatalog()).map(withProfiles)
+  const [products, profiles] = await Promise.all([getCatalog(), getArtistProfiles()])
+  const artists = rosterOf(products, profiles)
   return <ArtistsView artists={artists} />
 }

@@ -51,9 +51,11 @@ export function ArtistCard({ artist, heading: Heading = 'h2' }: { artist: Artist
       <Heading className="mt-3 text-base font-semibold leading-snug text-ink text-pretty transition-colors group-hover:text-ink-soft">
         {artist.name}
       </Heading>
-      <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
-        {t.about.worksCount(artist.workCount)}
-      </p>
+      {artist.workCount > 0 && (
+        <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
+          {t.about.worksCount(artist.workCount)}
+        </p>
+      )}
     </Link>
   )
 }

@@ -31,8 +31,8 @@ function isSellable(product: Product | null): product is Product {
  * The whole shop, sold works last (they stay on the wall — catalog.md rule 5).
  * CRM order is newest-first and preserved within each group.
  */
-export async function getCatalog(): Promise<Product[]> {
-  const crm = await fetchCrmProducts()
+export async function getCatalog(fresh = false): Promise<Product[]> {
+  const crm = await fetchCrmProducts({}, fresh ? 0 : undefined)
   const available: Product[] = []
   const sold: Product[] = []
   for (const row of crm) {
@@ -121,9 +121,7 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
 
   const crm = await fetchCrmProducts({ product_id: id })
   const product = crm[0] ? toProduct(crm[0], SHOP_WAREHOUSE_ID) : null
-  if (!isSellable(product)) return undefined
-  // Guard against a stale slug pointing at a renamed product.
-  return product.slug === slug ? product : undefined
+  return isSellable(product) ? product : undefined
 }
 
 

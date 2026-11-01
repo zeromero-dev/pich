@@ -98,6 +98,7 @@ The target feel is *tactile and instant* — Nintendo Switch, not luxury-brand s
 - **Event card**: optional photo left (greyscale once past), status pill «Незабаром»/«Відбулася», title (its link stretches over the whole card — one Tab stop), date line, 3-line summary. Sourced from the owners' sheet.
 - **Search**: input in the shop toolbar (not the header, in v1), pill-shaped, expands slightly on focus. Client-side filtering over the already-fetched catalog — results update as you type (debounce ~150ms), grid animates re-order. Empty state: friendly, offers to clear filters.
 - **Inputs (checkout)**: pill/rounded fields, labels above (never placeholder-as-label), 2px `ink` focus ring. Validate on blur, re-validate on change after first error ("reward early, punish late").
+- **External profile links** (artist page): secondary pills (44px) with a leading icon (Instagram glyph from `components/footer.tsx`, lucide `Globe`), a specific label (`@handle`, bare domain — never «Посилання»), a trailing `ArrowUpRight`, `target="_blank"` + `rel="noopener noreferrer"`, and an sr-only «(відкривається в новій вкладці)» (`t.about.newTab`).
 - **Footer**: `surface-alt`, generous, address + hours + socials + mini-nav. The place where the art-center-as-a-place identity shows.
 
 ## 6. Page blueprints (v1)

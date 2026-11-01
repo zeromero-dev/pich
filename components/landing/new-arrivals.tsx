@@ -3,7 +3,7 @@
 import { ArrowRight } from 'lucide-react'
 import type { Product } from '@/lib/data'
 import { useLocale } from '@/components/providers'
-import { Carousel } from '@/components/carousel'
+import { Carousel, CarouselEndCard } from '@/components/carousel'
 import { PillLink } from '@/components/pill-button'
 import { ProductCard } from '@/components/product-card'
 
@@ -19,6 +19,7 @@ export function NewArrivals({ products }: { products: Product[] }) {
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
+          <CarouselEndCard href="/shop" label={t.landing.featuredAll} className="bg-surface hover:bg-surface/70" />
         </Carousel>
         <div className="mt-8 flex justify-center">
           <PillLink href="/shop" variant="secondary">

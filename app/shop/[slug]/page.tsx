@@ -1,13 +1,19 @@
 import type { Metadata } from 'next'
 import { serializeJsonLd } from '@/lib/json-ld'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { getCatalog, getProductBySlug, worksByArtistSlug } from '@/lib/hugeprofit'
+import { getArtistProfiles, withArtistNames } from '@/lib/artists'
 import { WEBSITE_URL } from '@/lib/site'
 import { ProductDetail } from '@/components/shop/product-detail'
 
 export async function generateStaticParams() {
   const products = await getCatalog()
   return products.map((p) => ({ slug: p.slug }))
+}
+
+async function findProduct(slug: string) {
+  const [product, profiles] = await Promise.all([getProductBySlug(slug), getArtistProfiles()])
+  return product ? { product: withArtistNames([product], profiles)[0], profiles } : null
 }
 
 function heading(name: string, artist: string | null): string {
@@ -20,7 +26,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const product = await getProductBySlug(slug)
+  const product = (await findProduct(slug))?.product
   if (!product) return { title: 'Робота не знайдена' }
 
   const title = heading(product.name, product.artist)
@@ -39,13 +45,19 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = await getProductBySlug(slug)
-  if (!product) notFound()
+  const found = await findProduct(slug)
+  if (!found) notFound()
+  const { product, profiles } = found
+  // Old name + id addresses (/shop/chashka-9054735) are indexed and in carts: send them to /shop/<id>.
+  if (slug !== product.slug) permanentRedirect(`/shop/${product.slug}`)
 
   const related = product.artistSlug
-    ? worksByArtistSlug(await getCatalog(), product.artistSlug)
-        .filter((p) => p.id !== product.id)
-        .slice(0, 4)
+    ? withArtistNames(
+        worksByArtistSlug(await getCatalog(), product.artistSlug)
+          .filter((p) => p.id !== product.id)
+          .slice(0, 4),
+        profiles,
+      )
     : []
 
   const jsonLd = {

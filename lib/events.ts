@@ -1,14 +1,13 @@
 import 'server-only'
 
-import { parseCsv } from '@/lib/csv'
-import { slugBase } from '@/lib/slug'
+import { NOTION_EVENTS, type NotionPage, photoOf, queryNotionPages, text, uniqueId } from '@/lib/notion'
 
 /**
- * Store events, kept by the owners in a Google Sheet published as CSV — not a
+ * Store events, kept by the owners in the Notion «Події» database — not a
  * calendar (client brief). Events never expire: past ones stay as news.
  */
 export type PlaiEvent = {
-  /** Permanent URL identity: /events/<slug>. */
+  /** Permanent URL identity, /events/<slug>: the row's Notion «ID» number, so a retitled event keeps its address. */
   slug: string
   title: string
   /** Day (or first day), 'YYYY-MM-DD'. */
@@ -19,16 +18,13 @@ export type PlaiEvent = {
   image?: string
 }
 
-/** Google re-publishes a sheet about every 5 minutes; matching it costs nothing. */
-const EVENTS_REVALIDATE = 300
-
 const HEADERS = {
   title: 'назва',
   date: 'дата',
   endDate: 'дата завершення',
   summary: 'короткий опис',
   image: 'фото',
-  slug: 'slug',
+  id: 'id',
 } as const
 
 type Column = keyof typeof HEADERS
@@ -50,7 +46,8 @@ function toImage(raw: string): string | undefined {
   return raw.startsWith('https://') || raw.startsWith('/') ? raw : undefined
 }
 
-export function toEvents(rows: string[][]): PlaiEvent[] {
+/** Rows → events. Each skipped row adds a manager-readable reason to `problems`. */
+export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[] {
   const [header, ...records] = rows
   if (!header) return []
   const names = header.map((h) => h.trim().toLowerCase())
@@ -65,25 +62,29 @@ export function toEvents(rows: string[][]): PlaiEvent[] {
     const get = (key: Column) => (index[key] >= 0 ? (cells[index[key]] ?? '').trim() : '')
     if (cells.every((c) => !c.trim())) return // blank row
 
-    const where = `[events] sheet row ${i + 2}`
+    const skip = (why: string) => {
+      const line = `Подія «${get('title') || `рядок ${i + 1}`}» не показана: ${why}`
+      console.warn(`[events] ${line}`)
+      problems.push(line)
+    }
     const title = get('title')
     const summary = get('summary')
     const date = toIsoDate(get('date'))
     if (!title || !summary || !date) {
-      console.warn(`${where} skipped: Назва, Дата (2026-11-21 or 21.11.2026) and Короткий опис are required`)
+      skip('потрібні Назва, Дата і Короткий опис.')
       return
     }
 
     const endRaw = get('endDate')
     const endDate = endRaw ? toIsoDate(endRaw) : undefined
     if (endDate === null || (endDate && endDate < date)) {
-      console.warn(`${where} skipped: Дата завершення is not a date on or after Дата`)
+      skip('дата завершення раніша за дату початку.')
       return
     }
 
-    const slug = slugBase(get('slug') || `${title} ${date}`)
+    const slug = get('id')
     if (!slug || seen.has(slug)) {
-      console.warn(`${where} skipped: slug "${slug}" is empty or already used by another row`)
+      skip('у рядка немає ID — додайте подію заново.')
       return
     }
     seen.add(slug)
@@ -102,30 +103,34 @@ export function toEvents(rows: string[][]): PlaiEvent[] {
   return events
 }
 
-/* A "Share" / edit link serves the editor HTML. Its export URL serves the same tab
-   (the first one without a gid) as CSV to anyone with view access.
-   "Publish to web" links (/d/e/…) and other URLs pass through unchanged. */
-export function toCsvUrl(url: string): string {
-  const id = /docs\.google\.com\/spreadsheets\/d\/(?!e\/)([\w-]+)/.exec(url)
-  if (!id) return url
-  const gid = /[?#&]gid=(\d+)/.exec(url)
-  return `https://docs.google.com/spreadsheets/d/${id[1]}/export?format=csv${gid ? `&gid=${gid[1]}` : ''}`
+/** An event row with «Показати» unticked is a draft: kept in Notion, not on the site. */
+export const isDraft = (page: NotionPage) => page.properties['Показати']?.checkbox !== true
+
+/* Published Notion rows → the sheet's row shape, so toEvents keeps every validation rule.
+   A Notion date-time start is cut to its day. */
+export function notionRows(pages: NotionPage[]): string[][] {
+  const day = (v: string | null | undefined) => (v ?? '').slice(0, 10)
+  return [
+    [HEADERS.title, HEADERS.date, HEADERS.endDate, HEADERS.summary, HEADERS.image, HEADERS.id],
+    ...pages
+      .filter((p) => !isDraft(p))
+      .map((page) => {
+        const r = page.properties
+        return [
+          text(r['Назва']),
+          day(r['Дата']?.date?.start),
+          day(r['Дата']?.date?.end),
+          text(r['Короткий опис']),
+          photoOf(page),
+          uniqueId(r['ID']),
+        ]
+      }),
+  ]
 }
 
 export async function getEvents(): Promise<PlaiEvent[]> {
-  const url = process.env.EVENTS_SHEET_CSV_URL
-  if (!url) {
-    console.warn('[events] EVENTS_SHEET_CSV_URL is not set — showing no events')
-    return []
-  }
-  // Throws on a bad response on purpose: during ISR Next keeps the last good page.
-  const res = await fetch(toCsvUrl(url), { cache: 'force-cache', next: { revalidate: EVENTS_REVALIDATE } })
-  if (!res.ok) throw new Error(`[events] sheet responded ${res.status}`)
-  // A sheet that isn't shared answers 200 with Google's sign-in page.
-  if (res.headers.get('content-type')?.includes('text/html')) {
-    throw new Error('[events] got HTML, not CSV — share the sheet "Anyone with the link: Viewer"')
-  }
-  return toEvents(parseCsv(await res.text()))
+  const pages = await queryNotionPages(NOTION_EVENTS)
+  return pages ? toEvents(notionRows(pages)) : []
 }
 
 export async function getEvent(slug: string): Promise<PlaiEvent | undefined> {

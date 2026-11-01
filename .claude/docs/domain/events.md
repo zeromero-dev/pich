@@ -4,7 +4,9 @@ Store events: fairs, exhibitions, meetings with the shop's artists. **Detached f
 
 > Відв’язати їх від календаря ( ми публікуватимемо тут події по’язані з крамничкою)
 
-**State: built 2026-10-25.** The owners keep events in a Google Sheet published as CSV (`EVENTS_SHEET_CSV_URL`). `lib/events.ts` fetches it with a 5-minute revalidate and maps rows to `PlaiEvent`. This replaces the Google Calendar plan, which was never built. The site is read-only; editing happens in the sheet.
+**State (2026-10-30, branch `feat/notion-poc`): source moved to Notion.** Events live in the «Події» database under the private Notion page «Plai Pich — сайт» (fields Назва, Дата (range for multi-day), Короткий опис, Фото, Slug). `lib/events.ts` maps Notion rows to the sheet's row shape and reuses `toEvents`, so every rule below still holds. Needs `NOTION_TOKEN` (integration added to that page) and `NOTION_EVENTS_DATA_SOURCE`. **Drafts** (2026-11-01): a «Показати» checkbox; unticked rows never reach `toEvents` (`isDraft`). **Skipped rows are reported to the manager**: `toEvents(rows, problems)` collects a Ukrainian reason per skipped row, and the «Оновити сайт» link (`app/api/update-site`) lists them along with photos over 2 MB. The sheet notes below are history.
+
+**Built 2026-10-25.** The owners keep events in a Google Sheet published as CSV (`EVENTS_SHEET_CSV_URL`). `lib/events.ts` fetches it with a 5-minute revalidate and maps rows to `PlaiEvent`. This replaces the Google Calendar plan, which was never built. The site is read-only; editing happens in the sheet.
 
 **Connected locally (2026-10-29)** to a dev Sheet filled with `[ТЕСТ]` rows; verified on the dev server: ordering, statuses, event pages, sitemap, the skipped broken row. Vercel and the owners' real Sheet are still to do.
 
@@ -23,7 +25,7 @@ The client has no store for events, and it has to be free. A Sheet fits:
 
 ```
 PlaiEvent {
-  slug      permanent URL identity: /events/<slug>
+  slug      permanent URL identity: /events/<n>, the row's Notion «ID» number (2026-11-01; titles no longer shape the URL)
   title
   date      'YYYY-MM-DD', the day or first day
   endDate?  'YYYY-MM-DD', multi-day events only
@@ -43,7 +45,7 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 | `Дата завершення` | no | same | only for multi-day events, so the event stays «Триває» until its last day |
 | `Короткий опис` | yes | text | card and event page; line breaks are kept on the event page |
 | `Фото` | no | any `https://` image URL, `/images/...`, or a Google Drive share link | Drive links are rewritten to `lh3.googleusercontent.com/d/<id>` — **unverified**, see below |
-| `Slug` | no | Latin, e.g. `zymovyi-yarmarok-2026` | permanent URL. Empty → derived from title + date, so editing the title changes the URL |
+| `ID` | auto | Notion auto-number (no prefix) | the URL, /events/12; set by Notion, never changes, never reused |
 
 ## Business rules
 
@@ -59,7 +61,7 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 
 - **Phase** (`eventPhase`), `Europe/Kyiv` days: **current** from the first through the last day (a one-day event is current on its day), **upcoming** before it, **past** from the day after the last day (`endDate ?? date`). Decided at render time; pages regenerate every 5 minutes, so events move between sections on their own.
 - **Dates are never passed through `new Date()` for display** — `formatEventDate` splits the string, so a UTC server can't shift the day.
-- **Bad rows are skipped, never fatal.** Missing title/date/summary, an impossible date, an end before the start, or a duplicate slug → the row is skipped with a `console.warn` naming its sheet row. Blank rows are ignored silently.
+- **Bad rows are skipped, never fatal.** Missing title/date/summary, an impossible date, an end before the start, or a missing ID → the row is skipped with a `console.warn` naming its sheet row. Blank rows are ignored silently.
 - **Unset URL = no events**, one warning, no throw — a missing sheet must not break the shop build.
 - **A non-200 from Google throws** on purpose: during ISR Next keeps serving the last good page.
 - Content language: whatever the owners type (Ukrainian in practice), shown as-is in both locales ([i18n.md](i18n.md)).

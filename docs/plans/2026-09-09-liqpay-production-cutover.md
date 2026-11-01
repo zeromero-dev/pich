@@ -119,7 +119,7 @@ In the Vercel project → Settings → Environment Variables, **Production** sco
 
 | Key | Value |
 |-----|-------|
-| `WEBSITE_URL` | `https://plaipich.art` |
+| `WEBSITE_URL` | `https://www.pich.co.ua` |
 | `LIQPAY_PUBLIC_KEY` | the **live** public key (no `sandbox_` prefix) |
 | `LIQPAY_PRIVATE_KEY` | the **live** private key |
 | `HUGEPROFIT_API_KEY` | the full-access token from Task 1 Step 2 |
@@ -172,15 +172,15 @@ Expected: a successful build. If it failed naming `CRM_WAREHOUSE_ID`, the variab
 - [ ] **Step 4: Verify the origin baked into the deployed build**
 
 ```bash
-curl -s https://plaipich.art/sitemap.xml | head -5
+curl -s https://www.pich.co.ua/sitemap.xml | head -5
 ```
 
-Expected: URLs beginning `https://plaipich.art` — not `localhost`, not an ngrok host. The sitemap and `server_url` read the same `WEBSITE_URL`, so this is a cheap proxy for "the webhook URL is correct", which is otherwise invisible until a payment fails.
+Expected: URLs beginning `https://www.pich.co.ua` — not `localhost`, not an ngrok host. The sitemap and `server_url` read the same `WEBSITE_URL`, so this is a cheap proxy for "the webhook URL is correct", which is otherwise invisible until a payment fails.
 
 - [ ] **Step 5: Verify production serves the real shop and no mock rows**
 
 ```bash
-curl -s https://plaipich.art/shop | grep -c '\[DEV\]'
+curl -s https://www.pich.co.ua/shop | grep -c '\[DEV\]'
 ```
 
 Expected: `0`. The 54 mock rows live in warehouse 51630 and production queries 34998, so they should be structurally invisible — this confirms it rather than assuming it.
@@ -206,7 +206,7 @@ Expected: three candidates. Take the cheapest — you are about to pay for it wi
 
 - [ ] **Step 2: Buy it through production**
 
-At `https://plaipich.art`, add that work to the cart, check out with real contact details, and pay with a real card.
+At `https://www.pich.co.ua`, add that work to the cart, check out with real contact details, and pay with a real card.
 
 Expected: LiqPay's page shows the work's price in hryvnia, payment completes, and the browser returns to `/checkout/result?paymentId=…` showing "Дякуємо!" with the cart badge dropping to 0.
 
@@ -250,7 +250,7 @@ Expected: deleting the order **releases the reservation** — the work returns t
 - [ ] **Step 7: Confirm the work is buyable again**
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://plaipich.art/shop
+curl -s -o /dev/null -w "%{http_code}\n" https://www.pich.co.ua/shop
 ```
 
 Then check the work's page shows it in stock, allowing up to 5 minutes for `CATALOG_REVALIDATE`.

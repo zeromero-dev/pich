@@ -101,6 +101,8 @@ export const dictionaries = {
       backToArtists: 'До митців',
       worksCount: (n: number) => `${n} ${plural(n, 'робота', 'роботи', 'робіт')}`,
       artistWorks: 'Роботи',
+      noWorks: 'Зараз робіт цього митця немає в крамничці — зазирніть пізніше.',
+      newTab: '(відкривається в новій вкладці)',
     },
     collaboration: {
       title: 'Співпраця',
@@ -282,6 +284,8 @@ export const dictionaries = {
       backToArtists: 'Back to artists',
       worksCount: (n: number) => `${n} ${n === 1 ? 'work' : 'works'}`,
       artistWorks: 'Works',
+      noWorks: 'No works by this artist in the shop right now — check back later.',
+      newTab: '(opens in a new tab)',
     },
     collaboration: {
       title: 'Collaboration',

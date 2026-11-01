@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { Artist } from '@/lib/data'
 import { useLocale } from '@/components/providers'
-import { Carousel } from '@/components/carousel'
+import { Carousel, CarouselEndCard } from '@/components/carousel'
 import { ArtistCard } from '@/components/artists/artists-view'
 
 export function ArtistsCarousel({ artists }: { artists: Artist[] }) {
@@ -22,6 +22,7 @@ export function ArtistsCarousel({ artists }: { artists: Artist[] }) {
         {artists.map((artist) => (
           <ArtistCard key={artist.slug} artist={artist} heading="h3" />
         ))}
+        <CarouselEndCard href="/artists" label={t.landing.artistsAll} className="bg-surface-alt hover:bg-surface-alt/70" />
       </Carousel>
     </section>
   )

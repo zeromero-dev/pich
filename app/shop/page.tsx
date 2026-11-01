@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { categoriesOf, getCatalog } from '@/lib/hugeprofit'
+import { getArtistProfiles, withArtistNames } from '@/lib/artists'
 import { ShopView } from '@/components/shop/shop-view'
 
 export const metadata: Metadata = {
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ShopPage() {
-  const products = await getCatalog()
+  const [catalog, profiles] = await Promise.all([getCatalog(), getArtistProfiles()])
+  const products = withArtistNames(catalog, profiles)
   return <ShopView products={products} categories={categoriesOf(products)} />
 }
