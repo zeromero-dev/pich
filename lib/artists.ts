@@ -23,10 +23,13 @@ export async function getArtistProfiles(): Promise<Record<string, Profile>> {
     if (!slug) continue
     const portrait = photoOf(page)
     const bio = text(row['Біо'])
+    const bioEn = text(row['Біо (EN)'])
+    const nameEn = text(row['Імʼя (EN)'])
     const instagram = webLink(row['Instagram']?.url)
     const website = webLink(row['Сайт']?.url)
     profiles[slug] = {
       name,
+      ...(nameEn ? { nameEn } : {}),
       slug,
       notionId,
       hidden: row['Показати']?.checkbox !== true,
@@ -35,6 +38,7 @@ export async function getArtistProfiles(): Promise<Record<string, Profile>> {
       ...(website ? { website } : {}),
       ...(portrait ? { portrait } : {}),
       ...(bio ? { bio } : {}),
+      ...(bioEn ? { bioEn } : {}),
     }
   }
   return profiles

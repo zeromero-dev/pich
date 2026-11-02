@@ -6,6 +6,8 @@ import { slugBase } from '@/lib/slug'
 /** One «Митці» row as the site uses it. */
 export type Profile = {
   name: string
+  /** «Імʼя (EN)», for the EN locale. */
+  nameEn?: string
   /** URL segment and join key: the CRM brand id, else the row's Notion «ID» ("ar-7"). */
   slug: string
   /** The row's Notion «ID», kept so an old /artists/ar-7 link can redirect once a CRM ID is filled. */
@@ -16,6 +18,7 @@ export type Profile = {
   website?: string
   portrait?: string
   bio?: string
+  bioEn?: string
 }
 
 /** CRM artists, then Notion-only ones; most works first, then by name. Name: Notion «Імʼя», else CRM brand (no row yet); an unticked «Показати» drops the artist. */
@@ -32,8 +35,10 @@ export function mergeRoster(fromCrm: Artist[], profiles: Record<string, Profile>
       return {
         ...a,
         name: p.name,
+        ...(p.nameEn ? { nameEn: p.nameEn } : {}),
         ...(p.portrait ? { portrait: p.portrait } : {}),
         ...(p.bio ? { bio: p.bio } : {}),
+        ...(p.bioEn ? { bioEn: p.bioEn } : {}),
         ...(p.instagram ? { instagram: p.instagram } : {}),
         ...(p.website ? { website: p.website } : {}),
       }
@@ -53,7 +58,7 @@ export function withArtistNames(products: Product[], profiles: Record<string, Pr
   return products.map((p) => {
     const profile = p.artistId ? profiles[p.artistId] : undefined
     if (!profile) return p
-    return { ...p, artist: profile.name, ...(profile.hidden ? { artistSlug: null } : {}) }
+    return { ...p, artist: profile.name, ...(profile.nameEn ? { artistEn: profile.nameEn } : {}), ...(profile.hidden ? { artistSlug: null } : {}) }
   })
 }
 
@@ -68,15 +73,29 @@ export type SyncChange =
   | { create: { 'Імʼя': string; 'CRM ID': string; 'Показати': true } }
   | { pageId: string; set: { 'CRM ID': string } }
 
+/** Loose name key: case, spacing, apostrophes and word order don't matter («Зборовська Анна» = «анна зборовська»). */
+export const nameKey = (name: string) => slugBase(name).split('-').sort().join('-')
+
+/** Names that appear on more than one «Митці» row, by nameKey — likely one artist split across two rows. */
+export function duplicateNames(names: string[]): string[][] {
+  const groups = new Map<string, string[]>()
+  for (const name of names) {
+    const key = nameKey(name)
+    if (key) groups.set(key, [...(groups.get(key) ?? []), name])
+  }
+  return [...groups.values()].filter((g) => g.length > 1)
+}
+
 /** What the CRM → «Митці» sync must write: a row for each CRM artist without one, and a missing CRM ID.
-    A hand-added row (no CRM ID yet) is claimed by the CRM artist with the same name, spelled loosely.
+    A hand-added row (no CRM ID yet) is claimed by the CRM artist with the same name (nameKey), once.
     «Імʼя» is copied once at creation and is the manager's after that. */
 export function planSync(artists: Artist[], rows: SyncRow[]): SyncChange[] {
   const byId = new Map(rows.filter((r) => r.crmId).map((r) => [r.crmId, r]))
-  const byName = new Map(rows.filter((r) => !r.crmId && r.name).map((r) => [slugBase(r.name), r]))
+  const byName = new Map(rows.filter((r) => !r.crmId && r.name).map((r) => [nameKey(r.name), r]))
   const changes: SyncChange[] = []
   for (const artist of artists) {
-    const row = byId.get(artist.id) ?? byName.get(slugBase(artist.name))
+    const row = byId.get(artist.id) ?? byName.get(nameKey(artist.name))
+    if (row && !byId.has(artist.id)) byName.delete(nameKey(artist.name))
     if (!row) changes.push({ create: { 'Імʼя': artist.name, 'CRM ID': artist.id, 'Показати': true } })
     else if (row.crmId !== artist.id) changes.push({ pageId: row.pageId, set: { 'CRM ID': artist.id } })
   }

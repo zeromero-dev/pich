@@ -32,7 +32,15 @@ const EN_MONTHS = [
  * "21 листопада 2026" · "21–22 листопада 2026" · "30 листопада – 2 грудня 2026".
  * Splits the strings rather than new Date(), which would shift dates on a UTC server.
  */
-export function formatEventDate(event: { date: string; endDate?: string }, locale: Locale): string {
+type EventWhen = { date: string; endDate?: string; time?: string; endTime?: string }
+
+/** «21 листопада 2026», plus «, 18:00» or «, 18:00–20:00» when the event has a time. */
+export function formatEventDate(event: EventWhen, locale: Locale): string {
+  const clock = event.time ? `, ${event.time}${event.endTime ? `–${event.endTime}` : ''}` : ''
+  return formatEventDays(event, locale) + clock
+}
+
+function formatEventDays(event: EventWhen, locale: Locale): string {
   const months = locale === 'uk' ? UK_MONTHS : EN_MONTHS
   const [y1, m1, d1] = event.date.split('-').map(Number)
   if (!event.endDate) return `${d1} ${months[m1 - 1]} ${y1}`

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { type SyncRow, planSync } from '@/lib/artist-roster'
+import { type SyncRow, duplicateNames, planSync } from '@/lib/artist-roster'
 import { notionRows, isDraft, toEvents } from '@/lib/events'
 import { artistsOf, getCatalog } from '@/lib/hugeprofit'
 import { CRM_TAG } from '@/lib/hugeprofit/client'
@@ -37,7 +37,7 @@ async function photoBytes(page: NotionPage): Promise<number> {
 }
 
 /** «Митці» rows → CRM sync, one row at a time; saveNotionRow waits out 429s. Returns the report line. */
-async function syncArtists(pages: NotionPage[]): Promise<{ line: string; failed: boolean }> {
+async function syncArtists(pages: NotionPage[]): Promise<{ line: string; failed: boolean; created: string[] }> {
   const rows: SyncRow[] = pages.map((p) => ({
     pageId: p.id,
     name: text(p.properties['Імʼя']),
@@ -54,13 +54,14 @@ async function syncArtists(pages: NotionPage[]): Promise<{ line: string; failed:
       done++
     } catch (error) {
       console.error('[update-site]', error)
-      return { line: `Митці: оновлено ${done} з ${changes.length}, далі сталася помилка. Відкрийте посилання ще раз за хвилину.`, failed: true }
+      return { line: `Митці: оновлено ${done} з ${changes.length}, далі сталася помилка. Відкрийте посилання ще раз за хвилину.`, failed: true, created: [] }
     }
   }
-  const added = changes.filter((c) => 'create' in c).length
+  const created = changes.flatMap((c) => ('create' in c ? [c.create['Імʼя']] : []))
   return {
-    line: changes.length ? `Митці: додано нових ${added}, оновлено ${changes.length - added}.` : 'Митці: нових у CRM немає.',
+    line: changes.length ? `Митці: додано нових ${created.length}, оновлено ${changes.length - created.length}.` : 'Митці: нових у CRM немає.',
     failed: false,
+    created,
   }
 }
 
@@ -96,6 +97,11 @@ export async function GET(request: Request) {
       const url = page.properties[column]?.url
       if (url && !/^https?:\/\//i.test(url)) problems.push(`Митець «${name}»: ${column} має починатися з https://`)
     }
+  }
+
+  const names = [...artistPages.map((p) => text(p.properties['Імʼя'])), ...sync.created]
+  for (const group of duplicateNames(names)) {
+    problems.push(`Схоже, це один митець у кількох рядках «Митців»: ${group.map((n) => `«${n}»`).join(', ')}. Перенесіть фото й біо в рядок із CRM ID, а зайвий видаліть.`)
   }
 
   const sizes = await Promise.all([...artistPages, ...eventPages].map(async (page) => ({ page, bytes: await photoBytes(page) })))

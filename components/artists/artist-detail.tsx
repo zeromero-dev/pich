@@ -31,7 +31,9 @@ function categoriesOf(works: Product[]): { slug: string; label: string }[] {
 }
 
 export function ArtistDetail({ artist, works }: { artist: Artist; works: Product[] }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
+  const bio = (locale === 'en' && artist.bioEn) || artist.bio
+  const name = (locale === 'en' && artist.nameEn) || artist.name
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
@@ -57,7 +59,7 @@ export function ArtistDetail({ artist, works }: { artist: Artist; works: Product
           <div className="relative aspect-square overflow-hidden rounded-3xl bg-surface-alt">
             <img
               src={artist.portrait}
-              alt={artist.name}
+              alt={name}
               fetchPriority="high"
               className="absolute inset-0 h-full w-full object-cover"
             />
@@ -65,7 +67,7 @@ export function ArtistDetail({ artist, works }: { artist: Artist; works: Product
         )}
         <div className="max-w-[65ch] md:pt-2">
           <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink md:text-5xl">
-            {artist.name}
+            {name}
           </h1>
           {artist.workCount > 0 && (
             <p className="mt-2 text-sm text-ink-faint tabular-nums">
@@ -83,9 +85,9 @@ export function ArtistDetail({ artist, works }: { artist: Artist; works: Product
               ))}
             </p>
           )}
-          {artist.bio && (
+          {bio && (
             <p className="mt-6 text-base leading-relaxed whitespace-pre-line text-ink-soft text-pretty">
-              {artist.bio}
+              {bio}
             </p>
           )}
           {(artist.instagram || artist.website) && (

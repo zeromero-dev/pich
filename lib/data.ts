@@ -32,6 +32,8 @@ export type Product = {
   name: string
   /** `null` when the CRM brand is unset — 22 of the 252 live works today. */
   artist: string | null
+  /** Notion «Імʼя (EN)» for the EN locale; `artist` is shown when absent. */
+  artistEn?: string
   /** CRM brand id — the stable half of the Artists join. */
   artistId: string | null
   /** URL segment of the artist page (the brand id); null when there is no page to link to. */
@@ -69,11 +71,15 @@ export type Artist = {
   /** URL segment, /artists/<slug>. Equal to `id`: addresses are IDs only. */
   slug: string
   name: string
+  /** «Імʼя (EN)» for the EN locale; `name` is shown when absent. */
+  nameEn?: string
   workCount: number
   /** First image of one of their works, used as the roster thumbnail. */
   cover: string | null
   portrait?: string
   bio?: string
+  /** English bio for the EN locale; `bio` is shown when absent. */
+  bioEn?: string
   /** From the Notion «Митці» columns of the same names; http(s) only. */
   instagram?: string
   website?: string

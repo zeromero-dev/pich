@@ -21,7 +21,8 @@ export function ProductDetail({
   product: Product
   related: Product[]
 }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
+  const artistName = (locale === 'en' && product.artistEn) || product.artist
   const [active, setActive] = useState(0)
 
   return (
@@ -84,10 +85,10 @@ export function ProductDetail({
                   href={`/artists/${product.artistSlug}`}
                   className="font-medium text-ink underline decoration-ink/30 underline-offset-4 transition-colors hover:decoration-ink"
                 >
-                  {product.artist}
+                  {artistName}
                 </Link>
               ) : (
-                <span className="text-ink">{product.artist}</span>
+                <span className="text-ink">{artistName}</span>
               )}
             </p>
           )}

@@ -26,7 +26,7 @@ function useIsBottomSheet() {
 
 export function CartDrawer() {
   const { items, subtotal, isOpen, close, remove, setQty } = useCart()
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const reduced = useReducedMotion()
   const bottomSheet = useIsBottomSheet()
   const trapRef = useFocusTrap<HTMLElement>(isOpen, close)
@@ -107,7 +107,7 @@ export function CartDrawer() {
                         <div className="flex justify-between gap-2">
                           <div>
                             <p className="text-sm font-medium text-ink">{product.name}</p>
-                            <p className="text-xs text-ink-soft">{product.artist}</p>
+                            <p className="text-xs text-ink-soft">{(locale === 'en' && product.artistEn) || product.artist}</p>
                           </div>
                           <button
                             type="button"

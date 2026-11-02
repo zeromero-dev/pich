@@ -55,7 +55,7 @@ export function EventCard({ event, badge }: { event: PlaiEvent; badge?: EventBad
             href={`/events/${event.slug}`}
             className="outline-none after:absolute after:inset-0 after:rounded-2xl"
           >
-            {event.title}
+            {(locale === 'en' && event.titleEn) || event.title}
           </Link>
         </h3>
         <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-soft">
@@ -63,7 +63,7 @@ export function EventCard({ event, badge }: { event: PlaiEvent; badge?: EventBad
           {formatEventDate(event, locale)}
         </p>
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft text-pretty">
-          {event.summary}
+          {(locale === 'en' && event.summaryEn) || event.summary}
         </p>
         <span aria-hidden="true" className={cn('mt-auto pt-4 text-sm font-medium', past ? 'text-ink-soft' : 'text-ink')}>
           {t.events.more} →

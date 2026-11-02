@@ -24,7 +24,7 @@ export function EventDetail({ event, badge }: { event: PlaiEvent; badge?: EventB
       <Reveal className="mt-6 flex flex-col">
         <EventStatus badge={badge} />
         <h1 className="mt-3 first:mt-0 text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-ink text-balance md:text-5xl">
-          {event.title}
+          {(locale === 'en' && event.titleEn) || event.title}
         </h1>
         <p className="mt-4 inline-flex items-center gap-2 text-base text-ink-soft">
           <CalendarDays className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
@@ -39,7 +39,7 @@ export function EventDetail({ event, badge }: { event: PlaiEvent; badge?: EventB
       )}
 
       <Reveal className="mt-8">
-        <p className="text-lg leading-relaxed whitespace-pre-line text-ink text-pretty">{event.summary}</p>
+        <p className="text-lg leading-relaxed whitespace-pre-line text-ink text-pretty">{(locale === 'en' && event.summaryEn) || event.summary}</p>
       </Reveal>
     </main>
   )

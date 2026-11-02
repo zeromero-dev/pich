@@ -14,7 +14,14 @@ export type PlaiEvent = {
   date: string
   /** Last day of a multi-day event, same format; absent for one-day events. */
   endDate?: string
+  /** 'HH:MM' as typed in Notion (the center's local time); absent for all-day events. */
+  time?: string
+  /** 'HH:MM', only when the event ends on the day it starts. */
+  endTime?: string
   summary: string
+  /** English text for the EN locale; the Ukrainian is shown when absent. */
+  titleEn?: string
+  summaryEn?: string
   image?: string
 }
 
@@ -25,6 +32,10 @@ const HEADERS = {
   summary: 'короткий опис',
   image: 'фото',
   id: 'id',
+  time: 'час',
+  endTime: 'час завершення',
+  titleEn: 'назва (en)',
+  summaryEn: 'опис (en)',
 } as const
 
 type Column = keyof typeof HEADERS
@@ -71,7 +82,7 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
     const summary = get('summary')
     const date = toIsoDate(get('date'))
     if (!title || !summary || !date) {
-      skip('потрібні Назва, Дата і Короткий опис.')
+      skip('потрібні Назва, Дата і Опис.')
       return
     }
 
@@ -90,12 +101,21 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
     seen.add(slug)
 
     const image = toImage(get('image'))
+    const clock = (raw: string) => (/^\d{2}:\d{2}$/.test(raw) ? raw : undefined)
+    const time = clock(get('time'))
+    const endTime = time && (!endDate || endDate === date) ? clock(get('endTime')) : undefined
+    const titleEn = get('titleEn')
+    const summaryEn = get('summaryEn')
     events.push({
       slug,
       title,
       date,
       ...(endDate && endDate !== date ? { endDate } : {}),
+      ...(time ? { time } : {}),
+      ...(endTime && endTime !== time ? { endTime } : {}),
       summary,
+      ...(titleEn ? { titleEn } : {}),
+      ...(summaryEn ? { summaryEn } : {}),
       ...(image ? { image } : {}),
     })
   })
@@ -107,11 +127,16 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
 export const isDraft = (page: NotionPage) => page.properties['Показати']?.checkbox !== true
 
 /* Published Notion rows → the sheet's row shape, so toEvents keeps every validation rule.
-   A Notion date-time start is cut to its day. */
+   A Notion date-time ('2026-11-21T18:00:00.000+02:00') splits into its day and its
+   local clock time, which is what the manager typed. */
 export function notionRows(pages: NotionPage[]): string[][] {
   const day = (v: string | null | undefined) => (v ?? '').slice(0, 10)
+  const clock = (v: string | null | undefined) => (v ?? '').slice(11, 16)
   return [
-    [HEADERS.title, HEADERS.date, HEADERS.endDate, HEADERS.summary, HEADERS.image, HEADERS.id],
+    [
+      HEADERS.title, HEADERS.date, HEADERS.endDate, HEADERS.summary, HEADERS.image, HEADERS.id,
+      HEADERS.time, HEADERS.endTime, HEADERS.titleEn, HEADERS.summaryEn,
+    ],
     ...pages
       .filter((p) => !isDraft(p))
       .map((page) => {
@@ -120,9 +145,13 @@ export function notionRows(pages: NotionPage[]): string[][] {
           text(r['Назва']),
           day(r['Дата']?.date?.start),
           day(r['Дата']?.date?.end),
-          text(r['Короткий опис']),
+          text(r['Опис']),
           photoOf(page),
           uniqueId(r['ID']),
+          clock(r['Дата']?.date?.start),
+          clock(r['Дата']?.date?.end),
+          text(r['Назва (EN)']),
+          text(r['Опис (EN)']),
         ]
       }),
   ]

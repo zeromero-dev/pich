@@ -4,7 +4,7 @@ Store events: fairs, exhibitions, meetings with the shop's artists. **Detached f
 
 > Відв’язати їх від календаря ( ми публікуватимемо тут події по’язані з крамничкою)
 
-**State (2026-10-30, branch `feat/notion-poc`): source moved to Notion.** Events live in the «Події» database under the private Notion page «Plai Pich — сайт» (fields Назва, Дата (range for multi-day), Короткий опис, Фото, Slug). `lib/events.ts` maps Notion rows to the sheet's row shape and reuses `toEvents`, so every rule below still holds. Needs `NOTION_TOKEN` (integration added to that page) and `NOTION_EVENTS_DATA_SOURCE`. **Drafts** (2026-11-01): a «Показати» checkbox; unticked rows never reach `toEvents` (`isDraft`). **Skipped rows are reported to the manager**: `toEvents(rows, problems)` collects a Ukrainian reason per skipped row, and the «Оновити сайт» link (`app/api/update-site`) lists them along with photos over 2 MB. The sheet notes below are history.
+**State (2026-10-30, branch `feat/notion-poc`): source moved to Notion.** Events live in the «Події» database under the private Notion page «Plai Pich — сайт» (fields Назва, Дата (range for multi-day), Опис, Фото, Slug). `lib/events.ts` maps Notion rows to the sheet's row shape and reuses `toEvents`, so every rule below still holds. Needs `NOTION_TOKEN` (integration added to that page) and `NOTION_EVENTS_DATA_SOURCE`. **Drafts** (2026-11-01): a «Показати» checkbox; unticked rows never reach `toEvents` (`isDraft`). **Skipped rows are reported to the manager**: `toEvents(rows, problems)` collects a Ukrainian reason per skipped row, and the «Оновити сайт» link (`app/api/update-site`) lists them along with photos over 2 MB. The sheet notes below are history.
 
 **Built 2026-10-25.** The owners keep events in a Google Sheet published as CSV (`EVENTS_SHEET_CSV_URL`). `lib/events.ts` fetches it with a 5-minute revalidate and maps rows to `PlaiEvent`. This replaces the Google Calendar plan, which was never built. The site is read-only; editing happens in the sheet.
 
@@ -43,7 +43,7 @@ Row 1 holds the headers (case-insensitive, trimmed, any column order). One row =
 | `Назва` | yes | text | |
 | `Дата` | yes | `2026-11-21` or `21.11.2026` | the day of the event, or its first day |
 | `Дата завершення` | no | same | only for multi-day events, so the event stays «Триває» until its last day |
-| `Короткий опис` | yes | text | card and event page; line breaks are kept on the event page |
+| `Опис` | yes | text | card and event page; line breaks are kept on the event page |
 | `Фото` | no | any `https://` image URL, `/images/...`, or a Google Drive share link | Drive links are rewritten to `lh3.googleusercontent.com/d/<id>` — **unverified**, see below |
 | `ID` | auto | Notion auto-number (no prefix) | the URL, /events/12; set by Notion, never changes, never reused |
 
@@ -74,4 +74,4 @@ The owners get a ready template, `podii-kramnychky.xlsx`, to upload to Google Dr
 
 ## Not built (not in the brief)
 
-Start time, location, long description, registration, drafts. Each is one more sheet column plus one line in `toEvents` if the owners ask.
+Location, long description, registration. (Built 2026-11-01: drafts via «Показати»; **start/end time** — a Notion date with «Include time» shows as «21 листопада 2026, 18:00–20:00», JSON-LD gets the local time without offset; **English** «Назва (EN)» / «Опис (EN)», used in the EN locale with the Ukrainian as fallback; a private «Нотатки» column the site never reads.) Each is one more sheet column plus one line in `toEvents` if the owners ask.
