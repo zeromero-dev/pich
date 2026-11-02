@@ -6,8 +6,7 @@ import { artistsOf, getCatalog } from '@/lib/hugeprofit'
 import { CRM_TAG } from '@/lib/hugeprofit/client'
 import { NOTION_ARTISTS, NOTION_EVENTS, NOTION_TAG, type NotionPage, queryNotionPages, saveNotionRow, text } from '@/lib/notion'
 
-/* «Оновити сайт»: opened from the Notion page link (?key=SYNC_KEY) and daily by
-   Vercel Cron (Bearer CRON_SECRET). Syncs CRM artists into «Митці» (add rows, fill
+/* «Оновити сайт»: opened from the Notion page link (?key=SYNC_KEY). Syncs CRM artists into «Митці» (add rows, fill
    CRM ID — never edits names, never deletes), expires the site's caches so edits
    show at once, and answers with what the manager should fix. Safe to run twice. */
 
@@ -79,10 +78,7 @@ async function syncArtists(pages: NotionPage[]): Promise<{ line: string; failed:
 }
 
 export async function GET(request: Request) {
-  const allowed =
-    same(new URL(request.url).searchParams.get('key'), process.env.SYNC_KEY) ||
-    same(request.headers.get('authorization'), process.env.CRON_SECRET && `Bearer ${process.env.CRON_SECRET}`)
-  if (!allowed) return reply('Доступ заборонено.', 403)
+  if (!same(new URL(request.url).searchParams.get('key'), process.env.SYNC_KEY)) return reply('Доступ заборонено.', 403)
 
   const wait = lastRun + COOLDOWN_MS - Date.now()
   if (wait > 0) return reply(`Оновлення щойно було. Спробуйте за ${Math.ceil(wait / 1000)} с.`, 429)

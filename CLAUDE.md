@@ -55,7 +55,6 @@ NOTION_TOKEN=...                  # server-only — Notion integration secret (r
 NOTION_EVENTS_DATA_SOURCE=...     # «Події» data source id (••• → Manage data sources → Copy ID); unset = no events
 NOTION_ARTISTS_DATA_SOURCE=...    # «Митці» data source id; unset = no bios, sync answers 500
 SYNC_KEY=...                      # server-only — key in the Notion «Оновити сайт» link; unset = link always 403
-CRON_SECRET=...                   # server-only — Vercel Cron's Bearer for the daily sync (vercel.json); unset = cron 403
 LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
 LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
 LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
@@ -82,7 +81,7 @@ lib/notion.ts        # BUILT: Notion data-source query (ids from env), cached 5 
 lib/events.ts        # BUILT: Notion «Події» → events (URL = Notion «ID» number). Every page URL is an ID: /shop/<CRM product id>, /artists/<CRM brand id | ar-n>, /events/<n>
 app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
 lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
-app/api/update-site/      # BUILT: «Оновити сайт» — CRM → «Митці» sync by brand id (add rows, fill CRM ID; never renames or deletes), expire caches, plain-text report of what to fix. ?key=SYNC_KEY link + daily Vercel Cron
+app/api/update-site/      # BUILT: «Оновити сайт» — CRM → «Митці» sync by brand id (add rows, fill CRM ID; never renames or deletes), expire caches, plain-text report of what to fix. ?key=SYNC_KEY link only (no cron)
 app/api/notion-file/[id]/  # BUILT: 302 to a freshly signed Notion «Фото» URL (Notion signs uploads for ~1 h), CDN-cached until just before expiry
 lib/artist-roster.ts      # BUILT: pure roster/sync logic; `npm test` runs lib/artist-roster.test.ts
 ```
@@ -150,7 +149,7 @@ Endpoints we care about:
 ### Before launch (client brief 2026-10, built 2026-10-25)
 
 - `grep -rn PLACEHOLDER app components lib` — the privacy policy's data controller (legal entity not confirmed; `lib/info-pages.ts`).
-- Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) `SYNC_KEY` and `CRON_SECRET` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
+- Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
 - qty > 1 CRM reservation is unverified — see `.claude/docs/domain/checkout.md`.
 - UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`).
 
