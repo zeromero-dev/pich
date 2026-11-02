@@ -19,8 +19,9 @@ export type CrmStock = {
 }
 
 export type CrmCategory = {
-  id: number
-  name: string
+  /** Both null when the category was deleted in the CRM — the product still lists it. */
+  id: number | null
+  name: string | null
   /** Roots are 0 in most rows and null in a few — treat both as "no parent". */
   parent_id: number | null
 }

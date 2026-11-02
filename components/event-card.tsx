@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, MapPin } from 'lucide-react'
 import { formatEventDate } from '@/lib/format'
 import { useLocale } from '@/components/providers'
 import { cn } from '@/lib/utils'
@@ -55,15 +55,21 @@ export function EventCard({ event, badge }: { event: PlaiEvent; badge?: EventBad
             href={`/events/${event.slug}`}
             className="outline-none after:absolute after:inset-0 after:rounded-2xl"
           >
-            {event.title}
+            {(locale === 'en' && event.titleEn) || event.title}
           </Link>
         </h3>
         <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-soft">
           <CalendarDays className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
           {formatEventDate(event, locale)}
         </p>
+        {event.location && (
+          <p className="mt-1 inline-flex items-start gap-1.5 text-sm text-ink-soft">
+            <MapPin className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            {(locale === 'en' && event.locationEn) || event.location}
+          </p>
+        )}
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft text-pretty">
-          {event.summary}
+          {(locale === 'en' && event.summaryEn) || event.summary}
         </p>
         <span aria-hidden="true" className={cn('mt-auto pt-4 text-sm font-medium', past ? 'text-ink-soft' : 'text-ink')}>
           {t.events.more} →

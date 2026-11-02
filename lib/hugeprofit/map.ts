@@ -1,30 +1,15 @@
 import type { Product } from '@/lib/data'
-import { slugBase } from '@/lib/slug'
-import type { CrmProduct, CrmStock } from './types'
+import type { CrmCategory, CrmProduct, CrmStock } from './types'
 
 /* -------------------------------------------------------------------------- */
 /* Slugs                                                                      */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Slugs are permanent URLs, so they carry the CRM id: names repeat in this
- * catalog ("Чокер" ×3) and the owners rename products in the CRM.
+ * The product URL is the bare CRM id (/shop/9054735), so renames can't break it.
+ * Until 2026-11-01 it was name + id (/shop/chashka-9054735); the id is still the
+ * last segment, so those links resolve and redirect.
  */
-export function toSlug(name: string, id: number): string {
-  const base = slugBase(name)
-  return base ? `${base}-${id}` : String(id)
-}
-
-/**
- * Artist slugs stay bare (no id) — they are the prettier URL and CRM brand
- * names are distinct today. The id is appended only if a name would collide.
- */
-export function toArtistSlug(name: string, brandId: number | undefined): string {
-  const base = slugBase(name)
-  if (base) return base
-  return brandId ? `artist-${brandId}` : 'artist'
-}
-
 export function idFromSlug(slug: string): number | null {
   const id = Number(slug.split('-').pop())
   return Number.isInteger(id) && id > 0 ? id : null
@@ -84,15 +69,18 @@ export function toProduct(crm: CrmProduct, warehouseId: number): Product | null 
 
   return {
     id: String(crm.id),
-    slug: toSlug(crm.name, crm.id),
+    slug: String(crm.id),
     name: crm.name.trim(),
     artist,
     artistId: crm.brand?.id ? String(crm.brand.id) : null,
-    artistSlug: artist ? toArtistSlug(artist, crm.brand?.id) : null,
+    // The artist's URL is the bare CRM brand id: a rename can't break it.
+    artistSlug: artist && crm.brand?.id ? String(crm.brand.id) : null,
     price,
     // The CRM returns the leaf plus its ancestors, which is what makes a
     // parent-category filter able to find works filed under its children.
-    categories: crm.category.map((c) => ({ slug: String(c.id), label: c.name })),
+    categories: crm.category
+      .filter((c): c is CrmCategory & { id: number; name: string } => c.id !== null && !!c.name)
+      .map((c) => ({ slug: String(c.id), label: c.name })),
     // `instock` is availability, `quantity` is physical stock on hand — they
     // diverge once an order reserves a unit (verified live 2026-08-13: one
     // reservation took instock 29 → 28 while quantity stayed 29). Reading

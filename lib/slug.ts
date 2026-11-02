@@ -14,7 +14,7 @@ function transliterate(input: string): string {
     .join('')
 }
 
-/** Latin kebab-case. URLs built from it are permanent — don't change the table. */
+/** Latin kebab-case. No URL uses it any more (all are IDs); the artist sync uses it to match names loosely. */
 export function slugBase(name: string): string {
   return transliterate(name)
     .replace(/[^a-z0-9]+/g, '-')

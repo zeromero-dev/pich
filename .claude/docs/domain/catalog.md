@@ -15,7 +15,7 @@ What the shop sells and how buyers find it. Source of truth: HUGEPROFIT CRM. The
 ```
 Work {
   id            identity (CRM product id)
-  slug          URL identity — transliterated name + "-{id}"; permanent
+  slug          URL identity — the bare CRM id (/shop/9054735); permanent
   name, images
   artist        Artists context link (display-name string); null for 23 works
   price         UAH, customer price
@@ -67,12 +67,12 @@ CRM → domain mapping (verified against live data):
 | Domain | CRM | Notes |
 |--------|-----|-------|
 | `id` | `id` | stringify |
-| `slug` | — none | `toSlug()`: transliterated name + `-{id}`. The id is not decoration: names repeat ("Чокер" ×3) and the owners rename products. |
+| `slug` | `id` | The bare CRM id (2026-11-01). Until then it was transliterated name + `-{id}`; those addresses are indexed and sit in shoppers' carts, so `/shop/<anything>-<id>` 308-redirects to `/shop/<id>` (`idFromSlug` + `app/shop/[slug]/page.tsx`). |
 | `artist` | `brand.name` | **Confirmed**: all 71 brands are personal names. `brand` is `{}` on 23 products → `null`. |
 | `price` | `stock[].sale_price` \|\| `stock[].price` | rule 2 |
 | `inStock` | `stock[].instock > 0` | **Not `quantity`.** `instock` is what is available to sell; `quantity` is physical stock on hand. They read identically until an order reserves a unit — verified live 2026-08-13, one reservation moved `instock` 29 → 28 while `quantity` stayed 29. Reading `quantity` re-offers works that are already spoken for, which is how you double-sell a one-off. |
 | `categories` | `category[]` | the whole chain, leaf first — see category filtering above |
-| `artistId`, `artistSlug` | `brand.id`, `brand.name` | the Artists join ([artists.md](artists.md)) |
+| `artistId`, `artistSlug` | `brand.id` (both; `artistSlug` is null when there's no page to link to) | the Artists join ([artists.md](artists.md)) |
 | `available` | `stock[].instock` | rule 1; floored at 0 |
 | `isLast` | `stock[].instock === 1` | rule 1; same reasoning as `inStock` |
 | `size` | `size` | packed as `"AxBxC"` with blanks for unset (`"30xx21x"` → 30 × 21, `"xxx"` → none). Unit is **centimetres**, confirmed 2026-08-12. 195 of 258 have no dimensions at all. |

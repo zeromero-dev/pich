@@ -64,6 +64,7 @@ export function ShopView({
         !q ||
         p.name.toLowerCase().includes(q) ||
         (p.artist?.toLowerCase().includes(q) ?? false) ||
+        (p.artistEn?.toLowerCase().includes(q) ?? false) ||
         p.categories.some((c) => c.label.toLowerCase().includes(q))
       const matchesStock = !availableOnly || p.inStock
       return matchesCategory && matchesQuery && matchesStock

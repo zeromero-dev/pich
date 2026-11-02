@@ -7,6 +7,9 @@ import 'server-only'
 
 const BASE = 'https://crm.h-profit.com/bapi'
 
+/** Cache tag on every cached CRM read; «Оновити сайт» expires it. */
+export const CRM_TAG = 'crm'
+
 /** Catalog cache window. Also our rate-limit politeness layer — limits are undocumented. */
 export const CATALOG_REVALIDATE = 300
 
@@ -75,7 +78,7 @@ export async function crmFetch<T>(
     // Caching is opt-in in Next 16, and requests carrying an Authorization
     // header need force-cache explicitly (see docs/functions/fetch).
     cache: revalidate === 0 ? 'no-store' : 'force-cache',
-    ...(revalidate === 0 ? {} : { next: { revalidate } }),
+    ...(revalidate === 0 ? {} : { next: { revalidate, tags: [CRM_TAG] } }),
   })
 
   if (!res.ok) {

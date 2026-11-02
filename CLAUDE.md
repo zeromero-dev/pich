@@ -2,9 +2,9 @@
 
 # Plai Pich
 
-Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events page, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events are published by the owners in a Google Sheet (detached from the calendar, per the client brief).
+Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events page, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events and artist photos/bios are edited by the manager in Notion («Plai Pich — сайт», two databases; events detached from the calendar, per the client brief).
 
-**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the 53 artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Співпраця page built. Delivery/returns text is the owners' (2026-10-29); privacy is a generic template we wrote at their request, naming no legal entity yet (`lib/info-pages.ts`). Contacts in `lib/contacts.ts`: email + Instagram only (no Telegram, 2026-10-29). `grep -rn PLACEHOLDER app components lib` lists what's left. Still mock or missing: artist bios (`artistProfiles`, empty), and online payment. Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 12:00–21:00, corrected 2026-10-29) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). The homepage «Події» block uses a real fair photo (`public/images/events/events-teaser.jpg`, downscaled to 1600px by hand — no Vercel optimisation); all other local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout creates real CRM orders, unpaid — the owners follow up to arrange payment (decided 2026-08-12). Співпраця page built. Delivery/returns text is the owners' (2026-10-29); privacy is a generic template we wrote at their request, naming no legal entity yet (`lib/info-pages.ts`). Contacts in `lib/contacts.ts`: email + Instagram only (no Telegram, 2026-10-29). `grep -rn PLACEHOLDER app components lib` lists what's left. Still missing: most artist photos/bios (Notion «Митці» rows exist, mostly unfilled), and online payment. Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 12:00–21:00, corrected 2026-10-29) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). The homepage «Події» block uses a real fair photo (`public/images/events/events-teaser.jpg`, downscaled to 1600px by hand — no Vercel optimisation); all other local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
 
 ## Stack
 
@@ -18,8 +18,8 @@ Plai Pich is a local art center — a place for people to gather and display the
 1. **Landing** — about the art center
 2. **Крамничка (Shop)** — catalog from CRM, product pages, cart, checkout that creates an order in the CRM
 3. **Product search** — implemented in-app (the CRM API has no search endpoint)
-4. **Events** — BUILT: store events from the owners' published Google Sheet (`lib/events.ts`), «Майбутні»/«Минулі» split, permanent `/events/[slug]` pages.
-5. **Artist pages** — BUILT: roster derived from CRM brands, per-artist pages at `/artists/[slug]`. Bios/portraits are repo content (`artistProfiles`), still unwritten
+4. **Events** — BUILT: store events from the Notion «Події» database (`lib/events.ts` via `lib/notion.ts`; PoC on branch `feat/notion-poc`, replaced the Google Sheet), «Майбутні»/«Минулі» split, permanent `/events/[slug]` pages.
+5. **Artist pages** — BUILT: roster = CRM brands with works + every Notion «Митці» row (artists without works too, `rosterOf` in `lib/artists.ts`), per-artist pages at `/artists/<CRM brand id>` (or `ar-<n>` for Notion-only rows) — IDs only, names never in artist/event URLs. Photo + bio come from the Notion «Митці» database keyed by CRM brand id (`lib/artists.ts`), still unwritten
 6. **Online payment** — a Ukrainian payment provider (LiqPay / monobank / Fondy / WayForPay — which one is not decided yet). Checkout must be structured so the payment step runs before order creation in the CRM.
 
 ## Principles
@@ -39,6 +39,7 @@ npm run dev        # dev server at http://localhost:3000 (regenerates AGENTS.md 
 npx react-doctor@latest   # ALWAYS before `npm run build`: fix every finding, or record a deliberate exception with its reason in doctor.config.mjs
 npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
+npm test           # asserts over lib/artist-roster.ts (runs via npx tsx, no install)
 ```
 
 Config and secrets live in `.env.local` (gitignored via `.env*`). `.env.example`
@@ -46,11 +47,14 @@ lists the same keys with placeholder values — copy it to `.env.local` and fill
 in real ones:
 
 ```bash
-WEBSITE_URL=https://plaipich.art  # required — production builds throw without it
+WEBSITE_URL=https://www.pich.co.ua  # required — production builds throw without it
 HUGEPROFIT_API_KEY=...            # server-only — no NEXT_PUBLIC_ prefix, ever
 CRM_WAREHOUSE_ID=51630            # required — warehouse the site sells from: 51630 (mock "dev") locally/Preview,
                                   # 34998 in production. Throws at import if unset; crmFetch refuses reads for any other
-EVENTS_SHEET_CSV_URL=...          # server-only — published Google Sheet CSV; unset = no events
+NOTION_TOKEN=...                  # server-only — Notion integration secret (read + insert + update content); unset = no events, no bios
+NOTION_EVENTS_DATA_SOURCE=...     # «Події» data source id (••• → Manage data sources → Copy ID); unset = no events
+NOTION_ARTISTS_DATA_SOURCE=...    # «Митці» data source id; unset = no bios, sync answers 500
+SYNC_KEY=...                      # server-only — key in the Notion «Оновити сайт» link; unset = link always 403
 LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
 LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
 LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
@@ -65,24 +69,28 @@ visibly. **It must be set in the Vercel project settings, not just locally.**
 
 ## Architecture
 
-Server-first for backends: all CRM and events-sheet calls happen in Server Components / Route Handlers so tokens never reach the browser.
+Server-first for backends: all CRM and Notion calls happen in Server Components / Route Handlers so tokens never reach the browser.
 
 ```
 app/                 # BUILT: /, /shop, /shop/[slug], /events, /events/[slug], /about, /artists, /artists/[slug], /collaboration, /delivery, /returns, /privacy, /checkout
 components/          # BUILT: header, footer, cart-drawer, per-page views, motion primitives (reveal.tsx)
 lib/data.ts          # BUILT: domain types + mock events (catalog and artist mocks are gone)
-lib/artists.ts       # BUILT: layers repo-authored bios onto the CRM-derived roster
+lib/artists.ts       # BUILT: layers Notion photo + bio onto the CRM-derived roster
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
-lib/events.ts        # BUILT: Google Sheet CSV → events; lib/csv.ts parser; lib/slug.ts shared transliteration
+lib/notion.ts        # BUILT: Notion data-source query (ids from env), cached 5 min
+lib/events.ts        # BUILT: Notion «Події» → events (URL = Notion «ID» number). Every page URL is an ID: /shop/<CRM product id>, /artists/<CRM brand id | ar-n>, /events/<n>
 app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
 lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
+app/api/update-site/      # BUILT: «Оновити сайт» — CRM → «Митці» sync by brand id (add rows, fill CRM ID; never renames or deletes), expire caches, plain-text report of what to fix. ?key=SYNC_KEY link only (no cron)
+app/api/notion-file/[id]/  # BUILT: 302 to a freshly signed Notion «Фото» URL (Notion signs uploads for ~1 h), CDN-cached until just before expiry
+lib/artist-roster.ts      # BUILT: pure roster/sync logic; `npm test` runs lib/artist-roster.test.ts
 ```
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
 - **Cart**: client-side only (localStorage / context). No server session.
 - **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to LiqPay's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. `order_id` is `Date.now()` (the API documents an int, so no UUID).
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
-- **Events**: read-only fetch of the owners' published Google Sheet (CSV), revalidated every 5 min; editing happens in the sheet.
+- **Events & artist bios**: read-only query of the Notion «Plai Pich — сайт» page's two databases, revalidated every 5 min (uncached in `next dev`); editing happens in Notion. Notion-uploaded photos go through `/api/notion-file/[id]`, because Notion's signed URLs expire after ~1 h. Every Notion and cached CRM fetch is tagged (`notion`, `crm`) so «Оновити сайт» can expire them at once.
 
 ## Knowledge Base
 
@@ -96,9 +104,9 @@ All AI context docs live under `.claude/docs/` — don't scatter `.md` files els
     ├── catalog.md        # Work entity, pricing rules, net_price rule, CRM mapping spec
     ├── cart.md           # draft-order semantics, snapshot staleness, never-authoritative policy
     ├── checkout.md       # ordering flow spec, payment-before-order rule, PaymentProvider interface
-    ├── events.md         # store events from the owners' sheet, upcoming/past rules, owner setup
-    ├── artists.md        # content-as-code policy, fragile name join to catalog
-    └── i18n.md           # UI-bilingual/content-single-language rule, formatting rules
+    ├── events.md         # store events from Notion «Події», columns, upcoming/past rules
+    ├── artists.md        # Notion «Митці» + CRM brands roster, ID join, sync and its name matching
+    └── i18n.md           # UI-bilingual rule, optional EN columns in Notion, formatting rules
 ```
 
 Domain docs record **what is built** vs **what is spec** — when you build something specified there, move it to fact. Doc style: business rules and use cases, boundaries named by real module paths; no invented interfaces (the payment provider is the one deliberate exception).
@@ -130,21 +138,20 @@ Endpoints we care about:
 - **Rate limits are undocumented.** Don't hammer the CRM per-request — the catalog cache is also our politeness layer.
 - **Next 16 makes fetch caching opt-in**, and a request carrying an `Authorization` header needs `cache: 'force-cache'` explicitly — `next.revalidate` alone is not enough. See `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md`.
 - **The API docs site mirrors cleanly.** `https://api-doc.h-profit.com/search/search_index.json` is the whole documentation (EN + UA + Types + Changelog) in one JSON — faster and more complete than scraping pages.
-- **Live-account quirks** (verified 2026-08-12): the product field is `category` (singular), not `categories`; `brand` is an object that is `{}` when unset; `product_id` accepts one id only (a comma list errors); `warehouse_id` is ignored when `count=1`; product images are public and need no auth header.
+- **Live-account quirks** (verified 2026-08-12): the product field is `category` (singular), not `categories`; `brand` is an object that is `{}` when unset; `product_id` accepts one id only (a comma list errors); `warehouse_id` is ignored when `count=1`; product images are public and need no auth header. A category deleted in the CRM stays on its products as `{id: null, name: null}` (dropped in `lib/hugeprofit/map.ts`; it crashed the shop's category sort on 2026-11-01). A product POSTed without `category` lands in an auto-created «Общая» category.
 
 ## Open Decisions (do not build these without confirming)
 
 - **Product photo frames** (client brief §3.2): A keep `object-contain` (nothing cropped, current), B `object-cover` (crops artwork edges, no focal-point data), C contain with less padding. One class in `components/product-card.tsx`.
-- **Artist video** (brief §5): A YouTube/Instagram link in `artistProfiles` as a click-to-load embed (recommended), B self-hosted MP4 (not on Vercel Hobby bandwidth).
+- **Artist video** (brief §5): A YouTube/Instagram link in the Notion «Митці» database as a click-to-load embed (recommended), B self-hosted MP4 (not on Vercel Hobby bandwidth).
 - **«Кожна — єдина»** (`shop.lead`) is false for a craft catalog with a quantity selector. Not in the brief; ask the owners.
 
 ### Before launch (client brief 2026-10, built 2026-10-25)
 
 - `grep -rn PLACEHOLDER app components lib` — the privacy policy's data controller (legal entity not confirmed; `lib/info-pages.ts`).
-- Vercel (Production + Preview): add `EVENTS_SHEET_CSV_URL`, remove `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
+- Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
 - qty > 1 CRM reservation is unverified — see `.claude/docs/domain/checkout.md`.
-- Google Drive photo links in the events sheet are unverified — see `.claude/docs/domain/events.md`.
-- UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error.
+- UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`).
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider is LiqPay (decided 2026-08-16).
 

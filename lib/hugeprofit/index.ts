@@ -31,8 +31,8 @@ function isSellable(product: Product | null): product is Product {
  * The whole shop, sold works last (they stay on the wall — catalog.md rule 5).
  * CRM order is newest-first and preserved within each group.
  */
-export async function getCatalog(): Promise<Product[]> {
-  const crm = await fetchCrmProducts()
+export async function getCatalog(fresh = false): Promise<Product[]> {
+  const crm = await fetchCrmProducts({}, fresh ? 0 : undefined)
   const available: Product[] = []
   const sold: Product[] = []
   for (const row of crm) {
@@ -65,18 +65,19 @@ export function categoriesOf(products: Product[]): CategoryFilter[] {
 }
 
 /**
- * Homepage tiles: the root of each work's chain (last entry — the CRM returns
- * leaf first). Works without a parent count under their leaf, so a sparsely
- * filled tree still yields tiles. Covers come from catalog order: newest in stock.
+ * Homepage tiles: every category that holds a work — subcategories and parents
+ * alike, since the CRM lists the whole chain on each work. Empty CRM categories
+ * stay hidden (a tile must not open an empty shop). Covers come from catalog
+ * order: newest in stock.
  */
-export function rootCategoriesOf(products: Product[]): CategoryTile[] {
+export function categoryTilesOf(products: Product[]): CategoryTile[] {
   const bySlug = new Map<string, CategoryTile>()
   for (const product of products) {
-    const root = product.categories.at(-1)
-    if (!root) continue
-    const entry = bySlug.get(root.slug)
-    if (entry) entry.count += 1
-    else bySlug.set(root.slug, { ...root, count: 1, cover: product.images[0] })
+    for (const category of product.categories) {
+      const entry = bySlug.get(category.slug)
+      if (entry) entry.count += 1
+      else bySlug.set(category.slug, { ...category, count: 1, cover: product.images[0] })
+    }
   }
   return [...bySlug.values()].sort(
     (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'uk'),
@@ -121,9 +122,7 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
 
   const crm = await fetchCrmProducts({ product_id: id })
   const product = crm[0] ? toProduct(crm[0], SHOP_WAREHOUSE_ID) : null
-  if (!isSellable(product)) return undefined
-  // Guard against a stale slug pointing at a renamed product.
-  return product.slug === slug ? product : undefined
+  return isSellable(product) ? product : undefined
 }
 
 

@@ -46,7 +46,7 @@ function AddToCart({ product }: { product: Product }) {
 }
 
 export function ProductCard({ product }: { product: Product }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const reduced = useReducedMotion()
   const href = `/shop/${product.slug}`
 
@@ -88,7 +88,7 @@ export function ProductCard({ product }: { product: Product }) {
         <h3 className="line-clamp-2 text-base font-semibold leading-snug text-ink text-pretty">
           {product.name}
         </h3>
-        <p className="mt-0.5 text-sm text-ink-soft">{product.artist}</p>
+        <p className="mt-0.5 text-sm text-ink-soft">{(locale === 'en' && product.artistEn) || product.artist}</p>
         <p className="mt-1 text-sm font-semibold text-ink tabular-nums">
           {formatPrice(product.price)}
         </p>
