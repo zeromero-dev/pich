@@ -19,7 +19,8 @@ PlaiEvent {
   time?      'HH:MM', the center's local time; absent for all-day events
   endTime?   'HH:MM', only when the event ends on the day it starts
   summary    card text and event page body
-  titleEn?, summaryEn?   EN locale text; the Ukrainian is shown when absent
+  location?  free text, as typed; absent = no place line
+  titleEn?, summaryEn?, locationEn?   EN locale text; the Ukrainian is shown when absent
   image?     /api/notion-file/<page id> for an upload, else the external URL
 }
 ```
@@ -35,7 +36,8 @@ Columns are read by exact name. **A renamed column silently empties that field**
 | `Опис` | yes | text | card and event page; line breaks are kept on the event page |
 | `Фото` | no | files | uploads go through `/api/notion-file/[id]` (Notion signs them for ~1 h) |
 | `Показати` | — | checkbox | unticked = draft, never reaches `toEvents` (`isDraft`) |
-| `Назва (EN)`, `Опис (EN)` | no | text | EN locale |
+| `Локація` | no | text | a pin line under the date (card and page), JSON-LD `location` (`Place`, name = address = the text) |
+| `Назва (EN)`, `Опис (EN)`, `Локація (EN)` | no | text | EN locale |
 | `ID` | auto | unique id, no prefix | the URL, /events/12; set by Notion, never changes, never reused |
 | `Нотатки` | no | text | the manager's own; the site never reads it |
 
@@ -60,4 +62,4 @@ Column order in the table view follows the manager's workflow: Назва, Да�
 
 ## Not built (not in the brief)
 
-Location, long description, registration, linking an event to its artists. Each is one more column plus one line in `notionRows`/`toEvents` if the owners ask.
+Long description, registration, linking an event to its artists. (Location built 2026-11-02.) Each is one more column plus one line in `notionRows`/`toEvents` if the owners ask.

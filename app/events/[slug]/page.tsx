@@ -47,6 +47,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     startDate: event.time ? `${event.date}T${event.time}${kyivOffset(event.date)}` : event.date,
     endDate: event.endTime ? `${event.date}T${event.endTime}${kyivOffset(event.date)}` : event.endDate,
     description: event.summary,
+    location: event.location ? { '@type': 'Place', name: event.location, address: event.location } : undefined,
     image: event.image?.startsWith('/') ? `${WEBSITE_URL}${event.image}` : event.image,
   }
 

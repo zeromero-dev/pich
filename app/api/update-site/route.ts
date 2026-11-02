@@ -30,7 +30,7 @@ const reply = (body: string, status = 200) =>
 /* Every column the site reads, by exact name. A renamed one silently empties that field on the
    site (2026-11-02: «Короткий опис» → «Опис» hid every event), so the report names it. */
 const COLUMNS = {
-  'Події': ['Назва', 'Дата', 'Опис', 'Фото', 'Показати', 'ID', 'Назва (EN)', 'Опис (EN)'],
+  'Події': ['Назва', 'Дата', 'Опис', 'Фото', 'Показати', 'ID', 'Назва (EN)', 'Опис (EN)', 'Локація', 'Локація (EN)'],
   'Митці': ['Імʼя', 'CRM ID', 'ID', 'Фото', 'Біо', 'Біо (EN)', 'Імʼя (EN)', 'Instagram', 'Сайт', 'Показати', 'На головній'],
 }
 

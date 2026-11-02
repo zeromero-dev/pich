@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react'
 import { formatEventDate } from '@/lib/format'
 import { useLocale } from '@/components/providers'
 import { EventStatus } from '@/components/event-card'
@@ -30,6 +30,12 @@ export function EventDetail({ event, badge }: { event: PlaiEvent; badge?: EventB
           <CalendarDays className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
           {formatEventDate(event, locale)}
         </p>
+        {event.location && (
+          <p className="mt-1 inline-flex items-start gap-2 text-base text-ink-soft">
+            <MapPin className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            {(locale === 'en' && event.locationEn) || event.location}
+          </p>
+        )}
       </Reveal>
 
       {event.image && (

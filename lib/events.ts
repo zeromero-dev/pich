@@ -19,9 +19,12 @@ export type PlaiEvent = {
   /** 'HH:MM', only when the event ends on the day it starts. */
   endTime?: string
   summary: string
+  /** Where it happens, as typed («Крамничка ПІЧ, вул. Григорія Сковороди, 25»); absent = not shown. */
+  location?: string
   /** English text for the EN locale; the Ukrainian is shown when absent. */
   titleEn?: string
   summaryEn?: string
+  locationEn?: string
   image?: string
 }
 
@@ -36,6 +39,8 @@ const HEADERS = {
   endTime: 'час завершення',
   titleEn: 'назва (en)',
   summaryEn: 'опис (en)',
+  location: 'локація',
+  locationEn: 'локація (en)',
 } as const
 
 type Column = keyof typeof HEADERS
@@ -91,6 +96,8 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
     const endTime = time && (!endDate || endDate === date) ? clock(get('endTime')) : undefined
     const titleEn = get('titleEn')
     const summaryEn = get('summaryEn')
+    const location = get('location')
+    const locationEn = get('locationEn')
     events.push({
       slug,
       title,
@@ -101,6 +108,8 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
       summary,
       ...(titleEn ? { titleEn } : {}),
       ...(summaryEn ? { summaryEn } : {}),
+      ...(location ? { location } : {}),
+      ...(locationEn ? { locationEn } : {}),
       ...(image ? { image } : {}),
     })
   })
@@ -120,7 +129,7 @@ export function notionRows(pages: NotionPage[]): string[][] {
   return [
     [
       HEADERS.title, HEADERS.date, HEADERS.endDate, HEADERS.summary, HEADERS.image, HEADERS.id,
-      HEADERS.time, HEADERS.endTime, HEADERS.titleEn, HEADERS.summaryEn,
+      HEADERS.time, HEADERS.endTime, HEADERS.titleEn, HEADERS.summaryEn, HEADERS.location, HEADERS.locationEn,
     ],
     ...pages
       .filter((p) => !isDraft(p))
@@ -137,6 +146,8 @@ export function notionRows(pages: NotionPage[]): string[][] {
           clock(r['Дата']?.date?.end),
           text(r['Назва (EN)']),
           text(r['Опис (EN)']),
+          text(r['Локація']),
+          text(r['Локація (EN)']),
         ]
       }),
   ]
