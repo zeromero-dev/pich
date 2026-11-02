@@ -1,8 +1,8 @@
 /**
  * Domain types. Works and artists come from the CRM via `lib/hugeprofit/`;
- * events come from the owners' sheet (`lib/events.ts`). Content is
- * single-language (as the CRM provides it), per the i18n note — we don't
- * promise a translated catalog.
+ * events come from Notion (`lib/events.ts`). Catalog content is
+ * single-language (as the CRM provides it); events and artists have
+ * optional EN columns — see i18n.md.
  */
 
 export type Category = {

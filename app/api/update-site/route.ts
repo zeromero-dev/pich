@@ -28,6 +28,19 @@ function same(given: string | null | undefined, expected: string | undefined): b
 const reply = (body: string, status = 200) =>
   new Response(body, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } })
 
+/* Every column the site reads, by exact name. A renamed one silently empties that field on the
+   site (2026-11-02: «Короткий опис» → «Опис» hid every event), so the report names it. */
+const COLUMNS = {
+  'Події': ['Назва', 'Дата', 'Опис', 'Фото', 'Показати', 'ID', 'Назва (EN)', 'Опис (EN)'],
+  'Митці': ['Імʼя', 'CRM ID', 'ID', 'Фото', 'Біо', 'Біо (EN)', 'Імʼя (EN)', 'Instagram', 'Сайт', 'Показати', 'На головній'],
+}
+
+/** Columns missing from a database; Notion returns every property on every row, so one row shows the schema. */
+function missingColumns(table: keyof typeof COLUMNS, pages: NotionPage[]): string[] {
+  const row = pages[0]?.properties
+  return row ? COLUMNS[table].filter((c) => !(c in row)) : []
+}
+
 /** Size of a Notion-uploaded photo, via a one-byte range request (Content-Range: bytes 0-0/<total>). */
 async function photoBytes(page: NotionPage): Promise<number> {
   const url = page.properties['Фото']?.files?.[0]?.file?.url
@@ -81,9 +94,15 @@ export async function GET(request: Request) {
   ])
   if (!artistPages || !eventPages) return reply('Сайт не підключений до Notion (NOTION_TOKEN / NOTION_*_DATA_SOURCE).', 500)
 
+  const problems: string[] = []
+  for (const table of ['Події', 'Митці'] as const) {
+    for (const column of missingColumns(table, table === 'Події' ? eventPages : artistPages)) {
+      problems.push(`У «${table}» немає стовпця «${column}» — сайт його не бачить. Поверніть точну назву (можливо, його перейменували).`)
+    }
+  }
+
   const sync = await syncArtists(artistPages)
 
-  const problems: string[] = []
   const published = toEvents(notionRows(eventPages), problems).length
   const drafts = eventPages.filter(isDraft).length
 

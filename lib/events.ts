@@ -40,22 +40,7 @@ const HEADERS = {
 
 type Column = keyof typeof HEADERS
 
-/** 'YYYY-MM-DD' or 'DD.MM.YYYY' → 'YYYY-MM-DD'; null for anything else or an impossible date. */
-function toIsoDate(raw: string): string | null {
-  const dmy = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(raw)
-  const iso = dmy ? `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}` : raw
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
-  const check = new Date(`${iso}T00:00:00Z`)
-  return Number.isNaN(check.getTime()) || check.toISOString().slice(0, 10) !== iso ? null : iso
-}
-
-/* Drive "share" links are HTML pages, not images. The lh3 form serves the file
-   itself for files shared "anyone with the link" — unofficial and unverified. */
-function toImage(raw: string): string | undefined {
-  const drive = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/.exec(raw)
-  if (drive) return `https://lh3.googleusercontent.com/d/${drive[1]}`
-  return raw.startsWith('https://') || raw.startsWith('/') ? raw : undefined
-}
+const isoDate = (raw: string) => (/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null)
 
 /** Rows → events. Each skipped row adds a manager-readable reason to `problems`. */
 export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[] {
@@ -80,14 +65,14 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
     }
     const title = get('title')
     const summary = get('summary')
-    const date = toIsoDate(get('date'))
+    const date = isoDate(get('date'))
     if (!title || !summary || !date) {
       skip('потрібні Назва, Дата і Опис.')
       return
     }
 
     const endRaw = get('endDate')
-    const endDate = endRaw ? toIsoDate(endRaw) : undefined
+    const endDate = endRaw ? isoDate(endRaw) : undefined
     if (endDate === null || (endDate && endDate < date)) {
       skip('дата завершення раніша за дату початку.')
       return
@@ -100,7 +85,7 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
     }
     seen.add(slug)
 
-    const image = toImage(get('image'))
+    const image = get('image') || undefined
     const clock = (raw: string) => (/^\d{2}:\d{2}$/.test(raw) ? raw : undefined)
     const time = clock(get('time'))
     const endTime = time && (!endDate || endDate === date) ? clock(get('endTime')) : undefined
@@ -126,7 +111,7 @@ export function toEvents(rows: string[][], problems: string[] = []): PlaiEvent[]
 /** An event row with «Показати» unticked is a draft: kept in Notion, not on the site. */
 export const isDraft = (page: NotionPage) => page.properties['Показати']?.checkbox !== true
 
-/* Published Notion rows → the sheet's row shape, so toEvents keeps every validation rule.
+/* Published Notion rows → a header row plus one row per event, so toEvents keeps every validation rule.
    A Notion date-time ('2026-11-21T18:00:00.000+02:00') splits into its day and its
    local clock time, which is what the manager typed. */
 export function notionRows(pages: NotionPage[]): string[][] {

@@ -28,9 +28,15 @@ export async function generateMetadata({
   }
 }
 
+/** '+02:00' / '+03:00' (summer time) on that day: times are typed in the center's local time, and without an offset Google may read UTC. */
+const kyivZone = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Kyiv', timeZoneName: 'longOffset' })
+function kyivOffset(date: string): string {
+  const parts = kyivZone.formatToParts(new Date(`${date}T12:00:00Z`))
+  return parts.find((p) => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+02:00'
+}
+
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
-  const events = await getEvents()
+  const [{ slug }, events] = await Promise.all([params, getEvents()])
   const event = events.find((e) => e.slug === slug)
   if (!event) notFound()
 
@@ -38,9 +44,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     '@context': 'https://schema.org',
     '@type': 'Event',
     name: event.title,
-    // Local clock time, no offset: Notion stores what the manager typed in the center's own time.
-    startDate: event.time ? `${event.date}T${event.time}` : event.date,
-    endDate: event.endTime ? `${event.date}T${event.endTime}` : event.endDate,
+    startDate: event.time ? `${event.date}T${event.time}${kyivOffset(event.date)}` : event.date,
+    endDate: event.endTime ? `${event.date}T${event.endTime}${kyivOffset(event.date)}` : event.endDate,
     description: event.summary,
     image: event.image?.startsWith('/') ? `${WEBSITE_URL}${event.image}` : event.image,
   }
