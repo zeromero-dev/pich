@@ -39,7 +39,7 @@ export function DeliveryFields({
 
   return (
     <>
-      <div role="radiogroup" aria-label={t.checkout.delivery} className="grid gap-2 sm:grid-cols-2">
+      <div role="radiogroup" aria-label={t.checkout.delivery} className="flex flex-col gap-2">
         {DELIVERY_METHODS.map((option) => (
           <label
             key={option}
@@ -76,16 +76,22 @@ export function DeliveryFields({
         />
       )}
 
-      {(method === 'branch' || method === 'locker') && settlement && (
+      {(method === 'branch' || method === 'locker') && (
         <>
           <Combobox
             // Remount per town and kind so a stale list never shows.
-            key={`${method}-${settlement.ref}`}
+            key={`${method}-${settlement?.ref}`}
             id="warehouseRef"
             label={method === 'branch' ? t.checkout.branch : t.checkout.locker}
             value={state.warehouse}
             onSelect={(next) => onChange({ warehouse: next })}
-            load={(q, signal) => lookup<WarehouseOption>('warehouses', { settlement: settlement.ref, kind: method, q }, signal)}
+            load={(q, signal) =>
+              settlement
+                ? lookup<WarehouseOption>('warehouses', { settlement: settlement.ref, kind: method, q }, signal)
+                : Promise.resolve([])
+            }
+            disabled={!settlement}
+            placeholder={settlement ? undefined : t.checkout.pickCityFirst}
             minChars={0}
             error={errorFor('warehouseRef')}
             onBlur={() => onBlur('warehouseRef')}
@@ -94,15 +100,20 @@ export function DeliveryFields({
         </>
       )}
 
-      {method === 'courier' && settlement && settlement.courier && (
+      {method === 'courier' && (
         <>
           <Combobox
-            key={settlement.ref}
+            key={settlement?.ref}
             id="streetRef"
             label={t.checkout.street}
             value={state.street}
             onSelect={(next) => onChange({ street: next })}
-            load={(q, signal) => lookup<StreetOption>('streets', { settlement: settlement.ref, q }, signal)}
+            load={(q, signal) =>
+              settlement ? lookup<StreetOption>('streets', { settlement: settlement.ref, q }, signal) : Promise.resolve([])
+            }
+            // A town without address delivery shows `noCourier` on the town field instead.
+            disabled={!settlement?.courier}
+            placeholder={settlement?.courier ? undefined : t.checkout.pickCityFirst}
             error={errorFor('streetRef')}
             onBlur={() => onBlur('streetRef')}
           />

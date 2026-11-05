@@ -66,6 +66,8 @@ export function Combobox<T extends Option>({
   onSelect,
   load,
   minChars = 2,
+  disabled = false,
+  placeholder,
   error,
   onBlur,
 }: {
@@ -75,6 +77,8 @@ export function Combobox<T extends Option>({
   onSelect: (option: T | null) => void
   load: (query: string, signal: AbortSignal) => Promise<T[]>
   minChars?: number
+  disabled?: boolean
+  placeholder?: string
   error?: string
   onBlur?: () => void
 }) {
@@ -142,7 +146,8 @@ export function Combobox<T extends Option>({
           aria-activedescendant={expanded && active >= 0 && options[active] ? optionId(active) : undefined}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-error` : undefined}
-          placeholder={t.checkout.searchPlaceholder}
+          placeholder={placeholder ?? t.checkout.searchPlaceholder}
+          disabled={disabled}
           value={text}
           onChange={(e) => onInput(e.target.value)}
           onFocus={onFocus}
@@ -152,7 +157,7 @@ export function Combobox<T extends Option>({
             onBlur?.()
           }}
           className={cn(
-            'h-11 w-full rounded-full border bg-surface pr-10 pl-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint',
+            'h-11 w-full rounded-full border bg-surface pr-10 pl-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint disabled:cursor-not-allowed disabled:opacity-50',
             error ? 'border-error focus:border-error' : 'border-ink/15 focus:border-ink',
           )}
         />

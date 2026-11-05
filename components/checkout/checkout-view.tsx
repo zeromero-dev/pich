@@ -175,14 +175,18 @@ export function CheckoutView() {
       <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-8">
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-1 text-sm font-semibold text-ink">{t.checkout.contact}</legend>
-          <TextField id="name" label={t.checkout.name} value={contact.name} error={errorFor('name')}
-            onChange={(v) => setField('name', v)} onBlur={() => touch('name')} autoComplete="name" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField id="email" label={t.checkout.email} type="email" value={contact.email} error={errorFor('email')}
-              onChange={(v) => setField('email', v)} onBlur={() => touch('email')} autoComplete="email" />
+            <TextField id="firstName" label={t.checkout.firstName} value={contact.firstName} error={errorFor('firstName')}
+              onChange={(v) => setField('firstName', v)} onBlur={() => touch('firstName')} autoComplete="given-name" />
+            <TextField id="lastName" label={t.checkout.lastName} value={contact.lastName} error={errorFor('lastName')}
+              onChange={(v) => setField('lastName', v)} onBlur={() => touch('lastName')} autoComplete="family-name" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField id="phone" label={t.checkout.phone} type="tel" inputMode="tel" placeholder="067 123 45 67"
               value={contact.phone} error={errorFor('phone')}
               onChange={(v) => setField('phone', v)} onBlur={() => touch('phone')} autoComplete="tel" />
+            <TextField id="email" label={`${t.checkout.email} (${t.checkout.optional})`} type="email" value={contact.email} error={errorFor('email')}
+              onChange={(v) => setField('email', v)} onBlur={() => touch('email')} autoComplete="email" />
           </div>
         </fieldset>
 

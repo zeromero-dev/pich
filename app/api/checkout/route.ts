@@ -45,8 +45,11 @@ export async function POST(request: Request) {
   }
   if (!delivery) return badRequest('delivery')
 
+  const { firstName, lastName, email, phone } = parsed.contact
   const contact: OrderContact = {
-    ...parsed.contact,
+    name: `${firstName} ${lastName}`,
+    email,
+    phone,
     city: delivery.city,
     address: delivery.address,
     delivery: delivery.method,

@@ -92,7 +92,8 @@ export function buildOrderPayload(
       first_name: first,
       last_name: last,
       phone: contact.phone,
-      email: contact.email,
+      // Optional at checkout since 2026-11-05; omitted rather than sent blank.
+      ...(contact.email ? { email: contact.email } : {}),
       address_1: {
         address_1: contact.address,
         city: contact.city,

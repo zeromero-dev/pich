@@ -20,8 +20,9 @@ export type CheckoutErrorKey =
 const err = (key: CheckoutErrorKey) => ({ error: key })
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// Two or more words: Nova Poshta needs the recipient's first and last name.
-const FULL_NAME = /^[\p{L}ʼ'’-]+(?:\s+[\p{L}ʼ'’-]+)+$/u
+// One word: the server joins first + last and `splitName` treats the first word as the first name.
+const FIRST_NAME = /^[\p{L}ʼ'’-]+$/u
+const LAST_NAME = /^[\p{L}ʼ'’-]+(?:\s+[\p{L}ʼ'’-]+)*$/u
 
 /** Accepts 0XX…, 380XX…, +38 (0XX) XXX-XX-XX; `null` if not a Ukrainian number. */
 export function normalizeUaPhone(input: string): string | null {
@@ -38,11 +39,16 @@ const required = (max: number) =>
     .max(max, err('tooLong'))
 
 export const contactSchema = z.object({
-  name: required(100).regex(FULL_NAME, err('invalidName')),
-  email: required(254).regex(EMAIL, err('invalidEmail')),
+  firstName: required(50).regex(FIRST_NAME, err('invalidName')),
+  lastName: required(50).regex(LAST_NAME, err('invalidName')),
   phone: required(30)
     .refine((v) => normalizeUaPhone(v) !== null, err('invalidPhone'))
     .transform((v) => normalizeUaPhone(v)!),
+  email: z
+    .string()
+    .trim()
+    .max(254, err('tooLong'))
+    .refine((v) => v === '' || EMAIL.test(v), err('invalidEmail')),
 })
 
 const ref = (key: CheckoutErrorKey) => z.guid(err(key))
@@ -99,7 +105,7 @@ export type ParsedCheckout = z.output<typeof checkoutRequestSchema>
 export type ParsedDelivery = z.output<typeof deliverySchema>
 
 /** Form field ids, one per leaf the buyer can edit. */
-export type FieldId = 'name' | 'email' | 'phone' | 'settlementRef' | 'warehouseRef' | 'streetRef' | 'house' | 'flat'
+export type FieldId = 'firstName' | 'lastName' | 'email' | 'phone' | 'settlementRef' | 'warehouseRef' | 'streetRef' | 'house' | 'flat'
 
 /** First issue per field — what the form shows under each input. */
 export function fieldErrors(issues: z.core.$ZodIssue[]): Partial<Record<FieldId, CheckoutErrorKey>> {

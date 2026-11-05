@@ -12,7 +12,7 @@ import {
 
 /** Checkout form state: picked NP options, not just refs, so inputs can show labels. */
 
-export type ContactState = { name: string; email: string; phone: string }
+export type ContactState = { firstName: string; lastName: string; email: string; phone: string }
 
 export type DeliveryState = {
   method: DeliveryMethod
@@ -23,7 +23,7 @@ export type DeliveryState = {
   flat: string
 }
 
-export const EMPTY_CONTACT: ContactState = { name: '', email: '', phone: '' }
+export const EMPTY_CONTACT: ContactState = { firstName: '', lastName: '', email: '', phone: '' }
 
 export const EMPTY_DELIVERY: DeliveryState = {
   method: 'branch',
