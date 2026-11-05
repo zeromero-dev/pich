@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { crmPost } from './client'
+import type { DeliveryMethod } from '@/lib/checkout/schema'
 
 /**
  * Order creation against `POST /bapi/remote_orders`, verified end to end from a
@@ -9,12 +10,20 @@ import { crmPost } from './client'
  * into the warehouse its integration settings name, not the one we query.
  */
 
+export type OrderDelivery = {
+  method: DeliveryMethod
+  city: string
+  address: string
+}
+
 export type OrderContact = {
   name: string
   email: string
   phone: string
   city: string
   address: string
+  // Optional: payloads minted before 2026-10-29 may still be awaiting LiqPay's webhook.
+  delivery?: DeliveryMethod
 }
 
 export type OrderLine = {
@@ -58,6 +67,10 @@ export function splitName(full: string): { first: string; last: string } {
   }
 }
 
+function isNovaPoshta(method: DeliveryMethod | undefined): boolean {
+  return method === 'branch' || method === 'locker' || method === 'courier'
+}
+
 export function orderTotal(lines: OrderLine[]): number {
   return lines.reduce((sum, line) => sum + line.price * line.qty, 0)
 }
@@ -79,12 +92,14 @@ export function buildOrderPayload(
       first_name: first,
       last_name: last,
       phone: contact.phone,
-      email: contact.email,
+      // Optional at checkout since 2026-11-05; omitted rather than sent blank.
+      ...(contact.email ? { email: contact.email } : {}),
       address_1: {
         address_1: contact.address,
         city: contact.city,
         // Always 0 — the site does not price delivery (checkout.md).
         delivery_cost: 0,
+        ...(isNovaPoshta(contact.delivery) ? { delivery_operator: 'nova_poshta' } : {}),
       },
       info: {
         is_paid: payment.isPaid,

@@ -1,14 +1,22 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
-import { cn } from '@/lib/utils'
-
-type Fields = 'name' | 'email' | 'phone' | 'city' | 'address'
+import { TextField } from '@/components/checkout/text-field'
+import { DeliveryFields } from '@/components/checkout/delivery-fields'
+import {
+  EMPTY_CONTACT,
+  EMPTY_DELIVERY,
+  toRequest,
+  validateForm,
+  type ContactState,
+  type DeliveryState,
+} from '@/lib/checkout/form'
+import type { FieldId } from '@/lib/checkout/schema'
 
 function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
   const form = document.createElement('form')
@@ -31,51 +39,30 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 export function CheckoutView() {
   const { t } = useLocale()
   const { items, subtotal, setQty } = useCart()
-  const [values, setValues] = useState<Record<Fields, string>>({
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    address: '',
-  })
-  const [errors, setErrors] = useState<Partial<Record<Fields, string>>>({})
-  // Read only inside handlers, so a ref spares a re-render per blur.
-  const touched = useRef<Partial<Record<Fields, boolean>>>({})
+  const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
+  const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
+  // Errors show after a field's first blur, then track every change: "reward early, punish late".
+  const [touched, setTouched] = useState<ReadonlySet<FieldId>>(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const validateField = (field: Fields, value: string): string | undefined => {
-    if (!value.trim()) return t.checkout.required
-    if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-      return t.checkout.invalidEmail
-    }
-    return undefined
+  const errors = validateForm(contact, delivery)
+  const errorFor = (field: FieldId) => {
+    const key = errors[field]
+    // Not a typing mistake, so it shows as soon as the town is picked.
+    if (key === 'noCourier') return t.checkout.noCourier
+    return key && touched.has(field) ? t.checkout[key] : undefined
   }
-
-  const setField = (field: Fields, value: string) => {
-    setValues((v) => ({ ...v, [field]: value }))
-    // Re-validate on change only after the first error ("reward early, punish late").
-    if (touched.current[field]) {
-      setErrors((e) => ({ ...e, [field]: validateField(field, value) }))
-    }
-  }
-
-  const onBlur = (field: Fields) => {
-    touched.current = { ...touched.current, [field]: true }
-    setErrors((e) => ({ ...e, [field]: validateField(field, values[field]) }))
-  }
+  const touch = (field: FieldId) => setTouched((prev) => new Set(prev).add(field))
+  const setField = (field: keyof ContactState, value: string) => setContact((c) => ({ ...c, [field]: value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const fields: Fields[] = ['name', 'email', 'phone', 'city', 'address']
-    const nextErrors: Partial<Record<Fields, string>> = {}
-    fields.forEach((f) => {
-      const err = validateField(f, values[f])
-      if (err) nextErrors[f] = err
-    })
-    setErrors(nextErrors)
-    touched.current = Object.fromEntries(fields.map((f) => [f, true]))
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(errors).length > 0) {
+      setTouched(new Set(Object.keys(errors) as FieldId[]))
+      document.getElementById(Object.keys(errors)[0])?.focus()
+      return
+    }
 
     setSubmitting(true)
     setSubmitError(null)
@@ -89,7 +76,7 @@ export function CheckoutView() {
             qty,
             price: product.price,
           })),
-          contact: values,
+          ...toRequest(contact, delivery),
         }),
       })
       const body = await res.json()
@@ -109,7 +96,11 @@ export function CheckoutView() {
                 ? t.checkout.errorRepriced
                 : body?.error === 'payments_disabled'
                   ? t.checkout.errorPaymentsDisabled
-                  : t.checkout.errorGeneric,
+                  : body?.error === 'delivery'
+                    ? t.checkout.errorDelivery
+                    : body?.error === 'delivery_unavailable'
+                      ? t.checkout.errorDeliveryUnavailable
+                      : t.checkout.errorGeneric,
         )
         setSubmitting(false)
         return
@@ -184,22 +175,29 @@ export function CheckoutView() {
       <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-8">
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-1 text-sm font-semibold text-ink">{t.checkout.contact}</legend>
-          <Field id="name" label={t.checkout.name} value={values.name} error={errors.name}
-            onChange={(v) => setField('name', v)} onBlur={() => onBlur('name')} autoComplete="name" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="email" label={t.checkout.email} type="email" value={values.email} error={errors.email}
-              onChange={(v) => setField('email', v)} onBlur={() => onBlur('email')} autoComplete="email" />
-            <Field id="phone" label={t.checkout.phone} type="tel" value={values.phone} error={errors.phone}
-              onChange={(v) => setField('phone', v)} onBlur={() => onBlur('phone')} autoComplete="tel" />
+            <TextField id="firstName" label={t.checkout.firstName} value={contact.firstName} error={errorFor('firstName')}
+              onChange={(v) => setField('firstName', v)} onBlur={() => touch('firstName')} autoComplete="given-name" />
+            <TextField id="lastName" label={t.checkout.lastName} value={contact.lastName} error={errorFor('lastName')}
+              onChange={(v) => setField('lastName', v)} onBlur={() => touch('lastName')} autoComplete="family-name" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField id="phone" label={t.checkout.phone} type="tel" inputMode="tel" placeholder="067 123 45 67"
+              value={contact.phone} error={errorFor('phone')}
+              onChange={(v) => setField('phone', v)} onBlur={() => touch('phone')} autoComplete="tel" />
+            <TextField id="email" label={`${t.checkout.email} (${t.checkout.optional})`} type="email" value={contact.email} error={errorFor('email')}
+              onChange={(v) => setField('email', v)} onBlur={() => touch('email')} autoComplete="email" />
           </div>
         </fieldset>
 
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-1 text-sm font-semibold text-ink">{t.checkout.delivery}</legend>
-          <Field id="city" label={t.checkout.city} value={values.city} error={errors.city}
-            onChange={(v) => setField('city', v)} onBlur={() => onBlur('city')} autoComplete="address-level2" />
-          <Field id="address" label={t.checkout.address} value={values.address} error={errors.address}
-            onChange={(v) => setField('address', v)} onBlur={() => onBlur('address')} autoComplete="street-address" />
+          <DeliveryFields
+            state={delivery}
+            onChange={(patch) => setDelivery((d) => ({ ...d, ...patch }))}
+            errorFor={errorFor}
+            onBlur={touch}
+          />
         </fieldset>
 
         <fieldset>
@@ -230,51 +228,3 @@ export function CheckoutView() {
   )
 }
 
-function Field({
-  id,
-  label,
-  value,
-  error,
-  onChange,
-  onBlur,
-  type = 'text',
-  autoComplete,
-}: {
-  id: string
-  label: string
-  value: string
-  error?: string
-  onChange: (v: string) => void
-  onBlur: () => void
-  type?: string
-  autoComplete?: string
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-ink">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        autoComplete={autoComplete}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(
-          'h-11 rounded-full border bg-surface px-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint',
-          error
-            ? 'border-error focus:border-error'
-            : 'border-ink/15 focus:border-ink',
-        )}
-      />
-      {error && (
-        <p id={`${id}-error`} className="pl-1 text-xs text-error">
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}

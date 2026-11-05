@@ -75,6 +75,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [bump, setBump] = useState(0)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- SSR renders defaults;
@@ -87,16 +88,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
+    setLoaded(true)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
+  // Saving before the load lands would overwrite the stored cart with [] (Strict Mode re-runs the load and reads it back).
   useEffect(() => {
+    if (!loaded) return
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(items))
     } catch {
       /* ignore */
     }
-  }, [items])
+  }, [items, loaded])
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l)
@@ -132,7 +136,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((i) => i.product.id !== id))
   }, [])
 
-  const clear = useCallback(() => setItems([]), [])
+  const clear = useCallback(() => {
+    setItems([])
+    // Child effects run before the load effect above; without this it restores the cart a child just cleared.
+    try {
+      localStorage.removeItem(CART_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   const localeValue = useMemo<LocaleContextValue>(
     () => ({ locale, setLocale, t: dictionaries[locale] }),

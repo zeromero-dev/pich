@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
 import { buildCheckoutRequest, paymentsEnabled } from '@/lib/liqpay/client'
 import { encodePayload } from '@/lib/liqpay/payload'
-import { newOrderId, type OrderContact } from '@/lib/hugeprofit/orders'
+import { newOrderId, type OrderContact, type OrderDelivery } from '@/lib/hugeprofit/orders'
+import { checkoutRequestSchema } from '@/lib/checkout/schema'
+import { resolveDelivery } from '@/lib/checkout/delivery'
 import type { LockedLine } from '@/lib/liqpay/types'
 import { WEBSITE_URL } from '@/lib/site'
 
@@ -12,51 +14,8 @@ import { WEBSITE_URL } from '@/lib/site'
  * — that only happens in the liqpay-callback webhook, once payment clears.
  */
 
-type RequestLine = { workId: string; qty: number; price: number }
-
-type CheckoutRequest = {
-  items: RequestLine[]
-  contact: OrderContact
-}
-
-const MAX_ITEMS = 20
-const MAX_QTY = 99
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
 function badRequest(error: string, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ error, ...extra }, { status: 400 })
-}
-
-function parse(body: unknown): CheckoutRequest | null {
-  if (typeof body !== 'object' || body === null) return null
-  const { items, contact } = body as Partial<CheckoutRequest>
-
-  if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) return null
-  for (const item of items) {
-    if (typeof item?.workId !== 'string' || !item.workId) return null
-    if (!Number.isInteger(item.qty) || item.qty < 1 || item.qty > MAX_QTY) return null
-    if (typeof item.price !== 'number' || !Number.isFinite(item.price)) return null
-  }
-
-  if (typeof contact !== 'object' || contact === null) return null
-  const fields = ['name', 'email', 'phone', 'city', 'address'] as const
-  for (const field of fields) {
-    const value = contact[field]
-    if (typeof value !== 'string' || !value.trim()) return null
-    if (value.length > 300) return null
-  }
-  if (!EMAIL.test(contact.email.trim())) return null
-
-  return {
-    items,
-    contact: {
-      name: contact.name.trim(),
-      email: contact.email.trim(),
-      phone: contact.phone.trim(),
-      city: contact.city.trim(),
-      address: contact.address.trim(),
-    },
-  }
 }
 
 export async function POST(request: Request) {
@@ -73,12 +32,28 @@ export async function POST(request: Request) {
     return badRequest('invalid')
   }
 
-  const parsed = parse(body)
-  if (!parsed) return badRequest('invalid')
+  const result = checkoutRequestSchema.safeParse(body)
+  if (!result.success) return badRequest('invalid')
+  const parsed = result.data
 
-  // Duplicate lines would split one work's qty past the stock check.
-  const ids = parsed.items.map((i) => i.workId)
-  if (new Set(ids).size !== ids.length) return badRequest('invalid')
+  let delivery: OrderDelivery | null
+  try {
+    delivery = await resolveDelivery(parsed.delivery)
+  } catch (error) {
+    console.error('[checkout] Nova Poshta lookup failed', error)
+    return NextResponse.json({ error: 'delivery_unavailable' }, { status: 503 })
+  }
+  if (!delivery) return badRequest('delivery')
+
+  const { firstName, lastName, email, phone } = parsed.contact
+  const contact: OrderContact = {
+    name: `${firstName} ${lastName}`,
+    email,
+    phone,
+    city: delivery.city,
+    address: delivery.address,
+    delivery: delivery.method,
+  }
 
   // Checkout-time truth: bypasses the 5-minute catalog cache, one call per line
   // because `product_id` rejects a comma list.
@@ -123,20 +98,13 @@ export async function POST(request: Request) {
 
   const paymentId = newOrderId(Date.now())
   const total = lines.reduce((sum, line) => sum + line.price * line.qty, 0)
-  const payload = encodePayload({ paymentId, lines, contact: parsed.contact })
-
-  // Money-safety, not just validation: this must reject before the buyer pays, not
-  // after — a payload LiqPay's server_url can't round-trip means a paid order that
-  // never gets created (see checkout.md gotchas). 1800 covers a full 20-item cart
-  // with realistic field lengths; +44 for the HMAC tag encodePayload appends.
-  if (payload.length > 1844) return badRequest('invalid')
-
   const { checkoutUrl, data, signature } = buildCheckoutRequest({
     orderId: paymentId,
     amount: total,
     description: `Замовлення Plai Pich #${paymentId}`,
     resultUrl: `${WEBSITE_URL}/checkout/result?paymentId=${paymentId}`,
-    serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback?payload=${payload}`,
+    serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback`,
+    info: encodePayload({ paymentId, lines, contact }),
   })
 
   return NextResponse.json({ checkoutUrl, data, signature }, { status: 200 })
