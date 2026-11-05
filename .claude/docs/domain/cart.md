@@ -18,15 +18,17 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 
 ## Policies
 
-- **Snapshot semantics, accepted staleness.** An item embeds the Work as it looked when added. localStorage (`plai-pich-cart`) outlives catalog cache refreshes, so a restored cart can hold stale prices or already-sold works. Accepted *by design* because of the next policy.
+- **Snapshot semantics, accepted staleness.** An item embeds the Work as it looked when added. localStorage (`plai-pich-cart-v3`) outlives catalog cache refreshes, so a restored cart can hold stale prices or already-sold works. Accepted *by design* because of the next policy.
 - **The cart is never authoritative.** No price, availability, or total from the cart crosses into Ordering as truth — Ordering re-derives every line from fresh CRM data server-side ([checkout.md](checkout.md)). Never "fix" staleness by trusting client-sent values; recompute.
 - **Qty is capped at the snapshot's `available`** (brief 2026-10). The server re-checks against fresh stock and answers `insufficient` with the real counts; the checkout page clamps the cart to them.
 - Restore happens after hydration; SSR renders an empty cart first (accepted flash, not a bug).
+- **Nothing is saved before the restore lands** (fixed 2026-11-04). Saving first wrote `[]` over the stored cart, and Strict Mode's re-run read it back — every reload emptied the cart in dev.
+- **`clear()` also deletes the stored copy** (fixed 2026-11-05). A child's effect runs before the provider's restore, so the payment result page's clear was undone by the restore and a paid cart survived.
 
 ## Use cases
 
 - Add work (this is the purchase-feedback moment — the cart surfaces immediately).
-- Remove item / change qty / clear.
+- Remove item / change qty / clear (automatic on the result page once LiqPay reports the payment `success`/`sandbox`).
 - Persist and restore the draft across visits.
 
 ## Resolved 2026-08-12

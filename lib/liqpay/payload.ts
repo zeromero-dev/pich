@@ -13,9 +13,9 @@ function tag(body: string): string {
 }
 
 /**
- * `<body>.<tag>`. The webhook URL is public and its payload alone decides what a
- * paid order contains, so it has to be tamper-evident — a buyer can otherwise
- * replay their own settled payment against a payload naming a different work.
+ * `<body>.<tag>`, carried in the payment's `info`. It alone decides what a paid
+ * order contains, so it stays tamper-evident even though LiqPay signs `info` too —
+ * a paid order may hold only what our server put in it.
  */
 export function encodePayload(payload: CheckoutPayload): string {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url')

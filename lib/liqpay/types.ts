@@ -1,6 +1,6 @@
 import type { OrderContact } from '@/lib/hugeprofit/orders'
 
-/** What travels in the server_url query string — kept lean, see plan header. */
+/** What travels in the payment's `info` (lib/liqpay/payload.ts). */
 export type LockedLine = {
   productId: string
   price: number
