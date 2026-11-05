@@ -44,6 +44,15 @@ export function isShownOnSite(af: CrmProduct['af']): boolean {
   return false
 }
 
+/**
+ * The API lowercases af names on write («Назва (EN)» → «Назва (en)», a separate
+ * field), so the live fields are «(en)»; match case-insensitively either way.
+ */
+function afText(af: CrmProduct['af'], label: string): string | undefined {
+  const key = Object.keys(af ?? {}).find((k) => k.trim().toLowerCase() === label)
+  return (key && af?.[key]?.trim()) || undefined
+}
+
 /** The one stock row that matters. Every product in this account has exactly one. */
 function stockFor(product: CrmProduct, warehouseId: number): CrmStock | undefined {
   return product.stock.find((s) => s.mid === warehouseId) ?? product.stock[0]
@@ -66,11 +75,15 @@ export function toProduct(crm: CrmProduct, warehouseId: number): Product | null 
   if (price <= 0) return null
 
   const artist = crm.brand?.name?.trim() || null
+  const nameEn = afText(crm.af, 'назва (en)')
+  const descriptionEn = afText(crm.af, 'опис (en)')
 
   return {
     id: String(crm.id),
     slug: String(crm.id),
     name: crm.name.trim(),
+    ...(nameEn ? { nameEn } : {}),
+    ...(descriptionEn ? { descriptionEn } : {}),
     artist,
     artistId: crm.brand?.id ? String(crm.brand.id) : null,
     // The artist's URL is the bare CRM brand id: a rename can't break it.

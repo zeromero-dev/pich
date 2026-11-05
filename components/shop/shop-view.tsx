@@ -63,6 +63,7 @@ export function ShopView({
       const matchesQuery =
         !q ||
         p.name.toLowerCase().includes(q) ||
+        (p.nameEn?.toLowerCase().includes(q) ?? false) ||
         (p.artist?.toLowerCase().includes(q) ?? false) ||
         (p.artistEn?.toLowerCase().includes(q) ?? false) ||
         p.categories.some((c) => c.label.toLowerCase().includes(q))

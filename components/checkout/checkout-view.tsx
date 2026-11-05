@@ -37,7 +37,7 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 }
 
 export function CheckoutView() {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { items, subtotal, setQty } = useCart()
   const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
   const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
@@ -149,13 +149,13 @@ export function CheckoutView() {
               <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-lg bg-surface">
                 <img
                   src={product.images[0] || '/placeholder.svg'}
-                  alt={product.name}
+                  alt={(locale === 'en' && product.nameEn) || product.name}
                   loading="lazy"
                   className="absolute inset-0 h-full w-full object-contain p-1"
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-ink">{product.name}</p>
+                <p className="truncate text-sm font-medium text-ink">{(locale === 'en' && product.nameEn) || product.name}</p>
                 <p className="text-xs text-ink-soft">
                   {qty} × {formatPrice(product.price)}
                 </p>
