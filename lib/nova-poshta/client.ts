@@ -2,8 +2,8 @@ import 'server-only'
 
 /**
  * Nova Poshta API 2.0 — one JSON-RPC-style POST endpoint. The address lookups
- * we use answer without a key (verified live 2026-10-29), but that is not
- * documented, so `NOVA_POSHTA_API_KEY` is sent whenever it is set.
+ * we use answer without a key (verified live 2026-10-29 and 2026-11-05), so none
+ * is sent. That is undocumented: if NP starts refusing, add `apiKey` to the body.
  */
 
 const ENDPOINT = 'https://api.novaposhta.ua/v2.0/json/'
@@ -35,7 +35,6 @@ export async function npCall<T>(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      apiKey: process.env.NOVA_POSHTA_API_KEY ?? '',
       modelName,
       calledMethod,
       methodProperties,

@@ -109,7 +109,7 @@ The API token is bound in the HugeProfit UI to a sales channel and to the wareho
 
 ## Open decisions
 
-- **Nova Poshta key and limits.** The lookups we call answered with an empty `apiKey` on 2026-10-29; that is observed, not documented. `NOVA_POSHTA_API_KEY` is sent when set — get one from the owners' NP cabinet before launch. NP's rate limits are undocumented; the lookup routes are public and cached at the CDN (success only, 1 day), which is the only brake.
+- **Nova Poshta: no key, no known limits.** The site calls NP without an `apiKey` — all four lookups (`searchSettlements`, `getWarehouses` by settlement and by `Ref`, `searchSettlementStreets`) answered keyless on 2026-10-29 and 2026-11-05. That is observed, not documented: if NP starts refusing, add `apiKey` back in `lib/nova-poshta/client.ts` with a key from the owners' NP cabinet. NP's rate limits are undocumented; the lookup routes are public and cached at the CDN (success only, 1 day), which is the only brake.
 - **Lockers vs. artwork size.** Parcel lockers have per-cell size limits; the form warns that a large work may not fit, but nothing checks dimensions.
 
 - **`WEBSITE_URL` must be the exact origin.** `server_url` is built from it; a trailing slash or the apex `pich.co.ua` makes the callback answer 308, LiqPay doesn't get through, and the paid order is never created (seen 2026-11-05 with a trailing slash). See CLAUDE.md "LiqPay webhook URL is unforgiving".

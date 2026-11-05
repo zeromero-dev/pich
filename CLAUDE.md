@@ -56,7 +56,6 @@ NOTION_TOKEN=...                  # server-only — Notion integration secret (r
 NOTION_EVENTS_DATA_SOURCE=...     # «Події» data source id (••• → Manage data sources → Copy ID); unset = no events
 NOTION_ARTISTS_DATA_SOURCE=...    # «Митці» data source id; unset = no bios, sync answers 500
 SYNC_KEY=...                      # server-only — key in the Notion «Оновити сайт» link; unset = link always 403
-NOVA_POSHTA_API_KEY=...           # optional, server-only — checkout address lookups answer keyless today (undocumented)
 LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
 LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
 LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
