@@ -136,7 +136,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((i) => i.product.id !== id))
   }, [])
 
-  const clear = useCallback(() => setItems([]), [])
+  const clear = useCallback(() => {
+    setItems([])
+    // Child effects run before the load effect above; without this it restores the cart a child just cleared.
+    try {
+      localStorage.removeItem(CART_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   const localeValue = useMemo<LocaleContextValue>(
     () => ({ locale, setLocale, t: dictionaries[locale] }),
