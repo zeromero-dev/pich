@@ -28,7 +28,7 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 ```
 OrderRequest {                        // what the client submits
   items: { workId, qty }[]            // ids only — never prices
-  contact: { name, email, phone }
+  contact: { firstName, lastName, phone, email? }   // server joins first + last into the order's `name`
   delivery: pickup | branch/locker { settlementRef, warehouseRef }
           | courier { settlementRef, settlementName, streetRef, streetName, house, flat? }
   locale                              // for any customer-facing messaging
@@ -105,10 +105,14 @@ The API token is bound in the HugeProfit UI to a sales channel and to the wareho
 
 **No sales channel — decided 2026-08-12.** The live account defines none, and a channel is only a reporting label ("shop vs. walk-in") inside HugeProfit's own reports. Orders arrive untagged and everything works. Revisit only if the owners ask to split website sales out in their reporting.
 
+**Verified end to end again 2026-11-05**, sandbox payment over a tunnel with the order carried in `info`: locker order `1793895731982` landed complete — `is_paid: true`, NP's locker text in `address_1`, and `delivery_operator: "nova_poshta"` accepted (the CRM added its own `clients_delivery` id), stock reserved in 51630. An order with a blank email has **not** been sent yet.
+
 ## Open decisions
 
 - **Nova Poshta key and limits.** The lookups we call answered with an empty `apiKey` on 2026-10-29; that is observed, not documented. `NOVA_POSHTA_API_KEY` is sent when set — get one from the owners' NP cabinet before launch. NP's rate limits are undocumented; the lookup routes are public and cached at the CDN (success only, 1 day), which is the only brake.
 - **Lockers vs. artwork size.** Parcel lockers have per-cell size limits; the form warns that a large work may not fit, but nothing checks dimensions.
+
+- **`WEBSITE_URL` must be the exact origin.** `server_url` is built from it; a trailing slash or the apex `pich.co.ua` makes the callback answer 308, LiqPay doesn't get through, and the paid order is never created (seen 2026-11-05 with a trailing slash). See CLAUDE.md "LiqPay webhook URL is unforgiving".
 
 - **No rate limiting.** `/api/checkout` is public, unauthenticated, and writes to the owners' CRM while reserving stock. With no database there is nowhere to keep a counter, so a script could flood the CRM with junk orders and lock up inventory. Shape validation and the 20-item cap are the only brakes today. Worth solving before the shop is publicised.
 - **Duplicate submits are not deduplicated, and worse than a second order:** confirmed 2026-09-07 that re-POSTing an existing `order_id` does not create a second order — it silently overwrites the first in place, blanking any field the new payload omits (see 2026-09-07 note above). A double-click or a LiqPay webhook redelivery could corrupt an already-placed order's contact info instead of just double-booking it. No fix without storage to detect the repeat.

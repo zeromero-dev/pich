@@ -41,7 +41,7 @@ The payment code is on `master` (squash-merged `6f05794`). Production has not ye
 ## The two things that make this dangerous
 
 1. **The reservation warehouse is a CRM setting, not something this code sends.** The rehearsal proved reservation follows whatever the token's integration settings name. During the rehearsal that was the `dev` warehouse. **If production's token still points reservations at `dev`, every paid painting will fail to reserve and stay purchasable** — two buyers could pay for the same one-of-a-kind work. Task 1 checks this before anything else.
-2. **`WEBSITE_URL` builds `server_url`** (`app/api/checkout/route.ts:124`). If it is wrong or missing in production, LiqPay charges the buyer and the webhook lands nowhere — a paid order that never reaches the CRM, with no automated recovery.
+2. **`WEBSITE_URL` builds `server_url`** (`app/api/checkout/route.ts`). If it is wrong or missing in production, LiqPay charges the buyer and the webhook lands nowhere — a paid order that never reaches the CRM, with no automated recovery. It must be exactly `https://www.pich.co.ua`: a trailing slash or the apex domain answers the callback with a 308, which LiqPay did not get through in testing (2026-11-05).
 
 ## What this plan deliberately does not do
 
@@ -175,7 +175,7 @@ Expected: a successful build. If it failed naming `CRM_WAREHOUSE_ID`, the variab
 curl -s https://www.pich.co.ua/sitemap.xml | head -5
 ```
 
-Expected: URLs beginning `https://www.pich.co.ua` — not `localhost`, not an ngrok host. The sitemap and `server_url` read the same `WEBSITE_URL`, so this is a cheap proxy for "the webhook URL is correct", which is otherwise invisible until a payment fails.
+Expected: URLs beginning `https://www.pich.co.ua/` with a single slash after the host — not `localhost`, not a tunnel host, not `pich.co.ua` without `www`, not `…ua//…`. The sitemap and `server_url` read the same `WEBSITE_URL`, so this is a cheap proxy for "the webhook URL is correct", which is otherwise invisible until a payment fails.
 
 - [ ] **Step 5: Verify production serves the real shop and no mock rows**
 
@@ -235,7 +235,7 @@ Expected: `stock[0].instock` is one lower than before, with `quantity` unchanged
 
 Do not improvise this. The webhook logs every failure path with `console.error` and enough context to reconcile by hand; read Vercel's runtime logs for the deployment, filtering on `[liqpay-callback]`:
 
-- `payload signature mismatch` → the query string was mangled in transit; the payment is real and the order must be created manually in the CRM.
+- `payload missing or signature mismatch` → the order data in the payment's `info` (or, for payments started before 2026-11-05, the `?payload=` query) is missing or altered; the payment is real and the order must be created manually in the CRM.
 - `payload/order_id mismatch` → same conclusion, different cause.
 - `paid order not created — stock changed` → the work sold between payment and webhook. The buyer must be refunded; there is no automated path.
 - `processing failed` → read the attached error; most likely the CRM rejecting the payload.
