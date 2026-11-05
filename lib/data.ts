@@ -1,8 +1,7 @@
 /**
  * Domain types. Works and artists come from the CRM via `lib/hugeprofit/`;
- * events come from Notion (`lib/events.ts`). Catalog content is
- * single-language (as the CRM provides it); events and artists have
- * optional EN columns — see i18n.md.
+ * events come from Notion (`lib/events.ts`). Works, events and artists all
+ * carry optional EN text, shown with a Ukrainian fallback — see i18n.md.
  */
 
 export type Category = {
@@ -30,6 +29,8 @@ export type Product = {
   id: string
   slug: string
   name: string
+  /** CRM additional field «Назва (en)» for the EN locale; `name` is shown when absent. */
+  nameEn?: string
   /** `null` when the CRM brand is unset — 22 of the 252 live works today. */
   artist: string | null
   /** Notion «Імʼя (EN)» for the EN locale; `artist` is shown when absent. */
@@ -55,6 +56,8 @@ export type Product = {
    * the field in the CRM — see catalog.md rule 3 for what is in there today.
    */
   description: string | null
+  /** CRM additional field «Опис (en)» — single-line in the CRM UI, so one paragraph. */
+  descriptionEn?: string
   /** Decoded from the CRM `size` field, e.g. "30 × 21 см". */
   size: string | null
   /** CRM article. Not displayed — it is an internal code — but orders need it. */

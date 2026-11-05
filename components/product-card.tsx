@@ -12,7 +12,7 @@ import type { Product } from '@/lib/data'
 /* Touch devices have no hover: there the button is an always-visible round "+".
    `pointer-fine:` turns it into the full-width bar revealed on hover/focus. */
 function AddToCart({ product }: { product: Product }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { add, items } = useCart()
   const [added, setAdded] = useState(false)
   const inCart = items.find((i) => i.product.id === product.id)?.qty ?? 0
@@ -30,7 +30,7 @@ function AddToCart({ product }: { product: Product }) {
       type="button"
       onClick={handleAdd}
       disabled={full}
-      aria-label={`${full ? t.shop.inCart : t.shop.addToCart}: ${product.name}`}
+      aria-label={`${full ? t.shop.inCart : t.shop.addToCart}: ${(locale === 'en' && product.nameEn) || product.name}`}
       className="absolute right-2 bottom-2 z-10 inline-flex size-10 items-center justify-center gap-2 rounded-full bg-ink text-sm font-medium text-surface shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition-[opacity,background-color] hover:bg-[#2a2a2a] disabled:cursor-default pointer-fine:inset-x-3 pointer-fine:bottom-3 pointer-fine:h-11 pointer-fine:w-auto pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100"
     >
       {done ? (
@@ -86,7 +86,7 @@ export function ProductCard({ product }: { product: Product }) {
       </m.div>
       <Link href={href} className="mt-3 block">
         <h3 className="line-clamp-2 text-base font-semibold leading-snug text-ink text-pretty">
-          {product.name}
+          {(locale === 'en' && product.nameEn) || product.name}
         </h3>
         <p className="mt-0.5 text-sm text-ink-soft">{(locale === 'en' && product.artistEn) || product.artist}</p>
         <p className="mt-1 text-sm font-semibold text-ink tabular-nums">

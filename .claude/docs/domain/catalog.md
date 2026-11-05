@@ -30,7 +30,7 @@ Category { slug (CRM category id), label }
 
 **Deliberately absent from the model** — so no page or response can carry them:
 
-- `medium`, `year` — no source. `attr[]` is populated on 2 of 258 products and `af` on none. (The cleaner descriptions do carry technique and year as prose — "Акрил, полотно. м.Вінниця. 2022 р.")
+- `medium`, `year` — no source. `attr[]` is populated on 2 of 258 products `af` holds «Показувати на сайті» and the EN fields, nothing else. (The cleaner descriptions do carry technique and year as prose — "Акрил, полотно. м.Вінниця. 2022 р.")
 - `net_price` — rule 4.
 
 ## Business rules
@@ -77,6 +77,7 @@ CRM → domain mapping (verified against live data):
 | `isLast` | `stock[].instock === 1` | rule 1; same reasoning as `inStock` |
 | `size` | `size` | packed as `"AxBxC"` with blanks for unset (`"30xx21x"` → 30 × 21, `"xxx"` → none). Unit is **centimetres**, confirmed 2026-08-12. 195 of 258 have no dimensions at all. |
 | `description` | `description` | verbatim, trimmed; rule 3 |
+| `nameEn`, `descriptionEn` | `af['Назва (en)']`, `af['Опис (en)']` | optional, matched case-insensitively; EN locale only, falling back to the Ukrainian ([i18n.md](i18n.md)). The API lowercases af names on write, so «(EN)» fields made in the CRM UI and «(en)» fields written by the API are two different fields — the live ones are «(en)» (2026-11-05). Single-line in the CRM UI, so `descriptionEn` is one paragraph. Not used in orders, metadata or JSON-LD: those stay Ukrainian. |
 | `images` | `images` | full CRM-hosted URLs; all of them render (main image + thumbnails, up to 8) |
 | `sku` | `sku` | blank on 11 products → `null`. **Not displayed** — a CRM-generated code like `b6c-a43` means nothing to a buyer. Kept on the model because `order_data[]` needs it. |
 

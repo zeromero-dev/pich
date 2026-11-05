@@ -98,7 +98,7 @@ export function CartDrawer() {
                       >
                         <img
                           src={product.images[0] || '/placeholder.svg'}
-                          alt={product.name}
+                          alt={(locale === 'en' && product.nameEn) || product.name}
                           loading="lazy"
                           className="absolute inset-0 h-full w-full object-contain p-1"
                         />
@@ -106,13 +106,13 @@ export function CartDrawer() {
                       <div className="flex flex-1 flex-col">
                         <div className="flex justify-between gap-2">
                           <div>
-                            <p className="text-sm font-medium text-ink">{product.name}</p>
+                            <p className="text-sm font-medium text-ink">{(locale === 'en' && product.nameEn) || product.name}</p>
                             <p className="text-xs text-ink-soft">{(locale === 'en' && product.artistEn) || product.artist}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => remove(product.id)}
-                            aria-label={`${t.cart.remove}: ${product.name}`}
+                            aria-label={`${t.cart.remove}: ${(locale === 'en' && product.nameEn) || product.name}`}
                             title={t.cart.remove}
                             className="-mt-1 -mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-alt hover:text-ink"
                           >

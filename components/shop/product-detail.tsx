@@ -23,6 +23,7 @@ export function ProductDetail({
 }) {
   const { t, locale } = useLocale()
   const artistName = (locale === 'en' && product.artistEn) || product.artist
+  const name = (locale === 'en' && product.nameEn) || product.name
   const [active, setActive] = useState(0)
 
   return (
@@ -44,7 +45,7 @@ export function ProductDetail({
           <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-surface-alt">
             <img
               src={product.images[active] || '/placeholder.svg'}
-              alt={product.name}
+              alt={name}
               fetchPriority="high"
               className="absolute inset-0 h-full w-full object-contain p-4"
             />
@@ -56,7 +57,7 @@ export function ProductDetail({
                   key={img}
                   type="button"
                   onClick={() => setActive(i)}
-                  aria-label={`${product.name} — ${i + 1}`}
+                  aria-label={`${name} — ${i + 1}`}
                   aria-current={i === active}
                   className={cn(
                     'relative aspect-square w-20 overflow-hidden rounded-xl bg-surface-alt ring-2 transition-[--tw-ring-color]',
@@ -93,7 +94,7 @@ export function ProductDetail({
             </p>
           )}
           <h1 className="mt-1 text-3xl font-semibold tracking-[-0.02em] text-ink text-balance md:text-4xl">
-            {product.name}
+            {name}
           </h1>
           <p className="mt-4 text-xl font-semibold text-ink tabular-nums">
             {formatPrice(product.price)}
@@ -117,15 +118,7 @@ export function ProductDetail({
             )}
           </p>
 
-          {product.description && (
-            <div className="mt-8 border-t border-hairline pt-6">
-              <h2 className="text-sm font-semibold text-ink">{t.shop.description}</h2>
-              {/* Verbatim CRM text, line breaks and all — the owners edit it there. */}
-              <p className="mt-2 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-soft text-pretty">
-                {product.description}
-              </p>
-            </div>
-          )}
+          <Description product={product} />
 
           {/* No «Артикул» row — the CRM sku is an internal code, meaningless
               to a buyer. It stays on the model because orders need it. */}
@@ -207,6 +200,21 @@ function AddToCart({ product }: { product: Product }) {
           )}
         </m.span>
       </PillButton>
+    </div>
+  )
+}
+
+function Description({ product }: { product: Product }) {
+  const { t, locale } = useLocale()
+  const description = (locale === 'en' && product.descriptionEn) || product.description
+  if (!description) return null
+  return (
+    <div className="mt-8 border-t border-hairline pt-6">
+      <h2 className="text-sm font-semibold text-ink">{t.shop.description}</h2>
+      {/* Verbatim CRM text, line breaks and all — the owners edit it there. */}
+      <p className="mt-2 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-soft text-pretty">
+        {description}
+      </p>
     </div>
   )
 }
