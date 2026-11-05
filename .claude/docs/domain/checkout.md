@@ -62,11 +62,11 @@ Order {                               // what we create in the CRM
 4b. Reject 409 "insufficient" { short: [{workId, available}] } if any qty > fresh available
 5. Reject 409 "repriced" if any CRM price != the price the buyer saw, echoing was/now
 6. Compute the total server-side from fresh data; encode { paymentId, lines, contact } into
-   the LiqPay server_url's payload query param (reject 400 if that payload is too long —
-   money-safety: must fail before payment, not after)
+   the payment's `info` (not the server_url query: LiqPay caps server_url at 510 chars, and
+   a one-item Cyrillic order overflowed it — 2026-11-05)
 7. 200 { checkoutUrl, data, signature } → browser redirects to LiqPay to pay
 8. LiqPay POSTs the result to app/api/checkout/liqpay-callback, which verifies the
-   signature, decodes the payload, confirms payload.paymentId === the paid order_id,
+   signature, decodes the payload from the signed `info`, confirms payload.paymentId === the paid order_id,
    re-checks available >= qty per line, then POST /bapi/remote_orders with info.is_paid: true
 9. Buyer lands on /checkout/result, which calls LiqPay's status API and shows a status
    message (no live order number); cart is cleared client-side on confirmed payment
@@ -78,7 +78,7 @@ Order {                               // what we create in the CRM
 
 `lib/liqpay/client.ts` — signs/verifies LiqPay requests (`sign`/`verifyCallback`, SHA1 of `privateKey + data + privateKey`, per LiqPay's published algorithm), builds the checkout request (`buildCheckoutRequest`), and does a read-only post-payment status lookup (`checkStatus`, used only for the buyer-facing result page, never to create an order).
 
-`lib/liqpay/payload.ts` — base64url-encodes `{ paymentId, lines, contact }` into the `server_url` query string, since there is no database to hold cart state between the redirect and the webhook. `lib/liqpay/types.ts` defines the shapes; `paymentId` binds the payload to the order LiqPay's signature attests was paid, checked in the webhook before any order is created.
+`lib/liqpay/payload.ts` — base64url-encodes `{ paymentId, lines, contact }` into the payment's `info`, which LiqPay echoes inside its signed callback `data` (the old `server_url?payload=` carrier is still read as a fallback for payments started before 2026-11-05), since there is no database to hold cart state between the redirect and the webhook. `lib/liqpay/types.ts` defines the shapes; `paymentId` binds the payload to the order LiqPay's signature attests was paid, checked in the webhook before any order is created.
 
 `app/api/checkout/liqpay-callback/route.ts` is the only place a CRM order is created for a paid checkout.
 

@@ -95,20 +95,13 @@ export async function POST(request: Request) {
 
   const paymentId = newOrderId(Date.now())
   const total = lines.reduce((sum, line) => sum + line.price * line.qty, 0)
-  const payload = encodePayload({ paymentId, lines, contact })
-
-  // Money-safety, not just validation: this must reject before the buyer pays, not
-  // after — a payload LiqPay's server_url can't round-trip means a paid order that
-  // never gets created (see checkout.md gotchas). 1800 covers a full 20-item cart
-  // with realistic field lengths; +44 for the HMAC tag encodePayload appends.
-  if (payload.length > 1844) return badRequest('invalid')
-
   const { checkoutUrl, data, signature } = buildCheckoutRequest({
     orderId: paymentId,
     amount: total,
     description: `Замовлення Plai Pich #${paymentId}`,
     resultUrl: `${WEBSITE_URL}/checkout/result?paymentId=${paymentId}`,
-    serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback?payload=${payload}`,
+    serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback`,
+    info: encodePayload({ paymentId, lines, contact }),
   })
 
   return NextResponse.json({ checkoutUrl, data, signature }, { status: 200 })

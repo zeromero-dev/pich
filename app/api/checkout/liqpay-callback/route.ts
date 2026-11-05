@@ -6,25 +6,12 @@ import { createRemoteOrder, type OrderLine } from '@/lib/hugeprofit/orders'
 
 /**
  * LiqPay's server_url webhook — the only place a CRM order is created for a
- * paid checkout. Cart lines + contact travel in this URL's own query string
- * (see plan Task 4); LiqPay's signed POST body only carries payment status.
+ * paid checkout. Cart lines + contact travel in the payment's `info`, which
+ * LiqPay echoes back inside its signed `data`.
  */
 export async function POST(request: Request) {
   // No keys means no signature can be verified, so nothing here is trustworthy.
   if (!paymentsEnabled()) return new NextResponse(null, { status: 400 })
-
-  const { searchParams } = new URL(request.url)
-  const encodedPayload = searchParams.get('payload')
-  if (!encodedPayload) return new NextResponse(null, { status: 400 })
-
-  // Checked before LiqPay's own signature: this query string is public and it
-  // alone decides what a paid order contains, so a bad tag is not worth a
-  // round trip through decodeCallback.
-  const payload = decodePayload(encodedPayload)
-  if (!payload) {
-    console.error('[liqpay-callback] payload signature mismatch')
-    return new NextResponse(null, { status: 400 })
-  }
 
   const form = await request.formData()
   const data = form.get('data')
@@ -38,8 +25,18 @@ export async function POST(request: Request) {
     return new NextResponse(null, { status: 401 })
   }
 
+  const callback = decodeCallback(data)
+  // `?payload=` is the pre-2026-11-05 carrier: payments started before deploy still notify that way.
+  const encodedPayload =
+    typeof callback.info === 'string' ? callback.info : new URL(request.url).searchParams.get('payload')
+  // Our own tag on top of LiqPay's signature: a paid order holds only what our server put in it.
+  const payload = encodedPayload ? decodePayload(encodedPayload) : null
+  if (!payload) {
+    console.error('[liqpay-callback] payload missing or signature mismatch', { orderId: callback.order_id })
+    return new NextResponse(null, { status: 400 })
+  }
+
   try {
-    const callback = decodeCallback(data)
     if (callback.status !== 'success' && callback.status !== 'sandbox') {
       return new NextResponse(null, { status: 200 })
     }

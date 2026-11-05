@@ -50,6 +50,8 @@ export function buildCheckoutRequest(params: {
   description: string
   resultUrl: string
   serverUrl: string
+  /** Echoed back inside the signed callback. Not the URL: server_url caps at 510 chars (LiqPay docs). */
+  info: string
 }): { data: string; signature: string; checkoutUrl: string } {
   const body: Record<string, unknown> = {
     public_key: publicKey(),
@@ -61,6 +63,7 @@ export function buildCheckoutRequest(params: {
     description: params.description,
     result_url: params.resultUrl,
     server_url: params.serverUrl,
+    info: params.info,
   }
   if (isSandbox()) body.sandbox = 1
 
