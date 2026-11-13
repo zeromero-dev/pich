@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx --yes tsx@4.19.2 lib/artist-roster.test.ts && npx --yes tsx@4.19.2 lib/meta/feed.test.ts && npx --yes tsx@4.19.2 lib/consent.test.ts && npx --yes tsx@4.19.2 lib/meta/pixel.test.ts && npx --yes tsx@4.19.2 lib/meta/capi.test.ts"
+    "test": "npx --yes tsx@4.19.2 lib/artist-roster.test.ts && npx --yes tsx@4.19.2 lib/meta/feed.test.ts && npx --yes tsx@4.19.2 lib/consent.test.ts && npx --yes tsx@4.19.2 lib/meta/pixel.test.ts && npx --yes tsx@4.19.2 lib/meta/capi.test.ts && npx --yes tsx@4.19.2 lib/checkout/schema.test.ts"
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",

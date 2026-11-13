@@ -99,7 +99,14 @@ export const checkoutRequestSchema = z.object({
   contact: contactSchema,
   delivery: deliverySchema,
   // Sent only with cookie consent.
-  meta: z.object({ fbp: z.string().max(200).optional(), fbc: z.string().max(500).optional() }).optional(),
+  // A tracking cookie must never cost a sale: oversized values are dropped, not rejected.
+  meta: z
+    .object({
+      fbp: z.string().max(200).optional().catch(undefined),
+      fbc: z.string().max(500).optional().catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 export type CheckoutRequest = z.input<typeof checkoutRequestSchema>

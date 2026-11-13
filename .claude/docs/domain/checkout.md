@@ -71,7 +71,7 @@ Order {                               // what we create in the CRM
 8b. If payload.meta is present (buyer accepted cookies: `_fbp`/`_fbc` from the form, user agent + IP added
    by /api/checkout inside the signed `info`), send Purchase to Meta's Conversions API
    (lib/meta/capi.ts, capi-send.ts) after the CRM order. `success` sends the real event; `sandbox`
-   only with META_TEST_EVENT_CODE. Failure is logged and never fails the webhook.
+   only with META_TEST_EVENT_CODE. Scheduled with `after()` so LiqPay's 200 does not wait on Meta; failure is logged and never fails the webhook.
 9. Buyer lands on /checkout/result, which calls LiqPay's status API and shows a status
    message (no live order number); cart is cleared client-side on confirmed payment
 ```

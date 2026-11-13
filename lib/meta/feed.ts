@@ -1,7 +1,8 @@
 import type { Product } from '@/lib/data'
 
+// Control characters are illegal in XML 1.0 even escaped.
 const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!)
+  s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!)
 
 // Meta rejects items without description, image or price; sold works stay (it hides them from ads).
 export const feedItemsOf = (products: Product[]) =>

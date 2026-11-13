@@ -39,3 +39,6 @@ assert.ok(xml.split('\n').every((l) => l.length < 5_000_000))
 const sold = buildFeed([product({ inStock: false, artist: 'Михайло Діденко' })], 'https://x.ua')
 assert.ok(sold.includes('<g:availability>out of stock</g:availability>'))
 assert.ok(sold.includes('<g:brand>Михайло Діденко</g:brand>'))
+
+const dirty = buildFeed([product({ description: 'a\u000Bb\u0000c' })], 'https://x.test')
+assert.ok(!dirty.includes('\u000B') && !dirty.includes('\u0000') && dirty.includes('abc'))

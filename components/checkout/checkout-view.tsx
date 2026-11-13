@@ -41,7 +41,7 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 export function CheckoutView() {
   const { t } = useLocale()
   const { items, subtotal, setQty } = useCart()
-  const { choice } = useConsent()
+  const { granted } = useConsent()
   const checkoutTracked = useRef(false)
   useEffect(() => {
     if (checkoutTracked.current || items.length === 0) return
@@ -86,7 +86,7 @@ export function CheckoutView() {
             price: product.price,
           })),
           ...toRequest(contact, delivery),
-          meta: choice === 'granted' ? readMetaCookies() : undefined,
+          meta: granted ? readMetaCookies() : undefined,
         }),
       })
       const body = await res.json()

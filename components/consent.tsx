@@ -24,6 +24,8 @@ import {
 
 type ConsentContextValue = {
   choice: ConsentChoice | null
+  /** True while consent is in effect, including while the bar is reopened. */
+  granted: boolean
   ready: boolean
   enabled: boolean
   accept: () => void
@@ -39,6 +41,15 @@ export function useConsent() {
   return ctx
 }
 
+// The pixel sets these on the registrable domain; expire both scopes.
+function expireMetaCookies() {
+  const host = window.location.hostname
+  const domains = ['']
+  if (/[a-z]/i.test(host) && host.includes('.')) domains.push(`; domain=.${host.split('.').slice(-(host.endsWith('.co.ua') ? 3 : 2)).join('.')}`)
+  for (const name of ['_fbp', '_fbc'])
+    for (const d of domains) document.cookie = `${name}=; path=/; max-age=0${d}`
+}
+
 export function ConsentProvider({
   pixelId,
   children,
@@ -52,6 +63,7 @@ export function ConsentProvider({
   const pixelRan = useRef(false)
   // Stays true after reopen() so MetaPixel never unmounts (no second init or PageView).
   const [pixelOn, setPixelOn] = useState(false)
+  const granted = choice === 'granted' || (choice === null && pixelOn)
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- storage is only readable after mount. */
@@ -73,6 +85,7 @@ export function ConsentProvider({
       /* ignore: the choice then lasts for this tab only */
     }
     if (next === 'denied' && pixelRan.current) {
+      expireMetaCookies()
       window.location.reload()
       return
     }
@@ -93,8 +106,8 @@ export function ConsentProvider({
   }, [choice])
 
   const value = useMemo<ConsentContextValue>(
-    () => ({ choice, ready, enabled: !!pixelId, accept, decline, reopen }),
-    [choice, ready, pixelId, accept, decline, reopen],
+    () => ({ choice, granted, ready, enabled: !!pixelId, accept, decline, reopen }),
+    [choice, granted, ready, pixelId, accept, decline, reopen],
   )
 
   return (
@@ -113,7 +126,7 @@ function ConsentBar() {
   return (
     <div
       role="region"
-      aria-label={t.consent.text}
+      aria-label={t.consent.label}
       className="fixed inset-x-0 bottom-0 z-[55] border-t border-hairline bg-surface"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:gap-6 md:px-6">

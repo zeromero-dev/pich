@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
 import { verifyCallback, decodeCallback, paymentsEnabled } from '@/lib/liqpay/client'
 import { decodePayload } from '@/lib/liqpay/payload'
@@ -89,17 +89,16 @@ export async function POST(request: Request) {
     // Sandbox payments never count as real sales: test events only, and only with a test code.
     const testEventCode = process.env.META_TEST_EVENT_CODE
     if (payload.meta && (callback.status === 'success' || (testEventCode && callback.status === 'sandbox'))) {
-      await sendPurchase(
-        buildPurchaseEvent({
-          orderId,
-          lines: locked,
-          contact,
-          meta: payload.meta,
-          eventTime: Math.floor(Date.now() / 1000),
-          sourceUrl: `${WEBSITE_URL}/checkout`,
-        }),
-        callback.status === 'sandbox' ? { testEventCode } : {},
-      )
+      const event = buildPurchaseEvent({
+        orderId,
+        lines: locked,
+        contact,
+        meta: payload.meta,
+        eventTime: Math.floor(Date.now() / 1000),
+        sourceUrl: `${WEBSITE_URL}/checkout`,
+      })
+      // after(): LiqPay gets its 200 without waiting on Meta (sendPurchase never throws).
+      after(() => sendPurchase(event, callback.status === 'sandbox' ? { testEventCode } : {}))
     }
   } catch (error) {
     console.error('[liqpay-callback] processing failed', {

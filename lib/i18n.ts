@@ -199,6 +199,7 @@ export const dictionaries = {
       retry: 'Спробувати знову',
     },
     consent: {
+      label: 'Файли cookie',
       text: 'Ми використовуємо файли cookie Meta, щоб вимірювати рекламу й показувати її тим, хто вже був на сайті.',
       more: 'Детальніше',
       accept: 'Прийняти',
@@ -416,6 +417,7 @@ export const dictionaries = {
       retry: 'Try again',
     },
     consent: {
+      label: 'Cookies',
       text: 'We use Meta cookies to measure advertising and show it to people who have already visited the site.',
       more: 'Learn more',
       accept: 'Accept',
