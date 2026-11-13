@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useLocale } from '@/components/providers'
 import { PillButton } from '@/components/pill-button'
+import { MetaPixel } from '@/components/meta-pixel'
 import {
   CONSENT_KEY,
   parseConsent,
@@ -48,12 +49,15 @@ export function ConsentProvider({
   const [ready, setReady] = useState(false)
   // Once granted in this page load the pixel is running; only a reload unloads it.
   const pixelRan = useRef(false)
+  // Stays true after reopen() so MetaPixel never unmounts (no second init or PageView).
+  const [pixelOn, setPixelOn] = useState(false)
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- storage is only readable after mount. */
     try {
       const saved = parseConsent(localStorage.getItem(CONSENT_KEY), Date.now())
       if (saved) setChoice(saved)
+      if (saved === 'granted') setPixelOn(true)
     } catch {
       /* ignore */
     }
@@ -71,7 +75,10 @@ export function ConsentProvider({
       window.location.reload()
       return
     }
-    if (next === 'granted') pixelRan.current = true
+    if (next === 'granted') {
+      pixelRan.current = true
+      setPixelOn(true)
+    }
     setChoice(next)
   }, [])
 
@@ -90,6 +97,7 @@ export function ConsentProvider({
   return (
     <ConsentContext.Provider value={value}>
       {children}
+      {pixelId && pixelOn && <MetaPixel pixelId={pixelId} />}
       {ready && choice === null && pixelId && <ConsentBar />}
     </ConsentContext.Provider>
   )

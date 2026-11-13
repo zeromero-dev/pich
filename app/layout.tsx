@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
   },
+  other: { 'facebook-domain-verification': 'urvu6kguqn4amjpv49pkl9ze3gi012' },
   // Icons come from the app/ file convention (icon.svg, favicon.ico, apple-icon.png).
 }
 

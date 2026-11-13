@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
@@ -16,6 +16,7 @@ import {
   type ContactState,
   type DeliveryState,
 } from '@/lib/checkout/form'
+import { trackInitiateCheckout } from '@/lib/meta/pixel'
 import type { FieldId } from '@/lib/checkout/schema'
 
 function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
@@ -39,6 +40,12 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 export function CheckoutView() {
   const { t } = useLocale()
   const { items, subtotal, setQty } = useCart()
+  const checkoutTracked = useRef(false)
+  useEffect(() => {
+    if (checkoutTracked.current || items.length === 0) return
+    checkoutTracked.current = true
+    trackInitiateCheckout(items)
+  }, [items])
   const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
   const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
   // Errors show after a field's first blur, then track every change: "reward early, punish late".
