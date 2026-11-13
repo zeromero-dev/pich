@@ -20,6 +20,10 @@ export function track(event: PixelEvent, params: Record<string, unknown>): void 
   else if (queue.length < QUEUE_CAP) queue.push([event, params])
 }
 
+export function clearQueue(): void {
+  queue.length = 0
+}
+
 export function flushQueue(send: (event: PixelEvent, params: Record<string, unknown>) => void): void {
   for (const [event, params] of queue.splice(0)) send(event, params)
 }

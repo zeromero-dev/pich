@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { flushQueue, track } from './pixel'
+import { clearQueue, flushQueue, track } from './pixel'
 
 ;(globalThis as { window?: unknown }).window = {}
 track('ViewContent', { a: 1 })
@@ -10,6 +10,10 @@ const sent: string[] = []
 flushQueue((e) => sent.push(e))
 assert.equal(sent.length, 20)
 assert.deepEqual(sent.slice(0, 2), ['ViewContent', 'AddToCart'])
+flushQueue((e) => sent.push(e))
+assert.equal(sent.length, 20)
+track('ViewContent', {})
+clearQueue()
 flushQueue((e) => sent.push(e))
 assert.equal(sent.length, 20)
 console.log('pixel queue: all checks passed')

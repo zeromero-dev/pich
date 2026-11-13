@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useLocale } from '@/components/providers'
 import { PillButton } from '@/components/pill-button'
+import { clearQueue } from '@/lib/meta/pixel'
 import { MetaPixel } from '@/components/meta-pixel'
 import {
   CONSENT_KEY,
@@ -76,6 +77,8 @@ export function ConsentProvider({
       return
     }
     if (next === 'granted') {
+      // Events from before the first consent must never reach Meta.
+      if (!pixelRan.current) clearQueue()
       pixelRan.current = true
       setPixelOn(true)
     }
