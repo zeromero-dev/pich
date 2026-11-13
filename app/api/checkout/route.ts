@@ -104,7 +104,18 @@ export async function POST(request: Request) {
     description: `Замовлення Plai Pich #${paymentId}`,
     resultUrl: `${WEBSITE_URL}/checkout/result?paymentId=${paymentId}`,
     serverUrl: `${WEBSITE_URL}/api/checkout/liqpay-callback`,
-    info: encodePayload({ paymentId, lines, contact }),
+    info: encodePayload({
+      paymentId,
+      lines,
+      contact,
+      ...(parsed.meta && {
+        meta: {
+          ...parsed.meta,
+          userAgent: request.headers.get('user-agent')?.slice(0, 400),
+          ip: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || undefined,
+        },
+      }),
+    }),
   })
 
   return NextResponse.json({ checkoutUrl, data, signature }, { status: 200 })

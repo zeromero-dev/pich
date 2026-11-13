@@ -98,6 +98,8 @@ export const checkoutRequestSchema = z.object({
     .refine((items) => new Set(items.map((i) => i.workId)).size === items.length),
   contact: contactSchema,
   delivery: deliverySchema,
+  // Sent only with cookie consent.
+  meta: z.object({ fbp: z.string().max(200).optional(), fbc: z.string().max(500).optional() }).optional(),
 })
 
 export type CheckoutRequest = z.input<typeof checkoutRequestSchema>

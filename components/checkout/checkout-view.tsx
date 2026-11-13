@@ -16,7 +16,8 @@ import {
   type ContactState,
   type DeliveryState,
 } from '@/lib/checkout/form'
-import { trackInitiateCheckout } from '@/lib/meta/pixel'
+import { trackInitiateCheckout, readMetaCookies } from '@/lib/meta/pixel'
+import { useConsent } from '@/components/consent'
 import type { FieldId } from '@/lib/checkout/schema'
 
 function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
@@ -40,6 +41,7 @@ function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) 
 export function CheckoutView() {
   const { t } = useLocale()
   const { items, subtotal, setQty } = useCart()
+  const { choice } = useConsent()
   const checkoutTracked = useRef(false)
   useEffect(() => {
     if (checkoutTracked.current || items.length === 0) return
@@ -84,6 +86,7 @@ export function CheckoutView() {
             price: product.price,
           })),
           ...toRequest(contact, delivery),
+          meta: choice === 'granted' ? readMetaCookies() : undefined,
         }),
       })
       const body = await res.json()
