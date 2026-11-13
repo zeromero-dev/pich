@@ -8,9 +8,16 @@ const config = {
     // The project uses npm (package-lock.json). The pnpm lockfile the scan
     // writes is its own artifact, so pnpm hardening does not apply.
     'react-doctor/require-pnpm-hardening': 'off',
-    // Consent lives in localStorage, absent on the server: reading it during render
-    // would break hydration, so components/consent.tsx reads it in a mount effect.
-    'react-doctor/no-initialize-state': 'off',
+  },
+  ignore: {
+    overrides: [
+      {
+        // Consent lives in localStorage, absent on the server: reading it during render
+        // would break hydration, so consent.tsx reads it in a mount effect.
+        files: ['components/consent.tsx'],
+        rules: ['react-doctor/no-initialize-state'],
+      },
+    ],
   },
 }
 
