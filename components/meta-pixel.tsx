@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react'
 import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { flushQueue, track } from '@/lib/meta/pixel'
 
 function PageView() {
   const pathname = usePathname()
@@ -13,7 +14,12 @@ function PageView() {
   return null
 }
 
-// Script must precede PageView: sibling effects run in order, and the first PageView needs fbq defined.
+function Flush() {
+  useEffect(() => flushQueue(track), [])
+  return null
+}
+
+// Sibling effects run in order: Script (defines fbq), PageView, then queued events.
 export function MetaPixel({ pixelId }: { pixelId: string }) {
   return (
     <>
@@ -23,6 +29,7 @@ export function MetaPixel({ pixelId }: { pixelId: string }) {
       <Suspense>
         <PageView />
       </Suspense>
+      <Flush />
     </>
   )
 }

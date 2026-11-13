@@ -44,8 +44,8 @@ export function CheckoutView() {
   useEffect(() => {
     if (checkoutTracked.current || items.length === 0) return
     checkoutTracked.current = true
-    trackInitiateCheckout(items)
-  }, [items])
+    trackInitiateCheckout(items, subtotal)
+  }, [items, subtotal])
   const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
   const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
   // Errors show after a field's first blur, then track every change: "reward early, punish late".

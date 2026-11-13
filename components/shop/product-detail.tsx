@@ -25,7 +25,9 @@ export function ProductDetail({
   const { t, locale } = useLocale()
   const artistName = (locale === 'en' && product.artistEn) || product.artist
   const [active, setActive] = useState(0)
-  useEffect(() => trackViewContent(product), [product])
+  // Keyed on id: the product object identity may change without a new view.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => trackViewContent(product), [product.id])
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
