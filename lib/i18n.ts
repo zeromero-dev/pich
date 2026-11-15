@@ -200,7 +200,7 @@ export const dictionaries = {
     },
     consent: {
       label: 'Файли cookie',
-      text: 'Ми використовуємо файли cookie Meta, щоб вимірювати рекламу й показувати її тим, хто вже був на сайті.',
+      text: 'Ми використовуємо файли cookie для аналітики та реклами. Ви можете прийняти або відхилити їх - сайт працюватиме в будь-якому разі.',
       more: 'Детальніше',
       accept: 'Прийняти',
       decline: 'Відхилити',
@@ -418,7 +418,7 @@ export const dictionaries = {
     },
     consent: {
       label: 'Cookies',
-      text: 'We use Meta cookies to measure advertising and show it to people who have already visited the site.',
+      text: 'We use cookies for analytics and advertising. You can accept or decline them - the site works either way.',
       more: 'Learn more',
       accept: 'Accept',
       decline: 'Decline',
