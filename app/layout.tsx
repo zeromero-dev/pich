@@ -7,6 +7,7 @@ import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { CartDrawer } from '@/components/cart-drawer'
+import { ConsentProvider } from '@/components/consent'
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
@@ -31,6 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
   },
+  other: { 'facebook-domain-verification': 'urvu6kguqn4amjpv49pkl9ze3gi012' },
   // Icons come from the app/ file convention (icon.svg, favicon.ico, apple-icon.png).
 }
 
@@ -48,11 +50,13 @@ export default function RootLayout({
     <html lang="uk" className={`${inter.variable} bg-surface`}>
       <body className="flex min-h-dvh flex-col font-sans antialiased">
         <Providers>
-          <Header />
-          {/* Pins the footer to the viewport bottom on short pages (404, empty cart). */}
-          <div className="flex flex-1 flex-col [&>main]:flex-1">{children}</div>
-          <Footer />
-          <CartDrawer />
+          <ConsentProvider pixelId={process.env.META_PIXEL_ID || null}>
+            <Header />
+            {/* Pins the footer to the viewport bottom on short pages (404, empty cart). */}
+            <div className="flex flex-1 flex-col [&>main]:flex-1">{children}</div>
+            <Footer />
+            <CartDrawer />
+          </ConsentProvider>
         </Providers>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

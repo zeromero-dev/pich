@@ -6,7 +6,7 @@ What the shop sells and how buyers find it. Source of truth: HUGEPROFIT CRM. The
 
 ## The live account (verified 2026-08-12)
 
-258 products, of which **252 reach the shop** (1 has no price, 5 have no image — rules 2 and 6). One warehouse ("Крамничка ПІЧ", id 34998 — a second warehouse "Події в ПІЧі" (35002) exists and is empty). 71 brands, all Ukrainian personal names. 19 categories, 15 of them in use. This is a **craft shop**, not a gallery of unique originals: 95 works at qty 1, 81 at qty 2–5, 21 at qty 6+, 61 sold out. Prices 20–210 000 ₴, always integers, `sale_price` always equal to `price`. 53 products have no description, 33 have clean copy, 171 hold internal notes (rule 3).
+258 products, of which **252 reach the shop** (1 has no price, 5 have no image — rules 2 and 6). One warehouse ("Крамничка ПІЧ", id 34998 — a second warehouse "Події в ПІЧі" (35002) exists and is empty). 71 brands, all Ukrainian personal names. 19 categories, 15 of them in use. This is a **craft shop**, not a gallery of unique originals: 95 works at qty 1, 81 at qty 2–5, 21 at qty 6+, 61 sold out. Prices 20–210 000 ₴, always integers, `sale_price` always equal to `price`. 53 products have no description, 33 have clean copy, 171 hold internal notes (rule 3) — as of 2026-08-12; see rule 3 for the 2026-11-12 recheck.
 
 **Root categories (checked 2026-10-25, all 315 rows of 34998, sellable or not):** 13 roots, every product has a category — Хенд мейд 110, Прикраси 86, Картини 55, Поліграфія 16, Інші предмети 16, Одяг 12, Посуд 6, Скло 5, Стікери 3, книжка 2, Лінографюра 2, Фігурки пластмас. 1, Трави 1. These are the homepage category tiles (`rootCategoriesOf`). The bottom four are thin and «книжка» is lowercase — owners may want to tidy them in the CRM.
 
@@ -43,6 +43,8 @@ Category { slug (CRM category id), label }
 
    Know what this means before touching it. As of 2026-08-12, **171 of 258 descriptions hold the owners' internal notes**: artists' bank card numbers and IBANs, tax ids (ІПН/ЄДРПОУ), legal names ("ФОП …", "за паспортом …"), phone numbers, cost prices ("собівартість"), and pasted private chat messages. Only 33 are clean product copy. The site renders whatever is in the field, so **every one of those publishes until an owner edits it in the CRM.** Editing there is the fix; do not add a sanitiser and call it solved — pattern-matching this reliably is not achievable, and a filter that mostly works reads as safety it cannot deliver.
 
+   **Recheck 2026-11-12:** the owners cleaned the field — all 65 works on the live site (www.pich.co.ua sitemap, 2026-11-12; the 252/258 counts above are from 2026-08-12) scanned (IBAN, cards, phones, ФОП, ІПН, рахунок, закуп): zero hits, 3 without a description. The rule is unchanged: the CRM is where it stays clean, and the Meta feed (below) now republishes it too.
+
    Consequences to respect: the text is **not** put into `<meta description>` or JSON-LD (`app/shop/[slug]/page.tsx`), to keep it out of search indexes while cleanup happens. Cost prices in descriptions also route around rule 4 — the structural guarantee covers the `net_price` field, not prose.
 4. **`net_price` (merchant cost) is not part of the domain.** It arrives in every CRM `stock[]` entry and dies inside `lib/hugeprofit/map.ts`. Leaking merchant margins is this project's highest-severity bug class after rule 3.
 5. **Sold works stay in the catalog**, marked "Продано", sorted after available ones (`getCatalog()`). 61 of 258 today.
@@ -57,6 +59,10 @@ Category { slug (CRM category id), label }
 ### Category filtering follows the tree
 
 The CRM returns a work's leaf category *plus its ancestors*, and `Product.categories` keeps that whole chain. A filter matches if the selected id appears anywhere in it, so «Хенд мейд» finds the 81 works filed under its children (Кераміка, Свічки, Іграшки) as well as the 5 filed on it directly. Filter counts are computed the same way, which is why parent and child pills legitimately overlap. Getting this wrong is not subtle: the flat version showed 5 of 86.
+
+## Meta feed (built 2026-11-12)
+
+`/feed.xml` (`app/feed.xml/route.ts`, mapping in `lib/meta/feed.ts`) republishes `getCatalog()` as an RSS feed for a Meta Commerce catalog. A work is **excluded** when it has no description, no image, or price ≤ 0 (Meta rejects such items); brand falls back to «Plai Pich». No `net_price` or cost data, ever. CRM images are 800×1000 JPEG, fine for Meta. Because it carries `description` verbatim, rule 3 applies to it.
 
 ## Boundary: `lib/hugeprofit/`
 

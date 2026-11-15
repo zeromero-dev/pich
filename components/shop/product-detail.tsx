@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { m } from 'motion/react'
 import { ArrowLeft, Check, Plus } from 'lucide-react'
@@ -12,6 +12,7 @@ import { ProductCard } from '@/components/product-card'
 import { QtyStepper } from '@/components/qty-stepper'
 import { StaggerGroup, StaggerItem } from '@/components/reveal'
 import { cn } from '@/lib/utils'
+import { trackAddToCart, trackViewContent } from '@/lib/meta/pixel'
 import type { Product } from '@/lib/data'
 
 export function ProductDetail({
@@ -24,6 +25,9 @@ export function ProductDetail({
   const { t, locale } = useLocale()
   const artistName = (locale === 'en' && product.artistEn) || product.artist
   const [active, setActive] = useState(0)
+  // Keyed on id: the product object identity may change without a new view.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => trackViewContent(product), [product.id])
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-10 md:pb-24">
@@ -168,7 +172,9 @@ function AddToCart({ product }: { product: Product }) {
   const remaining = Math.max(0, product.available - inCart)
 
   const handleAdd = () => {
-    add(product, Math.min(qty, remaining))
+    const n = Math.min(qty, remaining)
+    add(product, n)
+    trackAddToCart(product, n)
     open()
     setQty(1)
     setAdded(true)

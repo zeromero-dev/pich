@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
 import { verifyCallback, decodeCallback, paymentsEnabled } from '@/lib/liqpay/client'
 import { decodePayload } from '@/lib/liqpay/payload'
 import { createRemoteOrder, type OrderLine } from '@/lib/hugeprofit/orders'
+import { buildPurchaseEvent } from '@/lib/meta/capi'
+import { sendPurchase } from '@/lib/meta/capi-send'
+import { WEBSITE_URL } from '@/lib/site'
 
 /**
  * LiqPay's server_url webhook — the only place a CRM order is created for a
@@ -82,6 +85,21 @@ export async function POST(request: Request) {
       paymentType: 'LiqPay',
       orderText: `LiqPay order_id ${callback.order_id}`,
     })
+
+    // Sandbox payments never count as real sales: test events only, and only with a test code.
+    const testEventCode = process.env.META_TEST_EVENT_CODE
+    if (payload.meta && (callback.status === 'success' || (testEventCode && callback.status === 'sandbox'))) {
+      const event = buildPurchaseEvent({
+        orderId,
+        lines: locked,
+        contact,
+        meta: payload.meta,
+        eventTime: Math.floor(Date.now() / 1000),
+        sourceUrl: `${WEBSITE_URL}/checkout`,
+      })
+      // after(): LiqPay gets its 200 without waiting on Meta (sendPurchase never throws).
+      after(() => sendPurchase(event, callback.status === 'sandbox' ? { testEventCode } : {}))
+    }
   } catch (error) {
     console.error('[liqpay-callback] processing failed', {
       encodedPayloadPresent: !!encodedPayload,
