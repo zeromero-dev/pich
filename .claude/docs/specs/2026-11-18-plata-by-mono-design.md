@@ -4,6 +4,8 @@
 
 **Branch:** `feat/plata-by-mono`, off `master` (decided 2026-11-18). `master` has no Meta code, so the Conversions API Purchase is out of this scope; `feat/meta-pixel` ports its Purchase call into `mono-callback` when it rebases (see "Handover to feat/meta-pixel").
 
+**Order (decided 2026-11-18):** mono on this branch → owners' production token → mono cutover and site launch → `feat/meta-pixel` rebased onto `master` and ported (handover section below). The site launches without the Meta pixel.
+
 **Ship timing:** build and verify on the branch with the test token; **do not merge or deploy** until the owners have a production token (decided 2026-11-18). Merge, Vercel env and the real purchase go in a separate mono cutover plan, which supersedes `docs/plans/2026-09-09-liqpay-production-cutover.md`.
 
 ## Intent
@@ -66,7 +68,7 @@ The order (lines, contact, delivery, Meta match data) must survive from `/api/ch
 2. paymentId = Date.now(); total in ₴ (server-computed)
 3. payload = encrypt({ paymentId, lines, contact })                 → lib/mono/payload.ts
 4. POST /api/merchant/invoice/create {
-     amount: total * 100, ccy: 980,
+     amount: Math.round(total * 100), ccy: 980,   // kopecks, int; 980 = UAH
      merchantPaymInfo: { reference: String(paymentId),
                          destination: `Замовлення Plai Pich #${paymentId}` },
      redirectUrl: `${WEBSITE_URL}/checkout/result`,
@@ -76,7 +78,7 @@ The order (lines, contact, delivery, Meta match data) must survive from `/api/ch
 7. monobank POSTs every status change to mono-callback:
      verify X-Sign over raw body → ignore unless status === 'success'
      → decrypt ?p → require body.reference === String(payload.paymentId)
-       and body.amount === Σ line.price*qty*100
+       and body.amount === Math.round(Σ line.price*qty * 100)
      → re-check stock → createRemoteOrder(isPaid, paymentType 'plata by mono',
        orderText `mono invoice ${invoiceId}`)
      → 200, except when createRemoteOrder throws: 500, so monobank retries
