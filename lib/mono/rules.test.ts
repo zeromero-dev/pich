@@ -42,3 +42,53 @@ assert.equal(verifySignature(body, sigB64, pem), true)
 assert.equal(verifySignature(Buffer.concat([body, Buffer.from(' ')]), sigB64, pem), false)
 assert.equal(verifySignature(body, 'not-base64!!', pem), false)
 assert.equal(verifySignature(body, sigB64, 'not a pem'), false)
+
+/* Webhook screening and decisions (Task 6). */
+import { adverseEvidence, checkSignedEvent, screenRequest } from '@/lib/mono/rules'
+import type { CheckoutPayload, InvoiceStatus } from '@/lib/mono/types'
+
+assert.equal(screenRequest('100', 'sig'), 'ok')
+assert.equal(screenRequest(null, 'sig'), 'ok') // chunked: the body length is checked after reading
+assert.equal(screenRequest('20000', 'sig'), 'too_large')
+assert.equal(screenRequest(null, null), 'unsigned')
+assert.equal(screenRequest('100', ''), 'unsigned')
+
+const R = '123456789012345'
+const payload: CheckoutPayload = {
+  v: 1,
+  reference: R,
+  lines: [{ productId: '9526188', unitPriceKop: 1999, qty: 3 }],
+  totalKop: 5997,
+  contact: { name: 'А Б', email: '', phone: '+380501234567', city: 'В', address: 'Г', delivery: 'pickup' },
+}
+const signed: InvoiceStatus = {
+  invoiceId: 'inv1',
+  status: 'success',
+  amount: 5997,
+  ccy: 980,
+  reference: R,
+  finalAmount: 5997,
+  modifiedDate: '2026-11-18T17:11:30Z',
+}
+assert.equal(checkSignedEvent(signed, payload), 'ok')
+assert.equal(checkSignedEvent({ ...signed, finalAmount: undefined }, payload), 'ok') // missing finalAmount allowed
+assert.equal(checkSignedEvent({ ...signed, status: 'processing' }, payload), 'not success')
+assert.equal(checkSignedEvent({ ...signed, reference: 'x' }, payload), 'reference mismatch')
+assert.equal(checkSignedEvent({ ...signed, ccy: 840 }, payload), 'currency')
+assert.equal(checkSignedEvent({ ...signed, amount: 5996, finalAmount: 5996 }, payload), 'amount mismatch')
+assert.equal(checkSignedEvent({ ...signed, finalAmount: 3000 }, payload), 'finalAmount differs')
+assert.equal(checkSignedEvent({ ...signed, cancelList: [{}] }, payload), 'cancelList present')
+assert.equal(checkSignedEvent({ ...signed, invoiceId: '' }, payload), 'missing invoiceId')
+
+assert.equal(adverseEvidence(signed, signed), 'ok')
+assert.equal(adverseEvidence({ ...signed, status: 'processing', modifiedDate: undefined }, signed), 'ok') // lagging read
+assert.equal(adverseEvidence({ ...signed, status: 'created', modifiedDate: '2026-11-18T17:00:00Z' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, status: 'reversed', modifiedDate: undefined }, signed), 'ok') // undated reversal
+assert.notEqual(adverseEvidence({ ...signed, status: 'failure' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, finalAmount: 3000 }, signed), 'ok') // equal-timestamp partial refund
+assert.notEqual(adverseEvidence({ ...signed, cancelList: [{ status: 'failure' }] }, signed), 'ok') // failed cancellation
+assert.notEqual(adverseEvidence({ ...signed, invoiceId: 'other' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, amount: 1 }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, reference: 'other' }, signed), 'ok')
+// A lagging `processing` read carries finalAmount 0 (seen in the 2026-11-18 probe) — not a refund.
+assert.equal(adverseEvidence({ ...signed, status: 'processing', finalAmount: 0 }, signed), 'ok')

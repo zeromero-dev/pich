@@ -33,3 +33,50 @@ export function isAllowedPageUrl(url: unknown): boolean {
     return false
   }
 }
+
+export const MAX_WEBHOOK_BYTES = 16_384
+
+/** Cheap header screen before reading the body; the body length is checked again after reading. */
+export function screenRequest(contentLength: string | null, xSign: string | null): 'ok' | 'too_large' | 'unsigned' {
+  if (!xSign) return 'unsigned'
+  return contentLength !== null && Number(contentLength) > MAX_WEBHOOK_BYTES ? 'too_large' : 'ok'
+}
+
+type Status = {
+  invoiceId: string
+  status: string
+  amount: number
+  ccy: number
+  finalAmount?: number
+  reference?: string
+  modifiedDate?: string
+  cancelList?: unknown[]
+}
+
+/** The signed event must be a full, unrefunded success for exactly what the payload locked (spec Money rule 4). */
+export function checkSignedEvent(body: Status, payload: { reference: string; totalKop: number }): 'ok' | string {
+  if (body.status !== 'success') return 'not success'
+  if (!body.invoiceId) return 'missing invoiceId'
+  if (body.reference !== payload.reference) return 'reference mismatch'
+  if (body.ccy !== 980) return 'currency'
+  if (!Number.isSafeInteger(body.amount) || body.amount !== payload.totalKop) return 'amount mismatch'
+  if (body.finalAmount !== undefined && body.finalAmount !== body.amount) return 'finalAmount differs'
+  if (body.cancelList && body.cancelList.length > 0) return 'cancelList present'
+  return 'ok'
+}
+
+/**
+ * The fresh status read blocks on any adverse evidence, whatever its timestamp
+ * (`modifiedDate` is optional). A read that merely lags (created/processing) is not
+ * evidence: the signed success stands, so no delivery attempt is spent on a 503.
+ */
+export function adverseEvidence(read: Status, signed: Status): 'ok' | string {
+  if (read.invoiceId !== signed.invoiceId || read.reference !== signed.reference || read.ccy !== signed.ccy || read.amount !== signed.amount) {
+    return 'status read mismatch'
+  }
+  if (read.status === 'reversed' || read.status === 'failure') return `status ${read.status}`
+  // finalAmount is 0 before settlement (probe 2026-11-18), so it only means "refunded" on a success.
+  if (read.status === 'success' && read.finalAmount !== undefined && read.finalAmount < read.amount) return 'refunded'
+  if (read.cancelList && read.cancelList.length > 0) return 'cancelList present'
+  return 'ok'
+}
