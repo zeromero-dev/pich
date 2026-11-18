@@ -1,6 +1,6 @@
 # Replace LiqPay with plata by mono — design
 
-**Status:** draft for approval, 2026-11-18. Reviewed by Codex (5 rounds, 2026-11-18); the round-5 fixes (line-total decoder, reservation warehouse in the report) were applied after the last round and not re-reviewed.
+**Status:** approved 2026-11-18. Daily reconciliation check confirmed by the user. The current HugeProfit integration (the token in `.env.local`) already reserves into the dev warehouse 51630 — it is the dev integration; a production integration reserving into 34998 is a cutover-plan step. Reviewed by Codex (5 rounds, 2026-11-18); the round-5 fixes (line-total decoder, reservation warehouse in the report) were applied after the last round and not re-reviewed.
 
 **Branch:** `feat/plata-by-mono`, off `master` (decided 2026-11-18). `master` has no Meta code, so the Conversions API Purchase is out of this scope; `feat/meta-pixel` ports its Purchase call into `mono-callback` when it rebases (see "Handover to feat/meta-pixel").
 
