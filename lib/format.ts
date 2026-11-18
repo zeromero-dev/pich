@@ -2,10 +2,16 @@ import type { Locale } from '@/lib/i18n'
 
 /** Currency: ₴ with space-separated thousands, e.g. "₴1 200". */
 export function formatPrice(amount: number): string {
-  const grouped = Math.round(amount)
+  return formatKop(Math.round(amount * 100))
+}
+
+/** Same, from integer kopecks; "₴19,99" when there are kopecks. No float division. */
+export function formatKop(kop: number): string {
+  const whole = Math.floor(kop / 100)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0')
-  return `₴${grouped}`
+  const rest = kop % 100
+  return rest === 0 ? `₴${whole}` : `₴${whole},${String(rest).padStart(2, '0')}`
 }
 
 const UK_MONTHS = [
