@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { ShoppingBag, Trash2, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
-import { formatPrice } from '@/lib/format'
+import { formatKop } from '@/lib/format'
 import { useFocusTrap } from '@/lib/use-focus-trap'
-import { useCart, useLocale } from '@/components/providers'
+import { lineUnitKop, useCart, useLocale } from '@/components/providers'
 import { PillButton, PillLink } from '@/components/pill-button'
 import { QtyStepper } from '@/components/qty-stepper'
 
@@ -25,7 +25,7 @@ function useIsBottomSheet() {
 }
 
 export function CartDrawer() {
-  const { items, subtotal, isOpen, close, remove, setQty } = useCart()
+  const { items, subtotalKop, isOpen, close, remove, setQty } = useCart()
   const { t, locale } = useLocale()
   const reduced = useReducedMotion()
   const bottomSheet = useIsBottomSheet()
@@ -131,7 +131,7 @@ export function CartDrawer() {
                             <span />
                           )}
                           <span className="text-sm font-semibold text-ink tabular-nums">
-                            {formatPrice(product.price * qty)}
+                            {formatKop(lineUnitKop(product) * qty)}
                           </span>
                         </div>
                       </div>
@@ -143,7 +143,7 @@ export function CartDrawer() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-ink-soft">{t.cart.subtotal}</span>
                     <span className="text-xl font-semibold text-ink tabular-nums">
-                      {formatPrice(subtotal)}
+                      {formatKop(subtotalKop)}
                     </span>
                   </div>
                   <PillLink href="/checkout" onClick={close} className="mt-4 w-full">
