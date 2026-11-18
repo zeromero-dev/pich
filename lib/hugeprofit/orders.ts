@@ -1,136 +1,35 @@
 import 'server-only'
 
-import { crmPost } from './client'
-import type { DeliveryMethod } from '@/lib/checkout/schema'
+import { crmFetchUncached, crmPost, CrmError } from './client'
+import { buildOrderPayload, type CrmRemoteOrder, type OrderLine, type PaymentInfo } from './order-rules'
+import type { OrderContact } from '@/lib/mono/types'
 
 /**
- * Order creation against `POST /bapi/remote_orders`, verified end to end from a
- * LiqPay sandbox payment 2026-09-08 against the mock `dev` warehouse — the field
- * shapes below are confirmed, not docs-derived guesses. The CRM reserves stock
- * into the warehouse its integration settings name, not the one we query.
+ * `POST /bapi/remote_orders`, verified end to end against the mock `dev`
+ * warehouse (2026-09-08, 2026-11-05). The CRM reserves stock into the warehouse
+ * its integration settings name, not the one we query. Payload rules: order-rules.ts.
  */
 
-export type OrderDelivery = {
-  method: DeliveryMethod
-  city: string
-  address: string
-}
+export type { CrmRemoteOrder, OrderDelivery, OrderLine, PaymentInfo } from './order-rules'
+export type { OrderContact } from '@/lib/mono/types'
 
-export type OrderContact = {
-  name: string
-  email: string
-  phone: string
-  city: string
-  address: string
-  // Optional: payloads minted before 2026-10-29 may still be awaiting LiqPay's webhook.
-  delivery?: DeliveryMethod
-}
-
-export type OrderLine = {
-  productId: string
-  sku: string
-  name: string
-  price: number
-  qty: number
-}
-
-export type PaymentInfo = {
-  isPaid: boolean
-  paymentType: string
-  orderText?: string
-}
-
-export type CreatedOrder = {
-  orderId: number
-  total: number
-}
-
-type RemoteOrderResponse = {
-  success?: boolean
-  reservedProducts?: [number, string][]
-}
-
-/**
- * `order_id` is documented as an int, so no UUID. Milliseconds are unique
- * enough: we are the only writer and orders are minutes apart at best.
- */
-export function newOrderId(now: number): number {
-  return now
-}
-
-/** `first_name` is required; the form collects one combined name field. */
-export function splitName(full: string): { first: string; last: string } {
-  const parts = full.trim().split(/\s+/)
-  return {
-    first: parts[0] ?? '',
-    last: parts.slice(1).join(' '),
-  }
-}
-
-function isNovaPoshta(method: DeliveryMethod | undefined): boolean {
-  return method === 'branch' || method === 'locker' || method === 'courier'
-}
-
-export function orderTotal(lines: OrderLine[]): number {
-  return lines.reduce((sum, line) => sum + line.price * line.qty, 0)
-}
-
-export function buildOrderPayload(
-  orderId: number,
-  lines: OrderLine[],
-  contact: OrderContact,
-  payment: PaymentInfo,
-) {
-  const { first, last } = splitName(contact.name)
-  return {
-    data: {
-      order_id: orderId,
-      order_name: `Замовлення з сайту #${orderId}`,
-      price: orderTotal(lines),
-      currency: 'UAH',
-      status: 'pending',
-      first_name: first,
-      last_name: last,
-      phone: contact.phone,
-      // Optional at checkout since 2026-11-05; omitted rather than sent blank.
-      ...(contact.email ? { email: contact.email } : {}),
-      address_1: {
-        address_1: contact.address,
-        city: contact.city,
-        // Always 0 — the site does not price delivery (checkout.md).
-        delivery_cost: 0,
-        ...(isNovaPoshta(contact.delivery) ? { delivery_operator: 'nova_poshta' } : {}),
-      },
-      info: {
-        is_paid: payment.isPaid,
-        payment_type: payment.paymentType,
-        ...(payment.orderText ? { order_text: payment.orderText } : {}),
-      },
-      order_data: lines.map((line) => ({
-        // `product_id` is the *marketplace* remote id; ours live in HugeProfit,
-        // so the docs say to send null here and identify by local_product_id.
-        product_id: null,
-        local_product_id: Number(line.productId),
-        id: Number(line.productId),
-        name: line.name,
-        sku: line.sku,
-        quantity: line.qty,
-        price: line.price,
-        total: line.price * line.qty,
-        is_paid: payment.isPaid,
-        payment_type: payment.paymentType,
-      })),
-    },
-  }
-}
+type RemoteOrderResponse = { success?: boolean; reservedProducts?: unknown }
 
 export async function createRemoteOrder(
-  orderId: number,
+  reference: string,
   lines: OrderLine[],
   contact: OrderContact,
   payment: PaymentInfo,
-): Promise<CreatedOrder> {
-  const payload = buildOrderPayload(orderId, lines, contact, payment)
-  await crmPost<RemoteOrderResponse>('remote_orders', payload)
-  return { orderId, total: orderTotal(lines) }
+): Promise<{ reservedProducts: unknown }> {
+  const body = await crmPost<RemoteOrderResponse>('remote_orders', buildOrderPayload(reference, lines, contact, payment))
+  return { reservedProducts: body.reservedProducts }
+}
+
+/** Every integration's orders with this `order_id`, whatever their date and state; callers filter by ours. */
+export async function lookupRemoteOrders(reference: string): Promise<CrmRemoteOrder[]> {
+  const body = await crmFetchUncached<{ success?: unknown; response?: unknown }>('remote_orders', { order_id: reference })
+  if (body.success !== true || !Array.isArray(body.response)) {
+    throw new CrmError('CRM remote_orders lookup returned an unexpected shape')
+  }
+  return body.response as CrmRemoteOrder[]
 }
