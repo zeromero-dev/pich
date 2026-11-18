@@ -44,6 +44,18 @@ export function ResultView({ status, reference }: { status: ResultStatus; refere
 
   const paid = status === 'paid'
 
+  if (status === 'unknown') {
+    return (
+      <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">{t.checkout.resultUnknownTitle}</h1>
+        <p className="mt-3 text-base leading-relaxed text-ink-soft text-pretty">{t.checkout.resultUnknownBody}</p>
+        <PillLink href="/shop" className="mt-8">
+          {t.cart.continue}
+        </PillLink>
+      </main>
+    )
+  }
+
   if (status === 'pending') {
     return (
       <main className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-24 text-center md:px-6">
