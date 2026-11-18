@@ -55,3 +55,7 @@ assert.equal(keyMatches('a', 'b'), false)
 assert.equal(keyMatches('a', undefined), false)
 assert.equal(keyMatches(null, 'a'), false)
 assert.equal(keyMatches('', ''), false)
+
+// Final review fix: payments the owners take outside the site (no 15-digit site reference) are never "refund this".
+assert.deepEqual(problems({ ...item, reference: undefined }, [], null, '51630'), ['not a site payment (no site reference)'])
+assert.deepEqual(problems({ ...item, reference: 'HP-2041' }, [], null, '51630'), ['not a site payment (no site reference)'])

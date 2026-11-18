@@ -36,7 +36,9 @@ assert.equal(classifyExisting([ours], 13585, expected, '51630'), 'recorded')
 assert.equal(classifyExisting([ours, { ...ours, integration_id: 999 }], 13585, expected, '51630'), 'recorded')
 assert.equal(classifyExisting([ours, ours], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([{ ...ours, price: 59.96 }], 13585, expected, '51630'), 'conflict')
-assert.equal(classifyExisting([{ ...ours, order_id: '999' }], 13585, expected, '51630'), 'conflict')
+// Final review fix: only exact order_id matches count, in case the CRM filter is ever loose or ignored.
+assert.equal(classifyExisting([{ ...ours, order_id: '999' }], 13585, expected, '51630'), 'absent')
+assert.equal(classifyExisting([ours, { ...ours, order_id: '999' }], 13585, expected, '51630'), 'recorded')
 assert.equal(classifyExisting([{ ...ours, info: { is_paid: true, order_text: 'mono invoice other' } }], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([{ ...ours, info: { is_paid: false, order_text: 'mono invoice inv1' } }], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([{ ...ours, currency: 'USD' }], 13585, expected, '51630'), 'conflict')
@@ -84,3 +86,6 @@ assert.match(json, /"total":59\.97,/) // line
 assert.match(json, /"local_product_id":9526188/)
 assert.doesNotMatch(json, /"email"/) // blank email omitted
 assert.match(json, /"delivery_operator":"nova_poshta"/)
+
+import { ourOrders } from '@/lib/hugeprofit/order-rules'
+assert.deepEqual(ourOrders([ours, { ...ours, integration_id: 999 }, { ...ours, order_id: '999' }], 13585, '123456789012345'), [ours])

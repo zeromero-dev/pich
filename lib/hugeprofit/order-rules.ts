@@ -96,6 +96,11 @@ function reservationProblems(order: CrmRemoteOrder, warehouseId: string): string
   return [...problems]
 }
 
+/** The lookup returns other integrations' orders too; exact order_id in case the CRM filter is ever loose. */
+export function ourOrders(orders: CrmRemoteOrder[], integrationId: number, reference: string): CrmRemoteOrder[] {
+  return orders.filter((order) => order.integration_id === integrationId && String(order.order_id) === reference)
+}
+
 /**
  * Is this payment already in the CRM? Only our integration's entries count —
  * the lookup also returns other integrations' orders. A differing order is never rewritten.
@@ -106,7 +111,7 @@ export function classifyExisting(
   expected: Expected,
   warehouseId: string,
 ): 'absent' | 'recorded' | 'partial' | 'conflict' {
-  const mine = orders.filter((order) => order.integration_id === integrationId)
+  const mine = ourOrders(orders, integrationId, expected.reference)
   if (mine.length === 0) return 'absent'
   if (mine.length > 1) return 'conflict'
   const order = mine[0]

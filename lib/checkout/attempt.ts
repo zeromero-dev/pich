@@ -2,13 +2,15 @@ import { toKop } from '@/lib/mono/money'
 
 /** Pure rules for /checkout/result (spec flow step 8): which payment attempt, and whether to clear the cart. */
 
-export type ResultStatus = 'paid' | 'pending' | 'failed' | 'expired' | 'reversed'
+/** `unknown`: this browser can't tell (no attempt cookie, or not this attempt's invoice) — never "a few seconds". */
+export type ResultStatus = 'paid' | 'pending' | 'failed' | 'expired' | 'reversed' | 'unknown'
 
 export function toResultStatus(
   read: { status: string; amount: number; finalAmount?: number; reference?: string } | null,
   ref: string,
 ): ResultStatus {
-  if (!read || read.reference !== ref) return 'pending'
+  if (!read) return 'pending' // read failed: temporary, refreshing can help
+  if (read.reference !== ref) return 'unknown'
   if (read.status === 'success') {
     return read.finalAmount === undefined || read.finalAmount === read.amount ? 'paid' : 'reversed'
   }
@@ -47,7 +49,7 @@ export function cartClearDecision(
   const mine = attempt?.reference === ref
   return {
     clear: mine && status === 'paid' && attempt.fingerprint === currentFingerprint,
-    dropAttempt: mine && status !== 'pending',
+    dropAttempt: mine && status !== 'pending' && status !== 'unknown',
   }
 }
 

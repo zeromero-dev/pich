@@ -16,10 +16,11 @@ export default async function CheckoutResultPage({
   searchParams: Promise<{ ref?: string }>
 }) {
   const { ref = '' } = await searchParams
-  let status: ResultStatus = 'pending'
+  let status: ResultStatus = 'unknown'
   if (/^\d{15}$/.test(ref)) {
     const invoiceId = (await cookies()).get(`mono_inv_${ref}`)?.value
     if (invoiceId) {
+      status = 'pending'
       try {
         status = toResultStatus(await getInvoiceStatus(invoiceId), ref)
       } catch {

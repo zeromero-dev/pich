@@ -1,6 +1,6 @@
 import 'server-only'
 import { parseKeyring, type Keyring } from '@/lib/mono/payload'
-import { resolvePaymentMode, type PaymentMode } from '@/lib/mono/rules'
+import { parseIntegrationId, resolvePaymentMode, type PaymentMode } from '@/lib/mono/rules'
 import { verifySignature } from '@/lib/mono/signature'
 import { invoiceStatusSchema, type InvoiceStatus } from '@/lib/mono/types'
 
@@ -70,6 +70,7 @@ export async function paymentMode(): Promise<PaymentMode | null> {
 /** New invoices only; callbacks and the reconcile report keep working while paused (spec "Rollback"). */
 export async function checkoutEnabled(): Promise<boolean> {
   if (!process.env.MONO_TOKEN || !payloadKeyring() || process.env.PAYMENTS_PAUSED === '1') return false
+  if (parseIntegrationId(process.env.CRM_INTEGRATION_ID) === null) return false
   return (await paymentMode()) !== null
 }
 

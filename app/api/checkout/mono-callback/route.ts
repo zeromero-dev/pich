@@ -5,7 +5,7 @@ import { classifyExisting, reservationComplete, type OrderLine } from '@/lib/hug
 import { createRemoteOrder, lookupRemoteOrders } from '@/lib/hugeprofit/orders'
 import { getInvoiceStatus, paymentMode, payloadKeyring, verifyWebhook } from '@/lib/mono/client'
 import { decryptPayload } from '@/lib/mono/payload'
-import { MAX_WEBHOOK_BYTES, adverseEvidence, checkSignedEvent, screenRequest } from '@/lib/mono/rules'
+import { MAX_WEBHOOK_BYTES, adverseEvidence, checkSignedEvent, parseIntegrationId, screenRequest } from '@/lib/mono/rules'
 import { invoiceStatusSchema, type CheckoutPayload, type InvoiceStatus } from '@/lib/mono/types'
 
 /**
@@ -78,7 +78,11 @@ export async function POST(request: Request) {
   if (signed !== 'ok') return reconcile(signed, ctx)
 
   const warehouseId = String(SHOP_WAREHOUSE_ID)
-  const integrationId = Number(process.env.CRM_INTEGRATION_ID)
+  const integrationId = parseIntegrationId(process.env.CRM_INTEGRATION_ID)
+  if (integrationId === null) {
+    console.error('[mono-callback] CRM_INTEGRATION_ID missing or invalid', ctx)
+    return retry()
+  }
   const expected = {
     reference: payload.reference,
     invoiceId: body.invoiceId,

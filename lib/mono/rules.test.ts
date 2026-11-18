@@ -92,3 +92,12 @@ assert.notEqual(adverseEvidence({ ...signed, amount: 1 }, signed), 'ok')
 assert.notEqual(adverseEvidence({ ...signed, reference: 'other' }, signed), 'ok')
 // A lagging `processing` read carries finalAmount 0 (seen in the 2026-11-18 probe) — not a refund.
 assert.equal(adverseEvidence({ ...signed, status: 'processing', finalAmount: 0 }, signed), 'ok')
+
+/* Final review fix: CRM_INTEGRATION_ID must fail closed. */
+import { parseIntegrationId } from '@/lib/mono/rules'
+assert.equal(parseIntegrationId('13585'), 13585)
+assert.equal(parseIntegrationId(undefined), null)
+assert.equal(parseIntegrationId(''), null)
+assert.equal(parseIntegrationId('abc'), null)
+assert.equal(parseIntegrationId('0'), null)
+assert.equal(parseIntegrationId('12.5'), null)

@@ -1,6 +1,8 @@
 import { SHOP_WAREHOUSE_ID } from '@/lib/hugeprofit/client'
 import { lookupRemoteOrders } from '@/lib/hugeprofit/orders'
+import { ourOrders } from '@/lib/hugeprofit/order-rules'
 import { getInvoiceStatus, getStatement } from '@/lib/mono/client'
+import { parseIntegrationId } from '@/lib/mono/rules'
 import { findingsFor, keyMatches, renderReport, reportWindow, type Finding } from '@/lib/mono/report'
 
 /* Daily reconciliation, opened by the operator as a link (?key=RECONCILE_KEY, optional &from=&to=
@@ -29,13 +31,12 @@ export async function GET(request: Request) {
     return reply('Не вдалося отримати виписку mono. Спробуйте за кілька хвилин.', 502)
   }
 
-  const integrationId = Number(process.env.CRM_INTEGRATION_ID)
+  const integrationId = parseIntegrationId(process.env.CRM_INTEGRATION_ID)
+  if (integrationId === null) return reply('CRM_INTEGRATION_ID не налаштовано — звірка неможлива.', 503)
   const warehouseId = String(SHOP_WAREHOUSE_ID)
   const check = async (item: (typeof items)[number]): Promise<Finding[]> => {
     try {
-      const ours = item.reference
-        ? (await lookupRemoteOrders(item.reference)).filter((order) => order.integration_id === integrationId)
-        : []
+      const ours = item.reference ? ourOrders(await lookupRemoteOrders(item.reference), integrationId, item.reference) : []
       const needsStatus = item.status !== 'success' || (item.cancelList?.length ?? 0) > 0 || ours.length === 1
       const current = needsStatus ? await getInvoiceStatus(item.invoiceId) : null
       return findingsFor(item, ours, current, warehouseId)

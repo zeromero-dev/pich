@@ -50,6 +50,8 @@ export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current
     problem,
   })
   const status = current?.status ?? item.status
+  // Site invoices carry a 15-digit reference (newReference); anything else was taken outside the site.
+  if (!/^\d{15}$/.test(item.reference ?? '')) return [finding('not a site payment (no site reference)')]
   if (ours.length === 0) return item.status === 'success' && status === 'success' ? [finding('paid, no CRM order')] : []
   if (ours.length > 1) return [finding('several CRM orders')]
 

@@ -11,7 +11,8 @@ assert.equal(toResultStatus({ status: 'created', amount: 5997, reference: R }, R
 assert.equal(toResultStatus({ status: 'failure', amount: 5997, reference: R }, R), 'failed')
 assert.equal(toResultStatus({ status: 'expired', amount: 5997, reference: R }, R), 'expired')
 assert.equal(toResultStatus({ status: 'reversed', amount: 5997, reference: R }, R), 'reversed')
-assert.equal(toResultStatus({ status: 'success', amount: 5997, reference: 'other' }, R), 'pending')
+// Final review fix: an invoice that is not this attempt's is unknown, not "a few seconds" forever.
+assert.equal(toResultStatus({ status: 'success', amount: 5997, reference: 'other' }, R), 'unknown')
 assert.equal(toResultStatus(null, R), 'pending')
 
 const fp = cartFingerprint([
@@ -40,3 +41,5 @@ assert.equal(migrated[0].product.price, 19.99)
 import { lineUnitKop } from '@/lib/checkout/attempt'
 assert.equal(lineUnitKop({ price: 19.99 }), 1999)
 assert.equal(lineUnitKop({ price: 10.005 }), 1001) // display fallback only; the server refuses it
+
+assert.deepEqual(cartClearDecision('unknown', R, attempt, fp), { clear: false, dropAttempt: false })

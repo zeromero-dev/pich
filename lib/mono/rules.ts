@@ -80,3 +80,10 @@ export function adverseEvidence(read: Status, signed: Status): 'ok' | string {
   if (read.cancelList && read.cancelList.length > 0) return 'cancelList present'
   return 'ok'
 }
+
+/** Our HugeProfit integration id. A missing or garbled one would make every lookup "absent": fail closed. */
+export function parseIntegrationId(raw: string | undefined): number | null {
+  if (!raw || !/^\d+$/.test(raw)) return null
+  const id = Number(raw)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
