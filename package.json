@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx --yes tsx@4.19.2 lib/artist-roster.test.ts && npx --yes tsx@4.19.2 lib/mono/money.test.ts"
+    "test": "npx --yes tsx@4.19.2 lib/artist-roster.test.ts && npx --yes tsx@4.19.2 lib/mono/money.test.ts && npx --yes tsx@4.19.2 lib/mono/payload.test.ts"
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",

@@ -1,0 +1,63 @@
+import { createCipheriv, createDecipheriv, randomBytes, randomInt } from 'node:crypto'
+import { checkoutPayloadSchema, type CheckoutPayload } from '@/lib/mono/types'
+
+/**
+ * The order rides in our own webhook URL, which lands in request logs — so it
+ * is encrypted (AES-256-GCM), not just signed. Envelope: `keyId.iv.ciphertext.tag`,
+ * base64url parts, key id authenticated as AAD so old keys keep decrypting after rotation.
+ */
+
+export type Keyring = { active: string; keys: Record<string, Buffer> }
+
+const KEY_ID = /^[a-z0-9]{1,8}$/
+
+export function parseKeyring(json: string | undefined): Keyring | null {
+  if (!json) return null
+  try {
+    const raw = JSON.parse(json) as { active?: unknown; keys?: Record<string, unknown> }
+    if (typeof raw.active !== 'string' || !raw.keys || typeof raw.keys !== 'object') return null
+    const keys: Record<string, Buffer> = {}
+    for (const [id, value] of Object.entries(raw.keys)) {
+      if (!KEY_ID.test(id) || typeof value !== 'string') return null
+      const key = Buffer.from(value, 'base64')
+      if (key.length !== 32) return null
+      keys[id] = key
+    }
+    return keys[raw.active] ? { active: raw.active, keys } : null
+  } catch {
+    return null
+  }
+}
+
+export function encryptPayload(payload: CheckoutPayload, ring: Keyring): string {
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', ring.keys[ring.active], iv)
+  cipher.setAAD(Buffer.from(ring.active))
+  const body = Buffer.concat([cipher.update(JSON.stringify(payload), 'utf8'), cipher.final()])
+  return [ring.active, iv, body, cipher.getAuthTag()]
+    .map((part) => (typeof part === 'string' ? part : part.toString('base64url')))
+    .join('.')
+}
+
+/** `null` means unknown key, tampered, truncated or not a valid payload — never proceed. */
+export function decryptPayload(envelope: string, ring: Keyring): CheckoutPayload | null {
+  const [keyId, iv, body, tag, ...rest] = envelope.split('.')
+  const key = keyId ? ring.keys[keyId] : undefined
+  if (!key || !iv || !body || !tag || rest.length > 0) return null
+  try {
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'))
+    decipher.setAAD(Buffer.from(keyId))
+    decipher.setAuthTag(Buffer.from(tag, 'base64url'))
+    const json = Buffer.concat([decipher.update(Buffer.from(body, 'base64url')), decipher.final()]).toString('utf8')
+    const parsed = checkoutPayloadSchema.safeParse(JSON.parse(json))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
+}
+
+/** 15 digits, first non-zero: mono `reference` and HugeProfit `order_id`. randomInt ranges must stay < 2^48. */
+export function newReference(): string {
+  const block = () => String(randomInt(0, 10_000_000)).padStart(7, '0')
+  return `${randomInt(1, 10)}${block()}${block()}`
+}
