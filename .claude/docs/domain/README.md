@@ -12,7 +12,7 @@ UI, styling, and motion live in `../ui-ux-guidelines.md` — never here.
 |---------|-----|-----------------|-----------------|
 | Catalog | [catalog.md](catalog.md) | HUGEPROFIT CRM | `lib/hugeprofit/` (live since 2026-08-12) |
 | Cart | [cart.md](cart.md) | The buyer's browser (a draft, never authoritative) | `components/providers.tsx` + localStorage |
-| Ordering | [checkout.md](checkout.md) | CRM (orders) + LiqPay (payment) | `app/api/checkout/` + `app/api/checkout/liqpay-callback/` |
+| Ordering | [checkout.md](checkout.md) | CRM (orders) + plata by mono (payment) | `app/api/checkout/` + `app/api/checkout/liqpay-callback/` |
 | Events | [events.md](events.md) | Notion «Події» database (read-only) | `lib/events.ts` |
 | Artists & Content | [artists.md](artists.md) | Roster: CRM brands. Bios: this repo | `lib/hugeprofit/` + `lib/artists.ts` |
 | Locale | [i18n.md](i18n.md) | `lib/i18n.ts` (cross-cutting concern, not a true context) | `lib/i18n.ts` |

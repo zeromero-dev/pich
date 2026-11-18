@@ -4,10 +4,18 @@ import { useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
 import { m } from 'motion/react'
 import { spring } from '@/lib/motion'
-import { CART_KEY, lineUnitKop, useCart, useLocale, type CartItem } from '@/components/providers'
+import { useCart, useLocale, type CartItem } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
 import { LogoMark } from '@/components/logo'
-import { ATTEMPT_KEY, cartClearDecision, cartFingerprint, type Attempt, type ResultStatus } from '@/lib/checkout/attempt'
+import {
+  ATTEMPT_KEY,
+  CART_KEY,
+  cartClearDecision,
+  cartFingerprint,
+  lineUnitKop,
+  type Attempt,
+  type ResultStatus,
+} from '@/lib/checkout/attempt'
 
 /* Reads the saved cart itself: this effect runs before the cart provider has loaded it. */
 function savedFingerprint(): string {

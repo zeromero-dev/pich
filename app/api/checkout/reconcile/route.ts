@@ -31,21 +31,23 @@ export async function GET(request: Request) {
 
   const integrationId = Number(process.env.CRM_INTEGRATION_ID)
   const warehouseId = String(SHOP_WAREHOUSE_ID)
-  const findings: Finding[] = []
-  // ponytail: sequential CRM/mono calls — a shop's daily volume; batch if the list grows into the hundreds.
-  for (const item of items) {
+  const check = async (item: (typeof items)[number]): Promise<Finding[]> => {
     try {
-      // react-doctor-disable-next-line async-await-in-loop
       const ours = item.reference
         ? (await lookupRemoteOrders(item.reference)).filter((order) => order.integration_id === integrationId)
         : []
       const needsStatus = item.status !== 'success' || (item.cancelList?.length ?? 0) > 0 || ours.length === 1
-      // react-doctor-disable-next-line async-await-in-loop
       const current = needsStatus ? await getInvoiceStatus(item.invoiceId) : null
-      findings.push(...findingsFor(item, ours, current, warehouseId))
+      return findingsFor(item, ours, current, warehouseId)
     } catch {
-      findings.push({ invoiceId: item.invoiceId, reference: item.reference ?? '', amountKop: item.amount, problem: 'could not check (retry)' })
+      return [{ invoiceId: item.invoiceId, reference: item.reference ?? '', amountKop: item.amount, problem: 'could not check (retry)' }]
     }
+  }
+  const findings: Finding[] = []
+  // ponytail: sequential on purpose — CRM rate limits are undocumented; a shop's daily volume is small.
+  for (const item of items) {
+    // react-doctor-disable-next-line async-await-in-loop
+    findings.push(...(await check(item)))
   }
 
   return reply(renderReport(window, items.length, findings))

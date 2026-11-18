@@ -35,3 +35,8 @@ const migrated = migrateCart([
 ])
 assert.equal(migrated.length, 1)
 assert.equal(migrated[0].product.price, 19.99)
+
+// Display price per unit in kopecks (moved out of the providers component file).
+import { lineUnitKop } from '@/lib/checkout/attempt'
+assert.equal(lineUnitKop({ price: 19.99 }), 1999)
+assert.equal(lineUnitKop({ price: 10.005 }), 1001) // display fallback only; the server refuses it

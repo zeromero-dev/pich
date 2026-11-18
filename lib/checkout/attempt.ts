@@ -18,6 +18,14 @@ export function toResultStatus(
   return 'pending'
 }
 
+/** localStorage key of the cart (components/providers.tsx). */
+export const CART_KEY = 'plai-pich-cart-v3'
+
+/** Display only — the server re-prices in exact kopecks and refuses a sub-kopeck price. */
+export function lineUnitKop(product: { price: number }): number {
+  return toKop(product.price) ?? Math.round(product.price * 100)
+}
+
 /** sessionStorage: the attempt this tab redirected to mono with. */
 export const ATTEMPT_KEY = 'plai-pich-attempt'
 export type Attempt = { reference: string; fingerprint: string }
