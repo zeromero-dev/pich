@@ -65,10 +65,10 @@ The order (lines, contact, delivery, Meta match data) must survive from `/api/ch
 
 ```
 1. POST /api/checkout — unchanged through stock/price checks
-2. paymentId = Date.now(); total in ₴ (server-computed)
+2. paymentId = Date.now(); amount in kopecks, integer maths only (see "Money")
 3. payload = encrypt({ paymentId, lines, contact })                 → lib/mono/payload.ts
 4. POST /api/merchant/invoice/create {
-     amount: Math.round(total * 100), ccy: 980,   // kopecks, int; 980 = UAH
+     amount: amountKop, ccy: 980,                 // kopecks, int; 980 = UAH
      merchantPaymInfo: { reference: String(paymentId),
                          destination: `Замовлення Plai Pich #${paymentId}` },
      redirectUrl: `${WEBSITE_URL}/checkout/result`,
@@ -78,7 +78,7 @@ The order (lines, contact, delivery, Meta match data) must survive from `/api/ch
 7. monobank POSTs every status change to mono-callback:
      verify X-Sign over raw body → ignore unless status === 'success'
      → decrypt ?p → require body.reference === String(payload.paymentId)
-       and body.amount === Math.round(Σ line.price*qty * 100)
+       and body.amount === amountKop(payload.lines)    // integer equality
      → re-check stock → createRemoteOrder(isPaid, paymentType 'plata by mono',
        orderText `mono invoice ${invoiceId}`)
      → 200, except when createRemoteOrder throws: 500, so monobank retries
@@ -88,6 +88,15 @@ The order (lines, contact, delivery, Meta match data) must survive from `/api/ch
        (a retry can't fix them); sold out stays the loud paid-but-not-created log.
 8. /checkout/result reads the cookie → GET invoice/status → success / failed / pending
 ```
+
+### Money
+
+CRM prices arrive as float hryvnias (`340.0`). One pure function in `lib/mono/` owns the conversion:
+
+- `toKop(price)` = `Math.round(price * 100)`, and **throws** if `|price * 100 − toKop| > 1e-6` — a sub-kopeck price (`10.005`) would otherwise be charged as one amount and written to the CRM as another.
+- `amountKop(lines)` = `Σ toKop(line.price) × line.qty` — integers only; exact up to 2^53 kopecks.
+- `/api/checkout` calls it before creating the invoice; a throw is logged with the product id and answered as a generic error, before any payment. The webhook calls the same function on the decrypted lines and compares with `body.amount` by integer equality.
+- Floats never get summed. Brute-force check 2026-11-18: float-sum-then-round was also exact for every price ₴0.01–₴100 000.00 and 10⁶ random 20-line carts (max error 4.8e-6 kopeck) — per-line integers are chosen for being exact by construction, not because the float path failed.
 
 ### Modules (replace `lib/liqpay/`)
 
@@ -122,7 +131,7 @@ When that branch rebases onto this one: `MetaMatch`/`meta?` go into `CheckoutPay
 
 ### Check left behind
 
-`lib/mono/payload.test.ts` in `npm test`: round-trip; a flipped byte → `null`; a payload from another key → `null`. Webhook signature verification is proven by the probe and re-proven by the plan's last task: a test-token payment over a tunnel that lands a paid order in the dev warehouse (51630) CRM.
+`lib/mono/payload.test.ts` in `npm test`: round-trip; a flipped byte → `null`; a payload from another key → `null`. Money asserts in the same run: `amountKop([{price: 19.99, qty: 3}]) === 5997`; `[0.1, 0.2]` → `30`; `toKop(10.005)` throws. Webhook signature verification is proven by the probe and re-proven by the plan's last task: a test-token payment over a tunnel that lands a paid order in the dev warehouse (51630) CRM.
 
 ## Constraints
 
