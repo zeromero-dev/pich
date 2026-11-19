@@ -162,7 +162,7 @@ Endpoints we care about:
 
 - `grep -rn PLACEHOLDER app components lib` — the privacy policy's data controller (legal entity not confirmed; `lib/info-pages.ts`).
 - Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
-- qty > 1 CRM reservation is unverified — see `.claude/docs/domain/checkout.md` (the mono rehearsal buys 3 units to settle it).
+- qty > 1 CRM reservation: verified 2026-11-19 (mono rehearsal, `instock` dropped by 3). Whether converting an order to a sale fills `sales_id` is still open — cutover plan Task 7.
 - plata by mono go-live: `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md` — owners' production token, a production HugeProfit integration reserving into 34998, an operator + backup for the daily reconcile report, refund period.
 - UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`), the checkout result copy for expired/refunded payments (`resultExpired*`, `resultReversed*`, `resultUnknown*`, `resultRefresh`), and the delivery page payment list (Privat24 dropped, Apple/Google Pay kept — unverified on the owners' production terminal).
 

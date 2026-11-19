@@ -18,7 +18,15 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 
 **Verified end to end through LiqPay's sandbox 2026-09-08**, paying a mock work with a test card over a public tunnel: LiqPay's own webhook reached `server_url`, the handler logged nothing (every line in it is an error path), and the CRM order landed complete — 340 UAH, `info.is_paid: true`, `order_text: "LiqPay order_id …"`, contact fields intact. Two things this settled that the local mint could not:
 
-**Not yet verified: qty > 1.** Multi-unit lines (built 2026-10-25) have not been rehearsed against the CRM — whether `remote_orders` reserves N units for `quantity: N` is unknown. The 2026-10-25 attempt stopped at setup: the token no longer reads the dev warehouse 51630 (`scripts/crm-scope.mjs` lists only 34998). Don't ship qty > 1 to production until a sandbox run confirms `instock` drops by N.
+**Verified locally through mono's test API 2026-11-19** (test token, tunnel, dev warehouse 51630, integration 13585, mock work 9526187 at ₴19.99):
+
+1. **Happy path, qty 3:** order `price 59.97`, line `quantity 3`, `is_paid`, `is_reserved`, `mid "51630"`, `order_text "mono invoice <id>"`, `order_id` = the 15-digit reference; `instock 5 → 2`. **qty > 1 reserves N units** — settled. Success webhook 2.5 s.
+2. **Duplicate:** two exact replays → 200, still one order, stock unchanged. Tampered body → 503 inside the 5-min pubkey cooldown (by design).
+3. **Adverse:** paid → refunded via `invoice/cancel` → replay → `reconcile` "status reversed", no order. Paid with the last unit already reserved → replay → `reconcile` "paid but sold out", no order.
+4. **Retries:** mono makes 3 attempts within ~1 min, stops after the third 503. A 503 then a healthy retry created the order with no help. With all 3 failing, the report listed "paid, no CRM order"; a refunded invoice with no order is (correctly) not listed.
+5. **Result page:** unpaid → pending + refresh; paid → «Дякуємо!»; refunded → «Оплату повернуто»; no cookie / another invoice's cookie → unknown.
+
+Not verified: converting an order to a sale (HugeProfit's «Підтвердити замовлення» posts to a real cash account) — so whether `sales_id` fills on conversion is open; see the cutover plan. One success webhook took **22.6 s** (CRM stall, not reproduced; reads were 0.2–1.1 s) — within `maxDuration = 30`, and a cut-off run is safe because mono retries and the lookup finds an order already written.
 
 - **Reservation does work, into the warehouse the integration settings name.** This order came back `is_reserved: true`, `reserved_pids: [9060539]`, `mid: "51630"`, and the work moved `instock 1 → 0` with `quantity` still 1. The 2026-09-07 no-reservation result above was not a missing feature: the token in use then reserved into 34998, where that mock product had no stock row. Once the token was re-scoped to the dev warehouse, reservation targeted 51630 and fired. So the rule stands as originally written — the caveat is only that reservation goes to the *configured* warehouse, not to the product's own.
 - **`result_url` is a GET.** LiqPay redirected the browser back with `GET /checkout/result?paymentId=…` (200), so the page route answers it fine. The long-standing worry that LiqPay POSTs there, which would 405 against a Next page, did not materialise for this flow.

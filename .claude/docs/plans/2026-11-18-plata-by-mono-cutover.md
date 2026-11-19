@@ -51,9 +51,11 @@
 
 ## Task 7: Merge, deploy, one real purchase
 
+- [ ] Remove the test-mode `[mono-callback] replay` log line (kept for the 2026-11-19 rehearsal; the spec's log rule forbids it) and its CLAUDE.md mention, after Task 4's Preview run.
 - [ ] Rebase on `master`, open a PR, merge (ask first), deploy.
 - [ ] Buy one cheap real work with a real card. **Verify:** paid CRM order in 34998 with `payment_type: "plata by mono"`, `order_text: "mono invoice …"`, reservation `mid: "34998"`; result page shows paid; cart cleared.
-- [ ] Refund it in the mono cabinet; cancel the CRM order. **Verify:** next day's report lists the reversal, then nothing.
+- [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale) the way they will handle real orders. **Verify:** `GET /bapi/remote_orders?order_id=<ref>` now shows a non-null `sales_id` (not verified in the rehearsal — the dev account's sale form posts to a real cash account).
+- [ ] Refund it in the mono cabinet; cancel the CRM sale. **Verify:** next day's report lists `full reversal (converted to sale)`, then nothing.
 
 ## Task 8: Rollback (keep ready, don't run)
 
