@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     console.error('[mono-callback] unparsable signed body')
     return ok()
   }
-  // Other statuses never touch the CRM; refunds and reversals surface in the reconcile report.
+  // Other statuses never touch the CRM; refunds and reversals surface in the payment report.
   if (body.status !== 'success') return ok()
 
   const mode = await paymentMode()

@@ -36,7 +36,9 @@ export function reportWindow(from: string | null, to: string | null, now: Date):
   return fromUnix < toUnix && toUnix - fromUnix <= MAX_SPAN ? { fromUnix, toUnix } : null
 }
 
-export type Finding = { invoiceId: string; reference: string; amountKop: number; problem: string }
+const SITE_REFERENCE = /^\d{15}$/
+
+export type Finding ={ invoiceId: string; reference: string; amountKop: number; problem: string }
 
 type Item = { invoiceId: string; status: string; amount: number; reference?: string; cancelList?: unknown[] }
 type Current = { status: string; finalAmount?: number; cancelList?: unknown[] } | null
@@ -51,19 +53,19 @@ export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current
   })
   const status = current?.status ?? item.status
   // Site invoices carry a 15-digit reference (newReference); anything else was taken outside the site.
-  if (!/^\d{15}$/.test(item.reference ?? '')) return [finding('not a site payment (no site reference)')]
-  if (ours.length === 0) return item.status === 'success' && status === 'success' ? [finding('paid, no CRM order')] : []
-  if (ours.length > 1) return [finding('several CRM orders')]
+  if (!SITE_REFERENCE.test(item.reference ?? '')) return [finding('оплата не з сайту (без номера замовлення)')]
+  if (ours.length === 0) return item.status === 'success' && status === 'success' ? [finding('оплачено, але замовлення в CRM немає')] : []
+  if (ours.length > 1) return [finding('кілька замовлень у CRM на одну оплату')]
 
   const order = ours[0]
-  const sale = order.sales_id !== null ? ' (converted to sale)' : ''
+  const sale = order.sales_id !== null ? ' (замовлення вже переведено в продаж)' : ''
   const problems: string[] = []
-  if (toKop(order.price) !== item.amount) problems.push('total differs')
+  if (toKop(order.price) !== item.amount) problems.push('сума в CRM не збігається з оплатою')
   problems.push(...orderHealth(order, warehouseId))
   const cancels = current?.cancelList ?? item.cancelList ?? []
-  if (status === 'reversed') problems.push(`full reversal${sale}`)
-  else if (current?.finalAmount !== undefined && current.finalAmount < item.amount) problems.push(`partial refund${sale}`)
-  else if (cancels.length > 0) problems.push(`pending cancellation${sale}`)
+  if (status === 'reversed') problems.push(`кошти повернуто повністю${sale}`)
+  else if (current?.finalAmount !== undefined && current.finalAmount < item.amount) problems.push(`кошти повернуто частково${sale}`)
+  else if (cancels.length > 0) problems.push(`повернення коштів в обробці${sale}`)
   return problems.map(finding)
 }
 
@@ -72,6 +74,7 @@ const iso = (unix: number) => new Date(unix * 1000).toISOString().slice(0, 16).r
 export function renderReport(window: { fromUnix: number; toUnix: number }, checked: number, findings: Finding[]): string {
   const head = `Звірка оплат plata by mono: ${iso(window.fromUnix)} — ${iso(window.toUnix)} (UTC). Перевірено: ${checked}.`
   if (findings.length === 0) return `${head}\n\nВсе гаразд.`
-  const lines = findings.map((f) => `${f.problem} — інвойс ${f.invoiceId}, ref ${f.reference}, ${formatKop(f.amountKop)}`)
+  const order = (ref: string) => (SITE_REFERENCE.test(ref) ? `, замовлення №${ref}` : '')
+  const lines = findings.map((f) => `${f.problem} — інвойс mono ${f.invoiceId}${order(f.reference)}, ${formatKop(f.amountKop)}`)
   return `${head}\n\nПотребує уваги (${findings.length}):\n${lines.join('\n')}`
 }

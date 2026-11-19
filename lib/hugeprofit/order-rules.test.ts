@@ -56,11 +56,11 @@ assert.equal(reservationComplete([], [{ productId: '9526188' }], '51630'), false
 assert.equal(reservationComplete(undefined, [{ productId: '9526188' }], '51630'), false)
 
 assert.deepEqual(orderHealth(ours, '51630'), [])
-assert.deepEqual(orderHealth({ ...ours, price: 89.97 }, '51630'), ['total differs from line sum'])
+assert.deepEqual(orderHealth({ ...ours, price: 89.97 }, '51630'), ['сума замовлення не збігається із сумою рядків'])
 assert.deepEqual(orderHealth(withLine({ total: '59,97 грн' }), '51630'), [])
-assert.deepEqual(orderHealth(withLine({ total: 'n/a' }), '51630'), ['unverifiable line totals'])
-assert.deepEqual(orderHealth(withLine({ is_reserved: false }), '51630'), ['unreserved line'])
-assert.deepEqual(orderHealth(withLine({ mid: '34998' }), '51630'), ['reserved in wrong warehouse'])
+assert.deepEqual(orderHealth(withLine({ total: 'n/a' }), '51630'), ['не вдається прочитати суми рядків'])
+assert.deepEqual(orderHealth(withLine({ is_reserved: false }), '51630'), ['товар не зарезервовано'])
+assert.deepEqual(orderHealth(withLine({ mid: '34998' }), '51630'), ['товар зарезервовано не на тому складі'])
 assert.deepEqual(orderHealth({ ...withLine({ is_reserved: false }), sales_id: 77 }, '51630'), [])
 
 const contact: OrderContact = {

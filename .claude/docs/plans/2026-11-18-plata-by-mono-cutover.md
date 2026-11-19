@@ -33,20 +33,20 @@
 
 ## Task 4: Vercel Preview rehearsal
 
-- [ ] Push `feat/plata-by-mono` (ask first — it is the first push of this branch). Preview env: `MONO_TOKEN` = test token, `MONO_TEST_MERCHANT_ID=test_4U18rFLZus`, `MONO_PAYLOAD_KEYS` (Preview's own), `CRM_WAREHOUSE_ID=51630`, `HUGEPROFIT_API_KEY` = dev integration token, `CRM_INTEGRATION_ID=13585`, `RECONCILE_KEY` (Preview's own), `WEBSITE_URL` = the Preview URL.
+- [ ] Push `feat/plata-by-mono` (ask first — it is the first push of this branch). Preview env: `MONO_TOKEN` = test token, `MONO_TEST_MERCHANT_ID=test_4U18rFLZus`, `MONO_PAYLOAD_KEYS` (Preview's own), `CRM_WAREHOUSE_ID=51630`, `HUGEPROFIT_API_KEY` = dev integration token, `CRM_INTEGRATION_ID=13585`, `REPORT_KEY` (Preview's own), `WEBSITE_URL` = the Preview URL.
 - [ ] Create a Protection Bypass for Automation secret **for this rehearsal only**; append `&x-vercel-protection-bypass=<secret>` to the webhook URL in Preview builds only (count it in `MAX_CALLBACK_URL_BYTES`).
 - [ ] Pay a worst-case order (Task 5's `lock.test.ts` shape: 20 lines, long Cyrillic contact) with the test card. **Verify:** the order lands in the dev CRM; confirm or lower `MAX_CALLBACK_URL_BYTES` (8000) from what Vercel accepted.
 - [ ] Revoke the bypass secret.
 
 ## Task 5: Vercel Production env
 
-- [ ] Set: `MONO_TOKEN` (owners'), `MONO_MERCHANT_ID`, `MONO_PAYLOAD_KEYS` (new, Production's own), `CRM_WAREHOUSE_ID=34998`, `HUGEPROFIT_API_KEY` (production integration), `CRM_INTEGRATION_ID` (production), `RECONCILE_KEY` (new). Remove `LIQPAY_PUBLIC_KEY`, `LIQPAY_PRIVATE_KEY`, `LIQPAY_SANDBOX`; make sure `MONO_TEST_MERCHANT_ID` and `DEV_ORIGIN` are **not** set in Production.
+- [ ] Set: `MONO_TOKEN` (owners'), `MONO_MERCHANT_ID`, `MONO_PAYLOAD_KEYS` (new, Production's own), `CRM_WAREHOUSE_ID=34998`, `HUGEPROFIT_API_KEY` (production integration), `CRM_INTEGRATION_ID` (production), `REPORT_KEY` (new). Remove `LIQPAY_PUBLIC_KEY`, `LIQPAY_PRIVATE_KEY`, `LIQPAY_SANDBOX`; make sure `MONO_TEST_MERCHANT_ID` and `DEV_ORIGIN` are **not** set in Production.
 - [ ] Confirm `WEBSITE_URL=https://www.pich.co.ua` exactly.
 - **Verify:** after deploy (Task 7), `POST /api/checkout` with body `{}` answers 400 `invalid` (payments enabled), not 503.
 
 ## Task 6: Operator, refund period, report
 
-- [ ] Owners name an operator and a backup, the daily check time, and the refund period (default 7 days). Hand them the link `https://www.pich.co.ua/api/checkout/reconcile?key=<RECONCILE_KEY>` and the procedure (spec "Operator procedure"; checkout.md).
+- [ ] Owners name an operator and a backup, the daily check time, and the refund period (default 7 days). Hand them the link `https://www.pich.co.ua/api/payment-report?key=<REPORT_KEY>` and the procedure (spec "Operator procedure"; checkout.md).
 - [ ] With the test token (local or Preview): pay a test invoice, wait 8+ days, refund it with `POST /api/merchant/invoice/cancel`, then open the default 7-day report. **Verify:** whether the refund is listed. If not, widen the default window in `reportWindow` (`lib/mono/report.ts`) to the agreed refund period (≤31 days) and commit.
 
 ## Task 7: Merge, deploy, one real purchase

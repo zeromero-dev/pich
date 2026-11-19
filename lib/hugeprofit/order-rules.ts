@@ -90,8 +90,8 @@ function reservationProblems(order: CrmRemoteOrder, warehouseId: string): string
   if (order.sales_id !== null) return [] // converted to a sale: the CRM released the reservation by design
   const problems = new Set<string>()
   for (const line of order.order_data ?? []) {
-    if (line.is_reserved !== true) problems.add('unreserved line')
-    else if (String(line.mid) !== warehouseId) problems.add('reserved in wrong warehouse')
+    if (line.is_reserved !== true) problems.add('товар не зарезервовано')
+    else if (String(line.mid) !== warehouseId) problems.add('товар зарезервовано не на тому складі')
   }
   return [...problems]
 }
@@ -147,9 +147,9 @@ export function reservationComplete(reserved: unknown, lines: { productId: strin
 export function orderHealth(order: CrmRemoteOrder, warehouseId: string): string[] {
   const problems: string[] = []
   const totals = (order.order_data ?? []).map((line) => parseCrmLineTotal(line.total))
-  if (totals.some((kop) => kop === null)) problems.push('unverifiable line totals')
+  if (totals.some((kop) => kop === null)) problems.push('не вдається прочитати суми рядків')
   else if (totals.reduce<number>((sum, kop) => sum + kop!, 0) !== toKop(order.price)) {
-    problems.push('total differs from line sum')
+    problems.push('сума замовлення не збігається із сумою рядків')
   }
   return [...problems, ...reservationProblems(order, warehouseId)]
 }

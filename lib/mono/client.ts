@@ -67,7 +67,7 @@ export async function paymentMode(): Promise<PaymentMode | null> {
   })
 }
 
-/** New invoices only; callbacks and the reconcile report keep working while paused (spec "Rollback"). */
+/** New invoices only; callbacks and the payment report keep working while paused (spec "Rollback"). */
 export async function checkoutEnabled(): Promise<boolean> {
   if (!process.env.MONO_TOKEN || !payloadKeyring() || process.env.PAYMENTS_PAUSED === '1') return false
   if (parseIntegrationId(process.env.CRM_INTEGRATION_ID) === null) return false

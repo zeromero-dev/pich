@@ -31,24 +31,24 @@ const withLine = (patch: Partial<Line>): CrmRemoteOrder => ({ ...ours, order_dat
 const item = { invoiceId: 'inv1', status: 'success', amount: 5997, ccy: 980, reference: '123456789012345' }
 const problems = (...args: Parameters<typeof findingsFor>) => findingsFor(...args).map((f) => f.problem)
 
-assert.deepEqual(problems(item, [], null, '51630'), ['paid, no CRM order'])
+assert.deepEqual(problems(item, [], null, '51630'), ['оплачено, але замовлення в CRM немає'])
 assert.deepEqual(problems(item, [ours], null, '51630'), [])
-assert.deepEqual(problems(item, [ours, ours], null, '51630'), ['several CRM orders'])
-assert.deepEqual(problems(item, [{ ...ours, price: 89.97 }], null, '51630'), ['total differs', 'total differs from line sum'])
-assert.deepEqual(problems(item, [withLine({ is_reserved: false })], null, '51630'), ['unreserved line'])
-assert.deepEqual(problems(item, [withLine({ mid: '34998' })], null, '51630'), ['reserved in wrong warehouse'])
-assert.deepEqual(problems(item, [ours], { status: 'reversed' }, '51630'), ['full reversal'])
-assert.deepEqual(problems(item, [{ ...ours, sales_id: 77 }], { status: 'reversed' }, '51630'), ['full reversal (converted to sale)'])
-assert.deepEqual(problems(item, [ours], { status: 'success', finalAmount: 1000 }, '51630'), ['partial refund'])
-assert.deepEqual(problems({ ...item, cancelList: [{}] }, [ours], { status: 'success', cancelList: [{}] }, '51630'), ['pending cancellation'])
+assert.deepEqual(problems(item, [ours, ours], null, '51630'), ['кілька замовлень у CRM на одну оплату'])
+assert.deepEqual(problems(item, [{ ...ours, price: 89.97 }], null, '51630'), ['сума в CRM не збігається з оплатою', 'сума замовлення не збігається із сумою рядків'])
+assert.deepEqual(problems(item, [withLine({ is_reserved: false })], null, '51630'), ['товар не зарезервовано'])
+assert.deepEqual(problems(item, [withLine({ mid: '34998' })], null, '51630'), ['товар зарезервовано не на тому складі'])
+assert.deepEqual(problems(item, [ours], { status: 'reversed' }, '51630'), ['кошти повернуто повністю'])
+assert.deepEqual(problems(item, [{ ...ours, sales_id: 77 }], { status: 'reversed' }, '51630'), ['кошти повернуто повністю (замовлення вже переведено в продаж)'])
+assert.deepEqual(problems(item, [ours], { status: 'success', finalAmount: 1000 }, '51630'), ['кошти повернуто частково'])
+assert.deepEqual(problems({ ...item, cancelList: [{}] }, [ours], { status: 'success', cancelList: [{}] }, '51630'), ['повернення коштів в обробці'])
 assert.deepEqual(problems({ ...item, status: 'reversed' }, [], { status: 'reversed' }, '51630'), []) // reversed and never fulfilled: nothing to do
 const f = findingsFor(item, [], null, '51630')[0]
-assert.deepEqual(f, { invoiceId: 'inv1', reference: '123456789012345', amountKop: 5997, problem: 'paid, no CRM order' })
+assert.deepEqual(f, { invoiceId: 'inv1', reference: '123456789012345', amountKop: 5997, problem: 'оплачено, але замовлення в CRM немає' })
 
 const win = reportWindow(null, null, now)!
 assert.match(renderReport(win, 3, []), /Перевірено: 3/)
 assert.match(renderReport(win, 3, []), /Все гаразд\./)
-assert.match(renderReport(win, 1, [f]), /paid, no CRM order — інвойс inv1, ref 123456789012345, ₴59,97/)
+assert.match(renderReport(win, 1, [f]), /оплачено, але замовлення в CRM немає — інвойс mono inv1, замовлення №123456789012345, ₴59,97/)
 
 assert.equal(keyMatches('a', 'a'), true)
 assert.equal(keyMatches('a', 'b'), false)
@@ -57,5 +57,9 @@ assert.equal(keyMatches(null, 'a'), false)
 assert.equal(keyMatches('', ''), false)
 
 // Final review fix: payments the owners take outside the site (no 15-digit site reference) are never "refund this".
-assert.deepEqual(problems({ ...item, reference: undefined }, [], null, '51630'), ['not a site payment (no site reference)'])
-assert.deepEqual(problems({ ...item, reference: 'HP-2041' }, [], null, '51630'), ['not a site payment (no site reference)'])
+assert.deepEqual(problems({ ...item, reference: undefined }, [], null, '51630'), ['оплата не з сайту (без номера замовлення)'])
+assert.deepEqual(problems({ ...item, reference: 'HP-2041' }, [], null, '51630'), ['оплата не з сайту (без номера замовлення)'])
+
+// A non-site payment's reference isn't our order number: don't label it as one.
+const outside = { invoiceId: 'inv2', reference: '1763485000000', amountKop: 100, problem: 'оплата не з сайту (без номера замовлення)' }
+assert.match(renderReport(win, 1, [outside]), /оплата не з сайту \(без номера замовлення\) — інвойс mono inv2, ₴1$/m)

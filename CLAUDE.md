@@ -61,7 +61,7 @@ MONO_TEST_MERCHANT_ID=test_4U18rFLZus  # local/Preview only — test merchant id
 MONO_MERCHANT_ID=...              # Production only — owners' merchant id; its match makes payments live
 MONO_PAYLOAD_KEYS=...             # server-only — {"active":"k1","keys":{"k1":"<base64 32 bytes>"}}; distinct per environment
 CRM_INTEGRATION_ID=13585          # our HugeProfit integration id (13585 = dev integration, reserves into 51630)
-RECONCILE_KEY=...                 # server-only — key in the reconcile report link; not SYNC_KEY
+REPORT_KEY=...                    # server-only — key in the daily payment report link (/api/payment-report); not SYNC_KEY
 PAYMENTS_PAUSED=1                 # optional — stops new invoices; callbacks and the report keep working
 ```
 
@@ -84,7 +84,8 @@ lib/artists.ts       # BUILT: layers Notion photo + bio onto the CRM-derived ros
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/notion.ts        # BUILT: Notion data-source query (ids from env), cached 5 min
 lib/events.ts        # BUILT: Notion «Події» → events (URL = Notion «ID» number). Every page URL is an ID: /shop/<CRM product id>, /artists/<CRM brand id | ar-n>, /events/<n>
-app/api/checkout/    # BUILT: validate fresh stock + price → mono invoice → mono-callback webhook → POST /bapi/remote_orders (paid); reconcile/ = daily report
+app/api/checkout/    # BUILT: validate fresh stock + price → mono invoice → mono-callback webhook → POST /bapi/remote_orders (paid)
+app/api/payment-report/  # BUILT: daily payment report (mono statement vs CRM), Ukrainian plain text
 lib/mono/            # BUILT: plata by mono — money.ts (kopecks), payload.ts (AES-GCM order in the webhook URL), rules.ts, client.ts, report.ts
 lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
 app/api/update-site/      # BUILT: «Оновити сайт» — CRM → «Митці» sync by brand id (add rows, fill CRM ID; never renames or deletes), expire caches, plain-text report of what to fix. ?key=SYNC_KEY link only (no cron)
@@ -146,7 +147,7 @@ Endpoints we care about:
 - **The mono webhook URL carries the order.** `webHookUrl` is `${WEBSITE_URL}/api/checkout/mono-callback?p=<AES-GCM envelope>` (mono echoes back only `reference` ≤1000 and `destination` ≤280 chars; a 4030-char URL was delivered intact, 2026-11-18). So `WEBSITE_URL` must be the exact canonical origin with **no trailing slash** — a 308 is assumed fatal, as it was for LiqPay. Losing or rotating `MONO_PAYLOAD_KEYS` makes open invoices' orders unreadable: keep old keys in the ring until those invoices are settled.
 - **Testing payments locally needs a tunnel**: mono's webhook can't reach `localhost`. Run `npx cloudflared tunnel --url http://localhost:3000` (if the npm wrapper prints nothing, run the cached `cloudflared.exe` with `--logfile`), browse the tunnel URL, and set both `WEBSITE_URL` and `DEV_ORIGIN` to it. Test mode logs a `[mono-callback] replay` line (body, signature, `p`) so a delivery can be replayed with curl.
 - **Payment mode is matched, not flagged.** Live = Production + `MONO_MERCHANT_ID` + warehouse 34998; test = not Production + `MONO_TEST_MERCHANT_ID` + 51630. Anything else answers `payments_disabled` and `crmPost` refuses order writes. There is no `sandbox` status in mono — a test-token payment is a plain `success`.
-- **Vercel Hobby keeps runtime logs for one hour.** Webhook problems are therefore never only in logs: `/api/checkout/reconcile?key=RECONCILE_KEY` rebuilds them from mono's statement + the CRM. Someone must open it daily (owners' operator).
+- **Vercel Hobby keeps runtime logs for one hour.** Webhook problems are therefore never only in logs: `/api/payment-report?key=REPORT_KEY` rebuilds them from mono's statement + the CRM. Someone must open it daily (owners' operator).
 - **Rate limits are undocumented.** Don't hammer the CRM per-request — the catalog cache is also our politeness layer.
 - **Next 16 makes fetch caching opt-in**, and a request carrying an `Authorization` header needs `cache: 'force-cache'` explicitly — `next.revalidate` alone is not enough. See `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md`.
 - **The API docs site mirrors cleanly.** `https://api-doc.h-profit.com/search/search_index.json` is the whole documentation (EN + UA + Types + Changelog) in one JSON — faster and more complete than scraping pages.
@@ -163,7 +164,7 @@ Endpoints we care about:
 - `grep -rn PLACEHOLDER app components lib` — the privacy policy's data controller (legal entity not confirmed; `lib/info-pages.ts`).
 - Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
 - qty > 1 CRM reservation: verified 2026-11-19 (mono rehearsal, `instock` dropped by 3). Whether converting an order to a sale fills `sales_id` is still open — cutover plan Task 7.
-- plata by mono go-live: `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md` — owners' production token, a production HugeProfit integration reserving into 34998, an operator + backup for the daily reconcile report, refund period.
+- plata by mono go-live: `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md` — owners' production token, a production HugeProfit integration reserving into 34998, an operator + backup for the daily payment report, refund period.
 - UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`), the checkout result copy for expired/refunded payments (`resultExpired*`, `resultReversed*`, `resultUnknown*`, `resultNotFound*`, `resultRefresh`), and the delivery page payment list (Privat24 dropped, Apple/Google Pay kept — unverified on the owners' production terminal).
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider: LiqPay (decided 2026-08-16), replaced by plata by mono on 2026-11-18 before LiqPay ever went live.
