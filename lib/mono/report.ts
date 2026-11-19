@@ -37,6 +37,7 @@ export function reportWindow(from: string | null, to: string | null, now: Date):
 }
 
 const SITE_REFERENCE = /^\d{15}$/
+const SALE = ' (замовлення вже переведено в продаж)'
 
 export type Finding ={ invoiceId: string; reference: string; amountKop: number; problem: string }
 
@@ -58,7 +59,7 @@ export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current
   if (ours.length > 1) return [finding('кілька замовлень у CRM на одну оплату')]
 
   const order = ours[0]
-  const sale = order.sales_id !== null ? ' (замовлення вже переведено в продаж)' : ''
+  const sale = order.sales_id !== null ? SALE : ''
   const problems: string[] = []
   if (toKop(order.price) !== item.amount) problems.push('сума в CRM не збігається з оплатою')
   problems.push(...orderHealth(order, warehouseId))
@@ -71,10 +72,51 @@ export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current
 
 const iso = (unix: number) => new Date(unix * 1000).toISOString().slice(0, 16).replace('T', ' ')
 
+const FIX_ORDER = 'Відкрийте замовлення в HugeProfit і виправте ціни й кількість у рядках, щоб сума збігалася з оплатою.'
+
+/* Keyed by the exact problem text (findingsFor, orderHealth). A finding repeats daily while it stays in the
+   7-day window, so each action says when the line stops. */
+const ACTIONS: Record<string, string> = {
+  'оплачено, але замовлення в CRM немає':
+    'Поверніть кошти: у кабінеті mono (web.monobank.ua) знайдіть платіж за номером інвойсу і зробіть повернення. Що саме купили і хто, з цих даних не видно; якщо покупець напише вам — замість повернення можна створити замовлення в HugeProfit вручну. Після повернення рядок зникне.',
+  'оплата не з сайту (без номера замовлення)':
+    'Це оплата не через сайт: наприклад, за посиланням, створеним вручну в кабінеті mono. Якщо ви про неї знаєте — нічого не робіть. Якщо ні — перевірте платіж у кабінеті mono.',
+  'кілька замовлень у CRM на одну оплату':
+    'Залиште в HugeProfit одне замовлення з цим номером, решту видаліть — інакше товар зарезервовано кілька разів.',
+  'сума в CRM не збігається з оплатою': FIX_ORDER,
+  'сума замовлення не збігається із сумою рядків': FIX_ORDER,
+  'не вдається прочитати суми рядків': FIX_ORDER,
+  'товар не зарезервовано':
+    'Зарезервуйте товари цього замовлення в HugeProfit на складі магазину, інакше їх можуть продати вдруге.',
+  'товар зарезервовано не на тому складі':
+    'Перенесіть резерв цього замовлення в HugeProfit на склад магазину.',
+  'кошти повернуто повністю':
+    'Покупцю вже повернули гроші. Видаліть замовлення в HugeProfit, щоб звільнити резерв.',
+  [`кошти повернуто повністю${SALE}`]:
+    'Покупцю вже повернули гроші, а замовлення вже стало продажем. Оформіть повернення цього продажу в HugeProfit, щоб товар повернувся на склад.',
+  'кошти повернуто частково':
+    'Частину грошей повернули. Приберіть з замовлення в HugeProfit товари, за які повернули кошти.',
+  [`кошти повернуто частково${SALE}`]:
+    'Частину грошей повернули, а замовлення вже стало продажем. Оформіть у HugeProfit повернення тих товарів, за які повернули кошти.',
+  'повернення коштів в обробці':
+    'Поки нічого не робіть: повернення ще обробляється. Наступного дня рядок зміниться на повне або часткове повернення.',
+  [`повернення коштів в обробці${SALE}`]:
+    'Поки нічого не робіть: повернення ще обробляється. Наступного дня рядок зміниться на повне або часткове повернення.',
+  'не вдалося перевірити — відкрийте звірку ще раз пізніше':
+    'Відкрийте це посилання ще раз за кілька хвилин. Якщо повторюється — повідомте розробнику.',
+}
+
+export function actionFor(problem: string): string {
+  return ACTIONS[problem] ?? 'Повідомте розробнику: для цього випадку немає інструкції.'
+}
+
 export function renderReport(window: { fromUnix: number; toUnix: number }, checked: number, findings: Finding[]): string {
   const head = `Звірка оплат plata by mono: ${iso(window.fromUnix)} — ${iso(window.toUnix)} (UTC). Перевірено: ${checked}.`
   if (findings.length === 0) return `${head}\n\nВсе гаразд.`
   const order = (ref: string) => (SITE_REFERENCE.test(ref) ? `, замовлення №${ref}` : '')
-  const lines = findings.map((f) => `${f.problem} — інвойс mono ${f.invoiceId}${order(f.reference)}, ${formatKop(f.amountKop)}`)
-  return `${head}\n\nПотребує уваги (${findings.length}):\n${lines.join('\n')}`
+  const lines = findings.map(
+    (f, i) =>
+      `${i + 1}. ${f.problem} — інвойс mono ${f.invoiceId}${order(f.reference)}, ${formatKop(f.amountKop)}\n   Що робити: ${actionFor(f.problem)}`,
+  )
+  return `${head}\n\nПотребує уваги (${findings.length}):\n\n${lines.join('\n\n')}`
 }

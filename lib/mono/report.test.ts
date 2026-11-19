@@ -1,7 +1,7 @@
 // Run: npm test. Pure asserts over the reconciliation report; no network.
 import assert from 'node:assert/strict'
 import type { CrmRemoteOrder } from '@/lib/hugeprofit/order-rules'
-import { findingsFor, keyMatches, renderReport, reportWindow } from '@/lib/mono/report'
+import { actionFor, findingsFor, keyMatches, renderReport, reportWindow } from '@/lib/mono/report'
 
 type Line = NonNullable<CrmRemoteOrder['order_data']>[number]
 
@@ -63,3 +63,25 @@ assert.deepEqual(problems({ ...item, reference: 'HP-2041' }, [], null, '51630'),
 // A non-site payment's reference isn't our order number: don't label it as one.
 const outside = { invoiceId: 'inv2', reference: '1763485000000', amountKop: 100, problem: 'оплата не з сайту (без номера замовлення)' }
 assert.match(renderReport(win, 1, [outside]), /оплата не з сайту \(без номера замовлення\) — інвойс mono inv2, ₴1$/m)
+
+// Every finding tells the operator what to do.
+for (const problem of [
+  'оплачено, але замовлення в CRM немає',
+  'оплата не з сайту (без номера замовлення)',
+  'кілька замовлень у CRM на одну оплату',
+  'сума в CRM не збігається з оплатою',
+  'сума замовлення не збігається із сумою рядків',
+  'не вдається прочитати суми рядків',
+  'товар не зарезервовано',
+  'товар зарезервовано не на тому складі',
+  'кошти повернуто повністю',
+  'кошти повернуто повністю (замовлення вже переведено в продаж)',
+  'кошти повернуто частково',
+  'кошти повернуто частково (замовлення вже переведено в продаж)',
+  'повернення коштів в обробці',
+  'повернення коштів в обробці (замовлення вже переведено в продаж)',
+  'не вдалося перевірити — відкрийте звірку ще раз пізніше',
+]) {
+  assert.ok(actionFor(problem).length > 20, `no action for: ${problem}`)
+}
+assert.match(renderReport(win, 1, [f]), /\n {3}Що робити: Поверніть кошти/)
