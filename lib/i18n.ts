@@ -196,7 +196,7 @@ export const dictionaries = {
       errorInsufficient: 'Деяких робіт залишилося менше, ніж ви обрали. Ми оновили кількість — перевірте замовлення.',
       errorAmountLimit: 'Сума замовлення перевищує ліміт онлайн-оплати. Розділіть замовлення або звʼяжіться з нами.',
       errorGeneric: 'Не вдалося оформити замовлення. Спробуйте ще раз або звʼяжіться з нами.',
-      errorPaymentsDisabled: 'Онлайн-оплата ще не працює. Напишіть нам — домовимося про оплату і передачу роботи.',
+      errorPaymentsDisabled: 'Онлайн-оплата зараз недоступна. Напишіть нам, щоб домовитися про оплату й отримання роботи.',
     },
     notFound: {
       title: 'Сторінку не знайдено',
@@ -416,7 +416,7 @@ export const dictionaries = {
       errorInsufficient: 'Fewer of some works are left than you chose. We updated the quantities — please review your order.',
       errorAmountLimit: 'This order exceeds the online payment limit. Split the order or get in touch.',
       errorGeneric: 'We could not place the order. Please try again or get in touch.',
-      errorPaymentsDisabled: 'Online payment is not live yet. Get in touch and we will arrange payment and handover.',
+      errorPaymentsDisabled: 'Online payment is currently unavailable. Get in touch to arrange payment and handover.',
     },
     notFound: {
       title: 'Page not found',

@@ -10,7 +10,7 @@
 
 - Payment mode is matched, not flagged: live = `VERCEL_ENV=production` + `MONO_MERCHANT_ID` + `CRM_WAREHOUSE_ID=34998`; test = elsewhere + `MONO_TEST_MERCHANT_ID` + `51630`. Anything else → `payments_disabled` and no CRM order writes.
 - Keep [Automatically expose System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables) enabled in Vercel so `VERCEL_ENV` is available at runtime.
-- `WEBSITE_URL` in Production is exactly `https://www.pich.co.ua` — no trailing slash, not the apex (CLAUDE.md "Before launch" flags the current value as unconfirmed).
+- Set Production `WEBSITE_URL` to `https://www.pich.co.ua` so the payment callback and return URL use the canonical origin.
 - `MONO_PAYLOAD_KEYS` distinct per environment. Never delete a key while invoices minted with it may still be paid (24 h) or are unreconciled.
 - Never commit a token, key or tunnel URL.
 
@@ -60,15 +60,15 @@
 
 ## Task 6: Operator, refund period, report
 
-- [ ] Owners name an operator and a backup, the daily check time, and the refund period (default 7 days). Hand them the link `https://www.pich.co.ua/api/payment-report?key=<REPORT_KEY>` and the procedure (spec "Operator procedure"; checkout.md).
-- [ ] Set `REPORT_WINDOW_DAYS` to cover the agreed refund period plus the time between report checks. For example, set 8 days for a 7-day refund period and a daily check. The supported range is 1–31 days. Use an explicit `from`/`to` range if an older refund falls outside the default window.
+- [ ] Confirm the operator, backup, daily check time, and refund period. The instructions are under «Оплата та звірка замовлень» on the private Notion «Сайт» page. Give the keyed production report link to the operator and backup privately.
+- [ ] Set `REPORT_WINDOW_DAYS` to cover the expected time from payment to refund, plus the time between report checks. Include delivery time since the published return period starts at receipt. The supported range is 1–31 days. For a refund outside the default window, use an explicit `from`/`to` range covering the payment date.
 - [ ] Open the report after a site purchase and a payment taken outside the site. **Verify:** the site invoice carries `Замовлення Plai Pich #<reference>` in the statement's `destination`, and the outside payment does not receive a refund instruction. If the report asks you to continue, follow its `&resume=` instruction until the window is covered.
 
 ## Task 7: Merge, deploy, one real purchase
 
 - [ ] Verify the Vercel check on PR #16 and merge once the Production variables are set. Wait for the deployment and run the empty checkout smoke test.
 - [ ] Buy one cheap real work with a real card. **Verify:** paid CRM order in 34998 with `payment_type: "plata by mono"`, `order_text: "mono invoice …"`, reservation `mid: "34998"`; result page shows paid; cart cleared.
-- [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale) the way they will handle real orders. **Verify:** `GET /bapi/remote_orders?order_id=<ref>` now shows a non-null `sales_id` (not verified in the rehearsal — the dev account's sale form posts to a real cash account), and `info.is_paid`, `currency`, `order_text` unchanged. If they change, the report's payment-mark check (`paymentMismatch`) is already skipped for sold orders — note it here.
+- [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale). **Verify:** the readback shows `sales_id` and record whether the paid flag, currency, and invoice note survive conversion. The report checks a retained note for a conflicting invoice ID and asks the operator to verify the association before returning a sale.
 - [ ] Refund it in the mono cabinet and return the CRM sale. **Verify:** the next report lists «кошти повернуто повністю (замовлення вже переведено в продаж)» with «Зробіть це один раз». The line repeats while the payment is in the report window.
 
 ## Task 8: Rollback (keep ready, don't run)

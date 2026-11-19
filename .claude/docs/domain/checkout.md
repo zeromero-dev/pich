@@ -1,8 +1,10 @@
 # Ordering (Checkout)
 
-Turning a cart draft into an order in the CRM. The CRM is the order system of record; this app owns the *process*: validation → payment (LiqPay) → order creation.
+Checkout validates the cart, collects payment through plata by mono, then creates the paid order in HugeProfit.
 
-**Current state: built and paid, on plata by mono (2026-11-18; not yet live).** `app/api/checkout/route.ts` validates against fresh CRM data and creates a mono invoice; the browser goes to mono's page to pay; mono's webhook (`app/api/checkout/mono-callback/route.ts`) verifies the signature and only then creates the CRM order, with `info.is_paid: true`. No order is created by the initial request — see "The flow" below. LiqPay (built 2026-08-16, sandbox only) was removed; the dated LiqPay evidence below stays as CRM evidence.
+**Current implementation:** `app/api/checkout/route.ts` validates against fresh CRM data and creates a Mono invoice. The buyer pays on Mono's hosted page. The signed webhook in `app/api/checkout/mono-callback/route.ts` verifies the payment and creates the CRM order with `info.is_paid: true`. The [production cutover plan](../plans/2026-11-18-plata-by-mono-cutover.md) covers activation and the first live smoke test. Dated LiqPay rehearsals below record earlier CRM behaviour.
+
+## CRM and payment rehearsals
 
 **Verified against the live CRM 2026-08-13** — this predates the LiqPay integration; the order below was created the old, unpaid way (`info.is_paid: false`) by the synchronous flow this doc used to describe. Kept because it's still real evidence the CRM order-creation call itself works — one test order (`order_id` 1786609352566, CRM id 266591108). What the CRM did with it:
 
@@ -16,7 +18,7 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 
 **Verified locally against the live CRM 2026-09-07**, with a webhook callback minted outside LiqPay (same HMAC payload tag and same `sign()` construction, both keyed on the `LIQPAY_PRIVATE_KEY` the app itself reads — no LiqPay account involved): against the real shop (warehouse 34998, `LIQPAY_SANDBOX=1`), `createRemoteOrder`'s guard fired and refused to create the order, logging `CrmError: refusing to create order … in the real shop while LIQPAY_SANDBOX=1`; `GET /bapi/remote_orders` stayed empty. With `CRM_WAREHOUSE_ID=51630`, the same callback shape created the account's first-ever `remote_orders` record (mock product 9054727), matching every field this doc documents above — except `instock` did **not** decrease and the response's `reservedProducts` was empty. Confirmed: mock product 9054727 has exactly one stock row, `mid: 51630`, and none in warehouse 34998. That hypothesis — reservation targets a warehouse fixed by the integration config rather than the product's own — was **confirmed on 2026-09-08** by the paid order below, which reserved into 51630 once the token's reservation warehouse pointed there. Separately, re-POSTing the same `order_id` did not error — it silently overwrote the existing order in place (same CRM row id, `phone`/`email`/`last_name` wiped by the second payload's omissions) rather than rejecting or duplicating, so `order_id` gives upsert behavior, not a guard, and a LiqPay redelivery must not be assumed harmless.
 
-**Verified end to end through LiqPay's sandbox 2026-09-08**, paying a mock work with a test card over a public tunnel: LiqPay's own webhook reached `server_url`, the handler logged nothing (every line in it is an error path), and the CRM order landed complete — 340 UAH, `info.is_paid: true`, `order_text: "LiqPay order_id …"`, contact fields intact. Two things this settled that the local mint could not:
+**Verified end to end through LiqPay's sandbox 2026-09-08.** A test card payment for a mock work created a paid CRM order for ₴340 with the invoice note and contact fields. CRM reserved it in the integration's warehouse 51630, reducing `instock` from 1 to 0 with `quantity` unchanged. LiqPay returned the buyer using `GET /checkout/result?paymentId=…`.
 
 **Verified locally through mono's test API 2026-11-19** (test token, tunnel, dev warehouse 51630, integration 13585, mock work 9526187 at ₴19.99):
 
@@ -28,36 +30,32 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 
 Not verified: converting an order to a sale (HugeProfit's «Підтвердити замовлення» posts to a real cash account) — so whether `sales_id` fills on conversion is open; see the cutover plan. One success webhook took **22.6 s** (CRM stall, not reproduced; reads were 0.2–1.1 s) — within `maxDuration = 30`, and a cut-off run is safe because mono retries and the lookup finds an order already written.
 
-- **Reservation does work, into the warehouse the integration settings name.** This order came back `is_reserved: true`, `reserved_pids: [9060539]`, `mid: "51630"`, and the work moved `instock 1 → 0` with `quantity` still 1. The 2026-09-07 no-reservation result above was not a missing feature: the token in use then reserved into 34998, where that mock product had no stock row. Once the token was re-scoped to the dev warehouse, reservation targeted 51630 and fired. So the rule stands as originally written — the caveat is only that reservation goes to the *configured* warehouse, not to the product's own.
-- **`result_url` is a GET.** LiqPay redirected the browser back with `GET /checkout/result?paymentId=…` (200), so the page route answers it fine. The long-standing worry that LiqPay POSTs there, which would 405 against a Next page, did not materialise for this flow.
-
 ## Model
 
 ```
 OrderRequest {                        // what the client submits
-  items: { workId, qty }[]            // ids only — never prices
-  contact: { firstName, lastName, phone, email? }   // server joins first + last into the order's `name`
+  items: { workId, qty, price }[]     // displayed price for comparison
+  contact: { firstName, lastName, phone, email }   // email may be empty
   delivery: pickup | branch/locker { settlementRef, warehouseRef }
           | courier { settlementRef, settlementName, streetRef, streetName, house, flat? }
-  locale                              // for any customer-facing messaging
 }
 Order {                               // what we create in the CRM
-  order_id      generated by us — no DB, so UUID or timestamp-based; must be unique, we are the only writer
-  lines         re-derived server-side from fresh CRM data
-  total         Σ line totals, computed server-side
+  order_id      random 15-digit string shared with the Mono invoice reference
+  lines         validated against fresh CRM stock, with unit prices locked at invoice creation
+  total         Σ line totals in integer kopecks
   status        "pending" initially (CRM default)
 }
 ```
 
 ## Business rules
 
-1. **The client sends intent, not facts.** Only work ids and quantities cross the boundary. Prices, names, and totals are re-derived from fresh CRM data server-side. A price mismatch between what the buyer saw and current CRM data is a *decision point* (reject vs honor), not something to silently absorb — see open decisions.
+1. **The server sets the payable amount.** Checkout compares the displayed unit prices with fresh CRM prices. A mismatch returns `409 repriced` before creating an invoice. Unit prices and the total are locked in kopecks for the payment attempt.
 2. **Stock validation is checkout-time truth.** Each line's `qty` must be ≤ the work's fresh `available` ([catalog.md](catalog.md) rule 1); shortfalls return `409 insufficient` with per-line counts. The webhook re-checks `available >= qty` before creating the order. Displayed stock was advisory; this check is authoritative. Re-fetch is one uncached call per line — `getFreshProduct()` — because `product_id` takes a single id only.
 3. **Payment precedes order creation.** Decided 2026-08-12, built 2026-08-16 with LiqPay, rebuilt 2026-11-18 with plata by mono: `/api/checkout` validates and creates a mono invoice but no order; the CRM order is only created in the `mono-callback` webhook, after mono's signature is verified and the decrypted order matches what mono says was paid. The order goes to the CRM with `info.is_paid: true`, `payment_type: "plata by mono"` and `status: "pending"`. The CRM reserves the stock on creation, into the warehouse named in the integration settings — confirmed working 2026-09-08, and confirmed to no-op for a product with no stock row in that particular warehouse (see the notes above).
 
-   This makes the paid-but-order-creation-failed state real: a buyer can be charged while `createRemoteOrder` then fails (CRM down, stock sold out in the interim, etc). That case must be loud, never swallowed — the webhook logs it with `console.error` and enough context (order id, product ids) for a human to reconcile manually; there is no automated refund path.
+   A charge can settle before a CRM outage or stock shortfall prevents order creation. The webhook logs the exception and the daily payment report identifies the unmatched charge. The shop operator resolves it in Mono and HugeProfit.
 4. **One contract, two parsers.** `lib/checkout/schema.ts` (zod) is parsed by the form for field errors and by `/api/checkout` as the authority; issue messages are `t.checkout` keys, so the schema stays locale-free. UX: a field's error shows after its first blur, then tracks every change ("reward early, punish late"); an invalid submit focuses the first bad field. Rules: first and last name are separate required fields (Nova Poshta needs both); the first name is one word, since `/api/checkout` joins them into the order's `name` and `splitName` takes the first word as `first_name` — so the payload shape did not change (2026-11-05); email is optional (format-checked when given); phone must be Ukrainian (`0XX…`, `380XX…`, `+38 (0XX) …`) and is normalised to `+380XXXXXXXXX`.
-5. **Delivery is picked, never typed** (built 2026-10-29). Four methods: pickup at the shop, Nova Poshta branch, parcel locker, courier. Towns, branches/lockers and streets come from NP lookups (`lib/nova-poshta/`, proxied to the browser by `app/api/nova-poshta/*`), and the form only submits NP refs. `/api/checkout` re-resolves them against NP uncached (`lib/checkout/delivery.ts`): the warehouse must exist, be `Working`, be the chosen kind (`Branch` vs `Postomat`) and sit in the chosen town; a courier street must belong to the town and the town must allow address delivery. The address text sent to the CRM is NP's, not the buyer's. A bad selection is `400 delivery`; NP down is `503 delivery_unavailable` — both before payment.
+5. **Delivery selections are verified on the server.** Buyers choose pickup, a Nova Poshta branch, a locker, or courier delivery. Town, branch, locker, and street choices come from Nova Poshta. Courier requests also include the house number and optional apartment. `lib/checkout/delivery.ts` resolves the selected refs again and checks the town, branch or locker type, operating status, and courier eligibility as applicable. A bad selection returns `400 delivery`. A Nova Poshta outage returns `503 delivery_unavailable`. Both checks happen before payment.
 
 ## The flow (`app/api/checkout/route.ts` + `app/api/checkout/mono-callback/route.ts` — BUILT 2026-11-18)
 
@@ -101,13 +99,13 @@ The report recognizes site invoices by the reference and `Замовлення P
 
 **Verified against mono's test API 2026-11-18** (probe + Task 3/8): test merchant `test_4U18rFLZus`; `reference` ≤1000 chars and `destination` ≤280; a 4030-char webhook URL delivered intact for created/processing/success, each X-Sign valid; the `processing` webhook carries `finalAmount: 0`; statement items carry `invoiceId, status, maskedPan, approvalCode, rrn, date, paymentScheme, amount, profit, ccy, reference, destination`; a statement window over 31 days answers 400.
 
-### CRM mapping — `POST /bapi/remote_orders` (from the API docs; not yet exercised live)
+### CRM mapping — `POST /bapi/remote_orders`
 
 The whole body goes **inside a `data` wrapper**: `{ "data": { … } }`.
 
 | CRM field | Source | Notes |
 |-----------|--------|-------|
-| `order_id` | generated by us | required; documented as `int`, so **not a UUID** — use a timestamp-based integer. The account has zero remote orders today, so we are the only writer. |
+| `order_id` | server-generated reference | random 15-digit string, also sent as Mono's invoice reference |
 | `price`, `currency` | server-computed total, `"UAH"` | required |
 | `first_name`, `last_name` | split from the single `name` field | first word / rest — crude but adequate; `first_name` required |
 | `phone`, `email` | contact | optional in CRM; `phone` required by our rule 4, `email` optional since 2026-11-05 and omitted from the payload when blank — **an order without email is not yet verified against the live CRM** |
@@ -116,7 +114,7 @@ The whole body goes **inside a `data` wrapper**: `{ "data": { … } }`.
 | `status` | omit → `"pending"` | decided 2026-08-12: **always leave it `"pending"`**. Payment is signalled through `info.is_paid`, not the status — the owners drive the status themselves in the CRM. (Other documented values, unused by us: `processing`, `saled`, `cancelled`, `delivering`, `delivered`, `received`, `refund`, `arrived`.) |
 | `info` | `InfoType` | `{ is_paid: true, payment_type: "<provider>", order_text?: … }` — `is_paid` is `true` by construction, since payment precedes order creation (rule 3). Carries the payment reference so the owners can match money to order. |
 
-Response includes `reservedProducts` (`[[product_id, marketplace_id]]`) — the CRM reserves stock on order creation, into a warehouse chosen in the HugeProfit integration settings. Confirmed 2026-09-08: a real LiqPay payment returned `is_reserved: true`, `reserved_pids` and `mid` naming the reservation warehouse, and moved `instock` without touching `quantity`. Confirmed 2026-09-07: a product with **no** stock row in that warehouse gets no reservation and an empty `reservedProducts` instead. The API docs' integration-settings page is where the warehouse is chosen — "select the warehouse to which the goods will be reserved upon receipt of a new order" — so re-scoping a token can change which warehouse reservations land in.
+The CRM response includes `reservedProducts` with product and warehouse pairs. HugeProfit reserves stock when it creates the order, using the warehouse chosen in the token's integration settings. In the dev rehearsals, a reservation reduced `instock` while preserving `quantity`. A product without a stock row in the configured warehouse returned no reservation.
 
 ### Settings that live in the CRM, not in our code
 
@@ -133,8 +131,8 @@ The API token is bound in the HugeProfit UI to a sales channel and to the wareho
 
 - **`WEBSITE_URL` must be the exact origin.** The mono `webHookUrl` is built from it; a trailing slash or the apex `pich.co.ua` answers 308, which LiqPay did not follow (2026-11-05) and mono is assumed not to (unverified). See CLAUDE.md "The mono webhook URL carries the order".
 
-- **No rate limiting.** `/api/checkout` is public, unauthenticated, and writes to the owners' CRM while reserving stock. With no database there is nowhere to keep a counter, so a script could flood the CRM with junk orders and lock up inventory. Shape validation and the 20-item cap are the only brakes today. Worth solving before the shop is publicised.
+- **Checkout request limits.** The public checkout route validates at most 20 distinct lines and can create a Mono invoice. Stock reservation happens in HugeProfit after the signed success webhook creates the paid order.
 - **Duplicate deliveries no longer upsert blindly** (2026-11-18). Re-POSTing an `order_id` still overwrites the order in place (confirmed 2026-09-07), so `mono-callback` looks the reference up first (`GET /bapi/remote_orders?order_id=`, filtered to our `integration_id`) and writes only when no order of ours exists; a differing order goes to reconciliation, never rewritten. Two deliveries racing on different server instances can still both see "absent" — accepted (spec non-goal).
 
-Resolved 2026-08-12: fetch fresh per work at validation (`getFreshProduct()`); `order_id` is an integer, not a UUID; `delivery_cost` is always 0; status stays `"pending"` with `info.is_paid` carrying payment; no sales channel.
+Ordering rules: fetch fresh stock per work, lock prices at invoice creation, send `delivery_cost: 0`, and leave order status `pending` with `info.is_paid: true`. The shop uses no sales channel tag.
 Resolved 2026-08-16: payment provider is LiqPay — decided and built. Replaced 2026-11-18 by plata by mono before LiqPay went live (design `.claude/docs/specs/2026-11-18-plata-by-mono-design.md`).

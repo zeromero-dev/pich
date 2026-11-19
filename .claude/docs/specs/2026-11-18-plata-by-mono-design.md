@@ -1,12 +1,12 @@
 # Replace LiqPay with plata by mono — design
 
-**Status:** approved 2026-11-18. Daily reconciliation check confirmed by the user. The current HugeProfit integration (the token in `.env.local`) already reserves into the dev warehouse 51630 — it is the dev integration; a production integration reserving into 34998 is a cutover-plan step. Reviewed by Codex (5 rounds, 2026-11-18); the round-5 fixes (line-total decoder, reservation warehouse in the report) were applied after the last round and not re-reviewed.
+**Status:** approved 2026-11-18 and implemented in PR #16. Daily reconciliation is documented in the checkout domain guide and on the private Notion «Сайт» page. Development uses warehouse 51630. Production configuration and smoke tests are in the cutover plan.
 
 **Branch:** `feat/plata-by-mono`, off `master` (decided 2026-11-18). `master` has no Meta code, so the Conversions API Purchase is out of this scope; `feat/meta-pixel` ports its Purchase call into `mono-callback` when it rebases (see "Handover to feat/meta-pixel").
 
 **Order (decided 2026-11-18):** mono on this branch → owners' production token → mono cutover and site launch → `feat/meta-pixel` rebased onto `master` and ported (handover section below). The site launches without the Meta pixel.
 
-**Ship timing:** build and verify on the branch with the test token; **do not merge or deploy** until the owners have a production token (decided 2026-11-18). Merge, Vercel env and the real purchase go in a separate mono cutover plan, which supersedes `.claude/docs/plans/2026-09-09-liqpay-production-cutover.md`.
+**Ship timing:** set the Vercel Production variables before merging PR #16. The [Mono cutover plan](../plans/2026-11-18-plata-by-mono-cutover.md) supersedes the LiqPay plan and records deployment and payment verification.
 
 ## Intent
 

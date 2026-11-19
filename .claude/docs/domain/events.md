@@ -4,7 +4,7 @@ Store events: fairs, exhibitions, meetings with the shop's artists. **Detached f
 
 > Відв’язати їх від календаря ( ми публікуватимемо тут події по’язані з крамничкою)
 
-**Source: the Notion «Події» database** (since 2026-10-30, branch `feat/notion-poc`) under the private page «Plai Pich — сайт». The site is read-only; the manager edits in Notion. Needs `NOTION_TOKEN` (the integration connected to that page) and `NOTION_EVENTS_DATA_SOURCE`; unset = no events, no throw. Reads are cached 5 min (uncached in `next dev`); «Оновити сайт» (`app/api/update-site`) expires them at once.
+**Source: the Notion «Події» database** on the private «Сайт» page. The manager edits events in Notion. The site reads them using `NOTION_TOKEN` and `NOTION_EVENTS_DATA_SOURCE`. Reads are cached for up to five minutes in production. The Notion «Оновити сайт» link expires the event cache on demand.
 
 History: 2026-10-25 → 10-30 events came from a Google Sheet published as CSV. It was replaced because a Sheet has no drafts, no photo upload and no column types. The sheet code is gone. The internal row shape survives: `notionRows` turns pages into a header row plus rows so `toEvents` keeps one place for validation.
 

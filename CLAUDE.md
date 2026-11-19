@@ -2,9 +2,15 @@
 
 # Plai Pich
 
-Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events page, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events and artist photos/bios are edited by the manager in Notion («Plai Pich — сайт», two databases; events detached from the calendar, per the client brief).
+Plai Pich is a local art center and shop. This repo powers the storefront, events, and artist pages. HugeProfit holds products, prices, stock, images, and orders. The manager publishes events and edits artist profiles on the private Notion «Сайт» page.
 
-**Current state (2026-08-12): catalog and artists are live.** Shop, product pages, the artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout takes payment on plata by mono's hosted page (monobank acquiring; replaced LiqPay, which never went live), and only mono's signed webhook creates the CRM order, paid (built 2026-11-18 on `feat/plata-by-mono`, verified locally with mono's test token; going live is `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md`). Since 2026-10-29 checkout offers pickup / Nova Poshta branch / parcel locker / courier, picked from live NP lookups and re-checked server-side (`lib/checkout/`, `lib/nova-poshta/`). Співпраця page built. Delivery/returns text is the owners' (2026-10-29); privacy is a generic template we wrote at their request, naming no legal entity yet (`lib/info-pages.ts`). Contacts in `lib/contacts.ts`: email + Instagram only (no Telegram, 2026-10-29). `grep -rn PLACEHOLDER app components lib` lists what's left. Still missing: most artist photos/bios (Notion «Митці» rows exist, mostly unfilled). Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 12:00–21:00, corrected 2026-10-29) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). The homepage «Події» block uses a real fair photo (`public/images/events/events-teaser.jpg`, downscaled to 1600px by hand — no Vercel optimisation); all other local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current implementation.** The storefront reads products, prices, and stock from HugeProfit. Catalog reads use five-minute caching. Shop search, category filters, price sort, and stock filters run in the browser. The homepage shows Hero, «Категорії», «Новинки», «Події», and artists in that order.
+
+Checkout uses plata by mono and creates the paid CRM order from Mono's signed webhook. Buyers choose pickup or Nova Poshta delivery to a branch, locker, or courier address. [Production cutover](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) covers configuration and the first live payment. The public privacy policy displays the controller from `PRIVACY_DATA_CONTROLLER`.
+
+The Notion «Сайт» page contains the live «Події» and «Митці» databases, the «Оновити сайт» link, and the shop's payment reconciliation instructions. Many artist profiles still have space for photos and bios. Email and Instagram come from `lib/contacts.ts`. The footer includes the shop's address, hours, and funding notice.
+
+UI conventions live in `lib/motion.ts`, `lib/i18n.ts`, `lib/format.ts`, and `app/globals.css`. Components use `m` from `motion/react` under `LazyMotion strict`. The homepage event teaser uses `public/images/events/events-teaser.jpg`.
 
 ## Stack
 
@@ -105,7 +111,7 @@ lib/nova-poshta/          # BUILT: NP API client, address lookups; app/api/nova-
 - **Cart**: client-side only (localStorage / context). No server session.
 - **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to plata by mono's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. Money is integer kopecks end to end (`lib/mono/money.ts`). `order_id` = mono `reference` = a random 15-digit string.
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
-- **Events & artist bios**: read-only query of the Notion «Plai Pich — сайт» page's two databases, revalidated every 5 min (uncached in `next dev`); editing happens in Notion. Notion-uploaded photos go through `/api/notion-file/[id]`, because Notion's signed URLs expire after ~1 h. Every Notion and cached CRM fetch is tagged (`notion`, `crm`) so «Оновити сайт» can expire them at once.
+- **Events and artists**: the site queries «Події» and «Митці» on the private Notion «Сайт» page, revalidated every five minutes in production. Managers edit the content in Notion. «Оновити сайт» syncs missing artist rows and CRM IDs and expires the `notion` and `crm` caches. Uploaded photos use `/api/notion-file/[id]` to refresh Notion's signed URLs.
 
 ## Knowledge Base
 
@@ -169,13 +175,11 @@ Endpoints we care about:
 - **Artist video** (brief §5): A YouTube/Instagram link in the Notion «Митці» database as a click-to-load embed (recommended), B self-hosted MP4 (not on Vercel Hobby bandwidth).
 - **«Кожна — єдина»** (`shop.lead`) is false for a craft catalog with a quantity selector. Not in the brief; ask the owners.
 
-### Before launch (client brief 2026-10, built 2026-10-25)
+### Production cutover
 
-- Set the owners' confirmed public legal name in Production `PRIVACY_DATA_CONTROLLER` for the privacy policy.
-- Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
-- qty > 1 CRM reservation: verified 2026-11-19 (mono rehearsal, `instock` dropped by 3). Whether converting an order to a sale fills `sales_id` is still open — cutover plan Task 7.
-- plata by mono go-live: `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md` — owners' production token, a production HugeProfit integration reserving into 34998, an operator + backup for the daily payment report, refund period.
-- UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`), the checkout result copy for expired/refunded payments (`resultExpired*`, `resultReversed*`, `resultUnknown*`, `resultNotFound*`, `resultRefresh`), and the delivery page payment list (Privat24 dropped, Apple/Google Pay kept — unverified on the owners' production terminal).
+- Follow the [Mono cutover plan](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) for the Production env values, shop warehouse, and live payment and refund checks.
+- The live site already reads the production Notion content. Preserve its Notion environment variables and existing «Оновити сайт» link during the payment cutover.
+- Multi-unit reservation passed the 2026-11-19 dev rehearsal. Verify converted-sales readback (`sales_id` and the invoice note) in the live smoke test.
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider: LiqPay (decided 2026-08-16), replaced by plata by mono on 2026-11-18 before LiqPay ever went live.
 

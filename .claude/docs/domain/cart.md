@@ -7,7 +7,7 @@ The buyer's **draft order** — an intent, not a commitment. Deliberately client
 ```
 Cart      = CartItem[]           // one item per work, unique by work id
 CartItem  = { product: snapshot of Work at add-time, qty ≥ 1 }
-derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stored
+derived   : count = Σ qty, subtotalKop = Σ qty × unitPriceKop
 ```
 
 ## Business rules
@@ -19,7 +19,7 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 ## Policies
 
 - **Snapshot semantics, accepted staleness.** An item embeds the Work as it looked when added. localStorage (`plai-pich-cart-v3`) outlives catalog cache refreshes, so a restored cart can hold stale prices or already-sold works. Accepted *by design* because of the next policy.
-- **The cart is never authoritative.** No price, availability, or total from the cart crosses into Ordering as truth — Ordering re-derives every line from fresh CRM data server-side ([checkout.md](checkout.md)). Never "fix" staleness by trusting client-sent values; recompute.
+- **Checkout recomputes every line.** The browser sends the displayed price for comparison. Checkout locks the authoritative price and availability from fresh CRM data. See [checkout.md](checkout.md).
 - **Qty is capped at the snapshot's `available`** (brief 2026-10). The server re-checks against fresh stock and answers `insufficient` with the real counts; the checkout page clamps the cart to them.
 - Restore happens after hydration; SSR renders an empty cart first (accepted flash, not a bug).
 - **Nothing is saved before the restore lands** (fixed 2026-11-04). Saving first wrote `[]` over the stored cart, and Strict Mode's re-run read it back — every reload emptied the cart in dev.
@@ -28,7 +28,7 @@ derived   : count = Σ qty, subtotal = Σ qty × price   // computed, never stor
 ## Use cases
 
 - Add work (this is the purchase-feedback moment — the cart surfaces immediately).
-- Remove item / change qty / clear (automatic on the result page once LiqPay reports the payment `success`/`sandbox`).
+- Remove items, change quantities, or clear the cart. A verified full Mono payment clears it only when the attempt reference and saved cart fingerprint still match this browser's cart.
 - Persist and restore the draft across visits.
 
 ## Resolved 2026-08-12
