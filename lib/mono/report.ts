@@ -177,7 +177,7 @@ export function actionFor(problem: string): string {
 export function renderReport(
   window: ReportWindow, checked: number, findings: Finding[], next?: { remaining: number; continuation: string }, resumed = false,
 ): string {
-  const head = `Звірка оплат plata by mono: ${iso(window.fromUnix)} — ${iso(window.toUnix)} (UTC). Перевірено: ${checked}.`
+  const head = `Звіт про оплати plata by mono: ${iso(window.fromUnix)} — ${iso(window.toUnix)} (UTC). Перевірено: ${checked}.`
   const lines = findings.map((f, i) => {
     const order = f.reference ? `, замовлення №${f.reference}` : ''
     const amounts = f.refund
