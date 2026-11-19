@@ -81,3 +81,10 @@ assert.equal(resultTokenIssuedAt(REF, null, ring), null)
 assert.equal(resultTokenIssuedAt(REF, ['a', 'b'], ring), null) // repeated ?t= arrives as an array
 assert.equal(resultTokenIssuedAt(REF, resultToken(REF, { active: 'k0', keys: { k0 } }, AT), ring), AT) // rotation
 assert.equal(resultTokenIssuedAt(REF, tok, { active: 'k9', keys: { k9: randomBytes(32) } }), null) // unknown key
+
+// Codex review: a shortened GCM tag must not authenticate.
+{
+  const [kid, iv, body, tag] = env.split('.')
+  const short = Buffer.from(tag, 'base64url').subarray(0, 12).toString('base64url')
+  assert.equal(decryptPayload([kid, iv, body, short].join('.'), ring), null)
+}

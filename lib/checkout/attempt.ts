@@ -20,19 +20,6 @@ export function toResultStatus(
   return 'pending'
 }
 
-/**
- * Signed link without the cookie and no CRM order yet: this reference's item in mono's statement (paid
- * operations only). `recent`: the link is fresh, so an empty statement may just be lagging — never "not found".
- */
-export function statusFromLookup(
-  paidItem: { status: string; cancelList?: unknown[] } | undefined,
-  recent: boolean,
-): ResultStatus {
-  if (!paidItem) return recent ? 'pending' : 'notfound'
-  if (paidItem.status === 'reversed' || (paidItem.cancelList?.length ?? 0) > 0) return 'reversed'
-  return 'pending' // paid, order not written yet: never tell this buyer "not found"
-}
-
 /** localStorage key of the cart (components/providers.tsx). */
 export const CART_KEY = 'plai-pich-cart-v3'
 

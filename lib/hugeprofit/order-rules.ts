@@ -96,6 +96,11 @@ function reservationProblems(order: CrmRemoteOrder, warehouseId: string): string
   return [...problems]
 }
 
+/** Not marked as this invoice's payment: unpaid, not UAH, or the invoice id missing from the note. */
+export function paymentMismatch(order: CrmRemoteOrder, invoiceId: string): boolean {
+  return !(order.info?.is_paid === true && (order.info.order_text ?? '').includes(invoiceId) && isUah(order.currency))
+}
+
 /** The lookup returns other integrations' orders too; exact order_id in case the CRM filter is ever loose. */
 export function ourOrders(orders: CrmRemoteOrder[], integrationId: number, reference: string): CrmRemoteOrder[] {
   return orders.filter((order) => order.integration_id === integrationId && String(order.order_id) === reference)
@@ -117,9 +122,7 @@ export function classifyExisting(
   const order = mine[0]
   const identical =
     String(order.order_id) === expected.reference &&
-    order.info?.is_paid === true &&
-    (order.info.order_text ?? '').includes(expected.invoiceId) &&
-    isUah(order.currency) &&
+    !paymentMismatch(order, expected.invoiceId) &&
     toKop(order.price) === expected.totalKop
   if (!identical) return 'conflict'
 

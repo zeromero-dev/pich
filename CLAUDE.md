@@ -116,7 +116,11 @@ All AI context docs live under `.claude/docs/` — don't scatter `.md` files els
     ├── events.md         # store events from Notion «Події», columns, upcoming/past rules
     ├── artists.md        # Notion «Митці» + CRM brands roster, ID join, sync and its name matching
     └── i18n.md           # UI-bilingual rule, optional EN columns in Notion, formatting rules
+├── specs/                # design docs (YYYY-MM-DD-<topic>-design.md) — decision records: the why, rejected options
+└── plans/                # implementation and cutover plans (YYYY-MM-DD-<topic>.md)
 ```
+
+Specs and plans go in `.claude/docs/specs/` and `.claude/docs/plans/` — never `docs/superpowers/` (overrides the superpowers skills' default location).
 
 Domain docs record **what is built** vs **what is spec** — when you build something specified there, move it to fact. Doc style: business rules and use cases, boundaries named by real module paths; no invented interfaces (the payment provider is the one deliberate exception).
 

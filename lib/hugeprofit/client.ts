@@ -56,6 +56,7 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
+  const checkoutRead = revalidate === 0 // bounded: it runs inside checkout and the webhook
   // Dev reads fresh so CRM edits show on reload; production keeps the cache.
   if (process.env.NODE_ENV === 'development') revalidate = 0
   // Every read stays inside the configured warehouse: `products` without
@@ -80,6 +81,7 @@ export async function crmFetch<T>(
     // header need force-cache explicitly (see docs/functions/fetch).
     cache: revalidate === 0 ? 'no-store' : 'force-cache',
     ...(revalidate === 0 ? {} : { next: { revalidate, tags: [CRM_TAG] } }),
+    ...(checkoutRead ? { signal: AbortSignal.timeout(10_000) } : {}),
   })
 
   if (!res.ok) {

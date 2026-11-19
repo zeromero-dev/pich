@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   const check = async (item: (typeof items)[number]): Promise<Finding[]> => {
     try {
       const ours = item.reference ? ourOrders(await lookupRemoteOrders(item.reference), integrationId, item.reference) : []
-      const needsStatus = item.status !== 'success' || (item.cancelList?.length ?? 0) > 0 || ours.length === 1
+      const needsStatus = item.status !== 'success' || (item.cancelList?.length ?? 0) > 0 || ours.length <= 1
       const current = needsStatus ? await getInvoiceStatus(item.invoiceId) : null
       return findingsFor(item, ours, current, warehouseId)
     } catch {

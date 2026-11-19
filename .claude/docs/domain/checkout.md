@@ -21,10 +21,10 @@ Deleting that order in the CRM UI (there is no DELETE endpoint for remote orders
 **Verified locally through mono's test API 2026-11-19** (test token, tunnel, dev warehouse 51630, integration 13585, mock work 9526187 at ₴19.99):
 
 1. **Happy path, qty 3:** order `price 59.97`, line `quantity 3`, `is_paid`, `is_reserved`, `mid "51630"`, `order_text "mono invoice <id>"`, `order_id` = the 15-digit reference; `instock 5 → 2`. **qty > 1 reserves N units** — settled. Success webhook 2.5 s.
-2. **Duplicate:** two exact replays → 200, still one order, stock unchanged. Tampered body → 503 inside the 5-min pubkey cooldown (by design).
+2. **Duplicate:** two exact replays → 200, still one order, stock unchanged. Tampered body → 503 inside the pubkey cooldown (by design; 5 min then, 10 s since the Codex review).
 3. **Adverse:** paid → refunded via `invoice/cancel` → replay → `reconcile` "status reversed", no order. Paid with the last unit already reserved → replay → `reconcile` "paid but sold out", no order.
 4. **Retries:** mono makes 3 attempts within ~1 min, stops after the third 503. A 503 then a healthy retry created the order with no help. With all 3 failing, the report listed "paid, no CRM order"; a refunded invoice with no order is (correctly) not listed.
-5. **Result page:** unpaid → pending + refresh; paid → «Дякуємо!»; refunded → «Оплату повернуто»; no cookie / another invoice's cookie → unknown.
+5. **Result page:** unpaid → pending + refresh; paid → «Дякуємо!»; refunded → «Оплату повернуто»; no cookie / another invoice's cookie → unknown (before the Codex review; now, with a valid `t`, such a cookie is ignored and the statement/CRM path runs).
 
 Not verified: converting an order to a sale (HugeProfit's «Підтвердити замовлення» posts to a real cash account) — so whether `sales_id` fills on conversion is open; see the cutover plan. One success webhook took **22.6 s** (CRM stall, not reproduced; reads were 0.2–1.1 s) — within `maxDuration = 30`, and a cut-off run is safe because mono retries and the lookup finds an order already written.
 
@@ -81,10 +81,10 @@ Order {                               // what we create in the CRM
    → POST /bapi/remote_orders with the LOCKED prices, info.is_paid: true, payment_type "plata by mono",
    order_text "mono invoice <invoiceId>" → reservedProducts must cover every line
 9. /checkout/result?ref=&t= shows mono's status for that attempt (cookie); without the cookie (other browser,
-   bank app) a valid `t` (HMAC of ref, `resultToken`) allows a lookup: our CRM order → paid; else mono's
-   statement (from a day before the link's signed issue time, ≤31 days) paid → pending, refunded → reversed;
-   else «Оплату не знайдено» — but only 15 min after issue (`RECENT_S`; statement lag unverified), before that
-   pending. `t` = `keyId.issuedAt.mac`. No valid `t` → unknown.
+   bank app) the invoice id comes from mono's statement (from a day before the link's signed issue time,
+   ≤31 days); either way its live invoice/status decides (paid / refunded). Not in the statement (lag, or past its 31 days):
+   the invoice noted in our CRM order (`mono invoice <id>`); an order without one → paid; none → pending for 15 min after issue (`RECENT_S`, statement lag
+   unverified), then «Оплату не знайдено» (its copy covers "just paid" and "failed"). `t` = `keyId.issuedAt.mac`, required before any mono or CRM call. No valid `t` → unknown.
    The cart is cleared only on a full success for the same attempt whose cart is unchanged
 ```
 
@@ -92,9 +92,9 @@ Responses to mono: 200 for handled or unfixable-by-retry (logged `[mono-callback
 
 ### Payment — plata by mono, built 2026-11-18
 
-`lib/mono/client.ts` — invoice create/status, statement, merchant details (payment mode), webhook verification with a cached, rate-limited public key. `lib/mono/rules.ts` — pure rules: payment mode (live = Production + `MONO_MERCHANT_ID` + 34998; test = elsewhere + `MONO_TEST_MERCHANT_ID` + 51630; anything else disables payments and CRM order writes), signed-event and adverse-evidence checks. `lib/mono/money.ts` — integer kopecks; `toKop` is exact for the CRM's four-decimal prices.
+`lib/mono/client.ts` — invoice create/status, statement, merchant details (payment mode), webhook verification with a cached public key (refetched after a failed check at most once per 10 s, single-flight). Checkout-time CRM reads (`getFreshProduct`) time out after 10 s → 503. `lib/mono/rules.ts` — pure rules: payment mode (live = Production + `MONO_MERCHANT_ID` + 34998; test = elsewhere + `MONO_TEST_MERCHANT_ID` + 51630; anything else disables payments and CRM order writes), signed-event and adverse-evidence checks. `lib/mono/money.ts` — integer kopecks; `toKop` is exact for the CRM's four-decimal prices.
 
-`app/api/checkout/mono-callback/route.ts` is the only place a CRM order is created for a paid checkout. `app/api/payment-report/route.ts` (`?key=REPORT_KEY`, optional `&from=&to=`, ≤31 days — mono's statement limit) lists paid invoices with no CRM order, mismatched or unreserved orders, refunds and reversals — each line followed by «Що робити:» (`actionFor`, `lib/mono/report.ts`). It is the record: Vercel Hobby keeps logs for one hour.
+`app/api/checkout/mono-callback/route.ts` is the only place a CRM order is created for a paid checkout. `app/api/payment-report/route.ts` (`?key=REPORT_KEY`, optional `&from=&to=`, ≤31 days — mono's statement limit) lists paid invoices with no CRM order (balance still held after a partial refund), orders not marked as this invoice's payment (not checked once sold), mismatched or unreserved orders, refunds and reversals (a failed cancellation is none) — each line followed by «Що робити:» (`actionFor`, `lib/mono/report.ts`). It is the record: Vercel Hobby keeps logs for one hour.
 
 **Verified against mono's test API 2026-11-18** (probe + Task 3/8): test merchant `test_4U18rFLZus`; `reference` ≤1000 chars and `destination` ≤280; a 4030-char webhook URL delivered intact for created/processing/success, each X-Sign valid; the `processing` webhook carries `finalAmount: 0`; statement items carry `invoiceId, status, maskedPan, approvalCode, rrn, date, paymentScheme, amount, profit, ccy, reference, destination`; a statement window over 31 days answers 400.
 

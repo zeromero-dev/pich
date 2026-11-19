@@ -1,6 +1,6 @@
 # plata by mono — Production Cutover Plan
 
-> Work through the tasks in order. Each ends with a verify step. Tick `- [ ]` → `- [x]` as you go. Supersedes `docs/plans/2026-09-09-liqpay-production-cutover.md` (LiqPay never went live).
+> Work through the tasks in order. Each ends with a verify step. Tick `- [ ]` → `- [x]` as you go. Supersedes `.claude/docs/plans/2026-09-09-liqpay-production-cutover.md` (LiqPay never went live).
 
 **Goal:** take the plata by mono checkout (branch `feat/plata-by-mono`, built and verified locally 2026-11-18) live with the owners' account, and leave the shop taking real money with a daily reconciliation in place.
 
@@ -55,7 +55,7 @@
 - [ ] Remove the test-mode `[mono-callback] replay` log line (kept for the 2026-11-19 rehearsal; the spec's log rule forbids it) and its CLAUDE.md mention, after Task 4's Preview run.
 - [ ] Rebase on `master`, open a PR, merge (ask first), deploy.
 - [ ] Buy one cheap real work with a real card. **Verify:** paid CRM order in 34998 with `payment_type: "plata by mono"`, `order_text: "mono invoice …"`, reservation `mid: "34998"`; result page shows paid; cart cleared.
-- [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale) the way they will handle real orders. **Verify:** `GET /bapi/remote_orders?order_id=<ref>` now shows a non-null `sales_id` (not verified in the rehearsal — the dev account's sale form posts to a real cash account).
+- [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale) the way they will handle real orders. **Verify:** `GET /bapi/remote_orders?order_id=<ref>` now shows a non-null `sales_id` (not verified in the rehearsal — the dev account's sale form posts to a real cash account), and `info.is_paid`, `currency`, `order_text` unchanged. If they change, the report's payment-mark check (`paymentMismatch`) is already skipped for sold orders — note it here.
 - [ ] Refund it in the mono cabinet; return the CRM sale. **Verify:** next day's report lists «кошти повернуто повністю (замовлення вже переведено в продаж)» with «Зробіть це один раз» — the line repeats until the payment leaves the 7-day window (by design).
 
 ## Task 8: Rollback (keep ready, don't run)

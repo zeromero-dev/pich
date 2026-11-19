@@ -118,20 +118,24 @@ export async function getStatement(fromUnix: number, toUnix: number): Promise<St
   })
 }
 
-/* Public key: cached per instance; after a failed check refreshed at most once per 5 min,
-   with one shared in-flight fetch, so forged requests can't drive a mono call each. */
-const PUBKEY_REFRESH_MS = 5 * 60_000
+/* Public key: cached per instance; after a failed check refreshed at most once per 10 s (inside mono's
+   ~1 min of retries, so a rotated key still lands), with one shared in-flight fetch: forged requests can't
+   drive a mono call each. */
+const PUBKEY_REFRESH_MS = 10_000
 let pubkey: string | null = null
-let pubkeyFetchedAt = 0
+let pubkeyTriedAt = 0
 let pubkeyInFlight: Promise<string | null> | null = null
 
+/** `null`: the fetch failed, or one was tried within PUBKEY_REFRESH_MS — the caller answers "retry later". */
 function fetchPubkey(): Promise<string | null> {
-  pubkeyInFlight ??= monoFetch('pubkey')
+  if (pubkeyInFlight) return pubkeyInFlight
+  if (Date.now() - pubkeyTriedAt < PUBKEY_REFRESH_MS) return Promise.resolve(null)
+  pubkeyTriedAt = Date.now()
+  pubkeyInFlight = monoFetch('pubkey')
     .then((json) => {
       const key = (json as { key?: unknown }).key
       if (typeof key !== 'string') return null
       pubkey = Buffer.from(key, 'base64').toString('utf8')
-      pubkeyFetchedAt = Date.now()
       return pubkey
     })
     .catch(() => null)
@@ -146,8 +150,7 @@ export async function verifyWebhook(rawBody: Buffer, xSign: string | null): Prom
   const key = pubkey ?? (await fetchPubkey())
   if (!key) return 'unavailable'
   if (verifySignature(rawBody, xSign, key)) return 'valid'
-  // Can't refresh yet: answer "retry later", so a real webhook signed with a just-rotated key isn't dropped.
-  if (Date.now() - pubkeyFetchedAt < PUBKEY_REFRESH_MS) return 'unavailable'
+  // Can't refresh yet: "retry later", so a real webhook signed with a just-rotated key isn't dropped.
   const fresh = await fetchPubkey()
   if (!fresh) return 'unavailable'
   return verifySignature(rawBody, xSign, fresh) ? 'valid' : 'invalid'

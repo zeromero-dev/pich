@@ -58,7 +58,13 @@ export async function POST(request: Request) {
 
   // Checkout-time truth: bypasses the 5-minute catalog cache, one call per line
   // because `product_id` rejects a comma list.
-  const fresh = await Promise.all(parsed.items.map((i) => getFreshProduct(i.workId)))
+  let fresh: Awaited<ReturnType<typeof getFreshProduct>>[]
+  try {
+    fresh = await Promise.all(parsed.items.map((i) => getFreshProduct(i.workId)))
+  } catch (error) {
+    console.error('[checkout] CRM stock read failed', error instanceof Error ? error.message : error)
+    return NextResponse.json({ error: 'generic' }, { status: 503 })
+  }
   const lock = lockLines(parsed.items, fresh)
   if (!lock.ok) {
     if (lock.error === 'unavailable') return NextResponse.json({ error: 'unavailable', unavailable: lock.unavailable }, { status: 409 })

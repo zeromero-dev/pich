@@ -45,7 +45,7 @@ export function decryptPayload(envelope: string, ring: Keyring): CheckoutPayload
   const key = keyId ? ring.keys[keyId] : undefined
   if (!key || !iv || !body || !tag || rest.length > 0) return null
   try {
-    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'))
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'), { authTagLength: 16 })
     decipher.setAAD(Buffer.from(keyId))
     decipher.setAuthTag(Buffer.from(tag, 'base64url'))
     const json = Buffer.concat([decipher.update(Buffer.from(body, 'base64url')), decipher.final()]).toString('utf8')

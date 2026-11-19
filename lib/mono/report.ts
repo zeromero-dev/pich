@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { formatKop } from '@/lib/format'
-import { orderHealth, type CrmRemoteOrder } from '@/lib/hugeprofit/order-rules'
+import { orderHealth, paymentMismatch, type CrmRemoteOrder } from '@/lib/hugeprofit/order-rules'
 import { toKop } from '@/lib/mono/money'
 
 /**
@@ -22,7 +22,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/
 function dayStart(value: string): number | null {
   if (!DATE.test(value)) return null
   const ms = Date.parse(`${value}T00:00:00Z`)
-  return Number.isNaN(ms) ? null : ms / 1000
+  // Date.parse rolls 2026-02-30 into March: only a date that round-trips is real.
+  return Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value ? null : ms / 1000
 }
 
 /** Default: the last 7 days. `to` is inclusive (through the end of that UTC day). */
@@ -38,6 +39,7 @@ export function reportWindow(from: string | null, to: string | null, now: Date):
 
 const SITE_REFERENCE = /^\d{15}$/
 const SALE = ' (замовлення вже переведено в продаж)'
+const MISMATCH = 'замовлення в CRM не позначене як оплата цього інвойсу'
 
 export type Finding ={ invoiceId: string; reference: string; amountKop: number; problem: string }
 
@@ -46,34 +48,39 @@ type Current = { status: string; finalAmount?: number; cancelList?: unknown[] } 
 
 /** `ours` is already filtered to our integration; `current` is the invoice's live status, read only when needed. */
 export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current, warehouseId: string): Finding[] {
-  const finding = (problem: string): Finding => ({
+  const finding = (problem: string, amountKop = item.amount): Finding => ({
     invoiceId: item.invoiceId,
     reference: item.reference ?? '',
-    amountKop: item.amount,
+    amountKop,
     problem,
   })
   const status = current?.status ?? item.status
+  // In progress = neither completed nor failed (a status-less entry counts, so we never prompt a second refund).
+  const cancels = (current?.cancelList ?? item.cancelList ?? []).filter((c) => {
+    const s = (c as { status?: unknown } | null)?.status
+    return s !== 'failure' && s !== 'success'
+  })
   // Site invoices carry a 15-digit reference (newReference); anything else was taken outside the site.
   if (!SITE_REFERENCE.test(item.reference ?? '')) return [finding('оплата не з сайту (без номера замовлення)')]
   if (ours.length === 0) {
     if (item.status !== 'success' || status !== 'success') return []
-    const refunding = (current?.cancelList ?? item.cancelList ?? []).length > 0
-    return [finding(refunding ? 'повернення коштів в обробці' : 'оплачено, але замовлення в CRM немає')]
+    // After a partial refund only the balance is still held: that is what to refund.
+    return [finding(cancels.length > 0 ? 'повернення коштів в обробці' : 'оплачено, але замовлення в CRM немає', current?.finalAmount ?? item.amount)]
   }
   if (ours.length > 1) return [finding('кілька замовлень у CRM на одну оплату')]
 
   const order = ours[0]
   const sale = order.sales_id != null ? SALE : ''
-  const problems: string[] = []
+  // Unverified whether a sale keeps these fields (cutover Task 7): sold orders are not flagged.
+  const problems: string[] = sale === '' && paymentMismatch(order, item.invoiceId) ? [MISMATCH] : []
   const partial = status !== 'reversed' && current?.finalAmount !== undefined && current.finalAmount < item.amount
   // After a partial refund the operator removes lines, so the CRM total rightly stops matching the payment.
   if (!partial && toKop(order.price) !== item.amount) problems.push('сума в CRM не збігається з оплатою')
   problems.push(...orderHealth(order, warehouseId))
-  const cancels = current?.cancelList ?? item.cancelList ?? []
   if (status === 'reversed') problems.push(`кошти повернуто повністю${sale}`)
   else if (partial) problems.push(`кошти повернуто частково${sale}`)
   else if (cancels.length > 0) problems.push(`повернення коштів в обробці${sale}`)
-  return problems.map(finding)
+  return problems.map((problem) => finding(problem))
 }
 
 const iso = (unix: number) => new Date(unix * 1000).toISOString().slice(0, 16).replace('T', ' ')
@@ -88,6 +95,8 @@ const IN_PROGRESS =
 /* Keyed by the exact problem text (findingsFor, orderHealth). A finding repeats daily while it stays in the
    7-day window, so a one-off action says so (ONCE). */
 const ACTIONS: Record<string, string> = {
+  [MISMATCH]:
+    'Відкрийте замовлення в HugeProfit: воно має бути позначене оплаченим, у гривнях, а в примітці — номер інвойсу mono з цього рядка. Якщо хтось змінив це вручну — поверніть як було. Якщо не змінював ніхто — повідомте розробнику.',
   'оплачено, але замовлення в CRM немає':
     'Поверніть кошти: у кабінеті mono (web.monobank.ua) знайдіть платіж за номером інвойсу і зробіть повернення. Після повернення рядок зникне. Що саме купили і хто, з цих даних не видно. Якщо покупець напише вам і ви створите замовлення в HugeProfit вручну — кошти НЕ повертайте; тоді рядок лишатиметься, доки оплата не вийде за межі 7 днів звірки.',
   'оплата не з сайту (без номера замовлення)':

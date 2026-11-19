@@ -1,5 +1,7 @@
 # plata by mono (replaces LiqPay) Implementation Plan
 
+> **Executed 2026-11-19** — a record of what was built then. Renamed since: `/api/checkout/reconcile` → `/api/payment-report`, `RECONCILE_KEY` → `REPORT_KEY`. Current behaviour: the spec and `.claude/docs/domain/checkout.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace LiqPay with plata by mono end to end — kopeck-exact checkout, encrypted order carried in the webhook URL, a fail-closed signed webhook that creates the paid CRM order, a result page bound to the payment attempt, and a read-only reconciliation report — verified locally with the test token.
@@ -465,7 +467,7 @@
 
 **Files:**
 - Modify: `lib/i18n.ts` (`paymentNote` UA/EN), `lib/info-pages.ts` (payment list, card-data, recipients, cookie paragraphs)
-- Modify: `CLAUDE.md`, `.claude/docs/domain/checkout.md`, `.claude/docs/domain/README.md`, `docs/plans/2026-09-09-liqpay-production-cutover.md` (header note only)
+- Modify: `CLAUDE.md`, `.claude/docs/domain/checkout.md`, `.claude/docs/domain/README.md`, `.claude/docs/plans/2026-09-09-liqpay-production-cutover.md` (header note only)
 - Modify: `AGENTS.md` if `next dev` regenerated it
 
 **Interfaces:** none (copy and docs).

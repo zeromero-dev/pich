@@ -97,3 +97,23 @@ assert.match(actionFor('повернення коштів в обробці'), /
 
 // Review fix: no order, but a refund already started — don't ask for a second refund.
 assert.deepEqual(problems(item, [], { status: 'success', cancelList: [{}] }, '51630'), ['повернення коштів в обробці'])
+
+// Codex review: a failed refund is not "in progress" — without an order, the buyer still needs refunding.
+assert.deepEqual(problems(item, [], { status: 'success', cancelList: [{ status: 'failure' }] }, '51630'), ['оплачено, але замовлення в CRM немає'])
+assert.deepEqual(problems(item, [ours], { status: 'success', cancelList: [{ status: 'failure' }] }, '51630'), [])
+// Codex review: the report checks what the webhook checks — paid flag, currency, this invoice in the note.
+const MISMATCH = 'замовлення в CRM не позначене як оплата цього інвойсу'
+assert.deepEqual(problems(item, [{ ...ours, info: { is_paid: false, order_text: 'mono invoice inv1' } }], null, '51630'), [MISMATCH])
+assert.deepEqual(problems(item, [{ ...ours, currency: 'USD' }], null, '51630'), [MISMATCH])
+assert.deepEqual(problems(item, [{ ...ours, info: { is_paid: true, order_text: 'mono invoice other' } }], null, '51630'), [MISMATCH])
+assert.ok(actionFor(MISMATCH).length > 20)
+// Codex review: an impossible date is rejected, not rolled into the next month.
+assert.equal(reportWindow('2026-02-30', null, now), null)
+// Codex review r2: a completed partial refund without an order still leaves money to refund — not "in progress".
+assert.deepEqual(problems(item, [], { status: 'success', finalAmount: 1000, cancelList: [{ status: 'success' }] }, '51630'), ['оплачено, але замовлення в CRM немає'])
+// Codex review r3: after a partial refund the line shows what is still held, not the original charge.
+assert.equal(findingsFor(item, [], { status: 'success', finalAmount: 1000, cancelList: [{ status: 'success' }] }, '51630')[0].amountKop, 1000)
+// Codex review r4: every finding on a matched order carries the charge, whatever its position.
+assert.deepEqual(findingsFor(item, [withLine({ is_reserved: false })], { status: 'success', finalAmount: 1000 }, '51630').map((f) => f.amountKop), [5997, 5997])
+// Review: a sold order may lose its payment marks in HugeProfit (unverified) — don't flag it daily.
+assert.deepEqual(problems(item, [{ ...ours, sales_id: 77, info: { is_paid: false, order_text: '' } }], null, '51630'), [])
