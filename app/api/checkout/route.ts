@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       amountKop: lock.totalKop,
       reference,
       destination: `Замовлення Plai Pich #${reference}`,
-      redirectUrl: `${WEBSITE_URL}/checkout/result?ref=${reference}&t=${resultToken(reference, ring)}`,
+      redirectUrl: `${WEBSITE_URL}/checkout/result?ref=${reference}&t=${resultToken(reference, ring, Math.floor(Date.now() / 1000))}`,
       webHookUrl,
     })
   } catch (error) {

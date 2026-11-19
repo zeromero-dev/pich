@@ -82,7 +82,9 @@ Order {                               // what we create in the CRM
    order_text "mono invoice <invoiceId>" → reservedProducts must cover every line
 9. /checkout/result?ref=&t= shows mono's status for that attempt (cookie); without the cookie (other browser,
    bank app) a valid `t` (HMAC of ref, `resultToken`) allows a lookup: our CRM order → paid; else mono's
-   statement (2 days) paid → pending, refunded → reversed; else «Оплату не знайдено». No valid `t` → unknown.
+   statement (from a day before the link's signed issue time, ≤31 days) paid → pending, refunded → reversed;
+   else «Оплату не знайдено» — but only 15 min after issue (`RECENT_S`; statement lag unverified), before that
+   pending. `t` = `keyId.issuedAt.mac`. No valid `t` → unknown.
    The cart is cleared only on a full success for the same attempt whose cart is unchanged
 ```
 

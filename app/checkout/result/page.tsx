@@ -4,7 +4,7 @@ import { statusFromLookup, toResultStatus, type ResultStatus } from '@/lib/check
 import { lookupRemoteOrders } from '@/lib/hugeprofit/orders'
 import { ourOrders } from '@/lib/hugeprofit/order-rules'
 import { getInvoiceStatus, getStatement, payloadKeyring } from '@/lib/mono/client'
-import { resultTokenValid } from '@/lib/mono/payload'
+import { resultTokenIssuedAt } from '@/lib/mono/payload'
 import { parseIntegrationId } from '@/lib/mono/rules'
 import { ResultView } from '@/components/checkout/result-view'
 
@@ -13,10 +13,12 @@ export const metadata: Metadata = {
   robots: { index: false },
 }
 
-const STATEMENT_DAYS = 2
+const DAY = 86_400
+const RECENT_S = 15 * 60 // mono's statement may lag a fresh payment; unverified how long
+const MAX_SPAN = 31 * DAY // mono statement limit
 
 /** Cookie first (this browser's invoice); else the signed link: our CRM order, then mono's statement. */
-async function resultStatus(ref: string, token: string): Promise<ResultStatus> {
+async function resultStatus(ref: string, token: unknown): Promise<ResultStatus> {
   if (!/^\d{15}$/.test(ref)) return 'unknown'
   const invoiceId = (await cookies()).get(`mono_inv_${ref}`)?.value
   if (invoiceId) {
@@ -29,13 +31,15 @@ async function resultStatus(ref: string, token: string): Promise<ResultStatus> {
   }
   const ring = payloadKeyring()
   const integrationId = parseIntegrationId(process.env.CRM_INTEGRATION_ID)
-  if (!ring || integrationId === null || !resultTokenValid(ref, token, ring)) return 'unknown'
+  const issuedAt = ring ? resultTokenIssuedAt(ref, token, ring) : null
+  if (issuedAt === null || integrationId === null) return 'unknown'
   try {
     const orders = ourOrders(await lookupRemoteOrders(ref), integrationId, ref).length
     if (orders > 0) return 'paid'
     const now = Math.floor(Date.now() / 1000)
-    const paid = (await getStatement(now - STATEMENT_DAYS * 86_400, now)).find((item) => item.reference === ref)
-    return statusFromLookup(orders, paid)
+    const from = Math.max(Math.min(issuedAt, now) - DAY, now - MAX_SPAN)
+    const paid = (await getStatement(from, now)).find((item) => item.reference === ref)
+    return statusFromLookup(orders, paid, now - issuedAt < RECENT_S)
   } catch {
     return 'pending'
   }
@@ -45,8 +49,9 @@ async function resultStatus(ref: string, token: string): Promise<ResultStatus> {
 export default async function CheckoutResultPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string; t?: string }>
+  searchParams: Promise<{ ref?: string; t?: string | string[] }>
 }) {
-  const { ref = '', t = '' } = await searchParams
-  return <ResultView status={await resultStatus(ref, t)} reference={ref} token={t} />
+  const { ref = '', t } = await searchParams
+  const token = typeof t === 'string' ? t : ''
+  return <ResultView status={await resultStatus(ref, token)} reference={ref} token={token} />
 }

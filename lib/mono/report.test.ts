@@ -85,3 +85,12 @@ for (const problem of [
   assert.ok(actionFor(problem).length > 20, `no action for: ${problem}`)
 }
 assert.match(renderReport(win, 1, [f]), /\n {3}Що робити: Поверніть кошти/)
+
+// Review fix: after a partial refund the operator removes lines — don't then ask for the original total back.
+assert.ok(!problems(item, [{ ...ours, price: 10 }], { status: 'success', finalAmount: 1000 }, '51630').includes('сума в CRM не збігається з оплатою'))
+// Review fix: a manually created order must not be refunded too; one-off actions say "once".
+assert.match(actionFor('оплачено, але замовлення в CRM немає'), /кошти НЕ повертайте/)
+assert.match(actionFor('кошти повернуто повністю (замовлення вже переведено в продаж)'), /один раз/)
+assert.match(actionFor('кошти повернуто частково'), /один раз/)
+assert.match(actionFor('не вдається прочитати суми рядків'), /розробник/)
+assert.match(actionFor('повернення коштів в обробці'), /кабінеті mono/)

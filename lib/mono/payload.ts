@@ -62,21 +62,23 @@ export function newReference(): string {
   return `${randomInt(1, 10)}${block()}${block()}`
 }
 
-/* Result-link token `keyId.mac`: only links our checkout issued make /checkout/result call the CRM and mono.
-   HKDF subkey, so the AES key is never used directly as an HMAC key. */
-function resultMac(reference: string, key: Buffer): string {
+/* Result-link token `keyId.issuedAt.mac`: only links our checkout issued make /checkout/result call the CRM
+   and mono; the signed issue time bounds that lookup. HKDF subkey: the AES key is never an HMAC key itself. */
+function resultMac(reference: string, issuedAt: string, key: Buffer): string {
   const subkey = Buffer.from(hkdfSync('sha256', key, '', 'result-link', 32))
-  return createHmac('sha256', subkey).update(reference).digest().subarray(0, 16).toString('base64url')
+  return createHmac('sha256', subkey).update(`${reference}.${issuedAt}`).digest().subarray(0, 16).toString('base64url')
 }
 
-export function resultToken(reference: string, ring: Keyring): string {
-  return `${ring.active}.${resultMac(reference, ring.keys[ring.active])}`
+export function resultToken(reference: string, ring: Keyring, issuedAt: number): string {
+  return `${ring.active}.${issuedAt}.${resultMac(reference, String(issuedAt), ring.keys[ring.active])}`
 }
 
-export function resultTokenValid(reference: string, token: string | null | undefined, ring: Keyring): boolean {
-  const [keyId, mac, ...rest] = (token ?? '').split('.')
-  if (!keyId || !mac || rest.length > 0 || !Object.hasOwn(ring.keys, keyId)) return false
+/** Unix seconds the link was issued, or `null` for anything we didn't sign (a repeated ?t= arrives as an array). */
+export function resultTokenIssuedAt(reference: string, token: unknown, ring: Keyring): number | null {
+  if (typeof token !== 'string') return null
+  const [keyId, issuedAt, mac, ...rest] = token.split('.')
+  if (!keyId || !issuedAt || !mac || rest.length > 0 || !/^\d{1,12}$/.test(issuedAt) || !Object.hasOwn(ring.keys, keyId)) return null
   const given = Buffer.from(mac)
-  const expected = Buffer.from(resultMac(reference, ring.keys[keyId]))
-  return given.length === expected.length && timingSafeEqual(given, expected)
+  const expected = Buffer.from(resultMac(reference, issuedAt, ring.keys[keyId]))
+  return given.length === expected.length && timingSafeEqual(given, expected) ? Number(issuedAt) : null
 }

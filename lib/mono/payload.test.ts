@@ -1,7 +1,7 @@
 // Run: npm test. Pure asserts over the encrypted checkout payload; no network.
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
-import { decryptPayload, encryptPayload, newReference, parseKeyring, resultToken, resultTokenValid, type Keyring } from '@/lib/mono/payload'
+import { decryptPayload, encryptPayload, newReference, parseKeyring, resultToken, resultTokenIssuedAt, type Keyring } from '@/lib/mono/payload'
 import type { CheckoutPayload } from '@/lib/mono/types'
 
 const k1 = randomBytes(32)
@@ -66,14 +66,18 @@ assert.equal(parseKeyring(JSON.stringify({ active: 'k2', keys: { k1: k1.toString
 const parsed = parseKeyring(JSON.stringify({ active: 'k1', keys: { k1: k1.toString('base64') } }))
 assert.ok(parsed && parsed.keys.k1.equals(k1))
 
-// Result-link token: lets /checkout/result look a payment up without the attempt cookie.
+// Result-link token `keyId.issuedAt.mac`: lets /checkout/result look a payment up without the attempt cookie.
 const REF = '123456789012345'
-const tok = resultToken(REF, ring)
-assert.equal(resultTokenValid(REF, tok, ring), true)
-assert.equal(resultTokenValid('123456789012346', tok, ring), false) // another reference
-assert.equal(resultTokenValid(REF, tok.slice(0, -1) + (tok.endsWith('A') ? 'B' : 'A'), ring), false)
-assert.equal(resultTokenValid(REF, '', ring), false)
-assert.equal(resultTokenValid(REF, null, ring), false)
-assert.equal(resultTokenValid(REF, 'k1', ring), false)
-assert.equal(resultTokenValid(REF, resultToken(REF, { active: 'k0', keys: { k0 } }), ring), true) // rotation
-assert.equal(resultTokenValid(REF, tok, { active: 'k9', keys: { k9: randomBytes(32) } }), false) // unknown key
+const AT = 1_763_500_000
+const tok = resultToken(REF, ring, AT)
+assert.equal(resultTokenIssuedAt(REF, tok, ring), AT)
+assert.equal(resultTokenIssuedAt('123456789012346', tok, ring), null) // another reference
+assert.equal(resultTokenIssuedAt(REF, tok.slice(0, -1) + (tok.endsWith('A') ? 'B' : 'A'), ring), null)
+const [kid, iat, mac] = tok.split('.')
+assert.equal(resultTokenIssuedAt(REF, `${kid}.${Number(iat) - 3600}.${mac}`, ring), null) // issue time is signed
+assert.equal(resultTokenIssuedAt(REF, `${kid}.${mac}`, ring), null) // old two-part shape
+assert.equal(resultTokenIssuedAt(REF, '', ring), null)
+assert.equal(resultTokenIssuedAt(REF, null, ring), null)
+assert.equal(resultTokenIssuedAt(REF, ['a', 'b'], ring), null) // repeated ?t= arrives as an array
+assert.equal(resultTokenIssuedAt(REF, resultToken(REF, { active: 'k0', keys: { k0 } }, AT), ring), AT) // rotation
+assert.equal(resultTokenIssuedAt(REF, tok, { active: 'k9', keys: { k9: randomBytes(32) } }), null) // unknown key

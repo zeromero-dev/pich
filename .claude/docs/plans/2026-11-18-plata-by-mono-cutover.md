@@ -36,6 +36,7 @@
 - [ ] Push `feat/plata-by-mono` (ask first — it is the first push of this branch). Preview env: `MONO_TOKEN` = test token, `MONO_TEST_MERCHANT_ID=test_4U18rFLZus`, `MONO_PAYLOAD_KEYS` (Preview's own), `CRM_WAREHOUSE_ID=51630`, `HUGEPROFIT_API_KEY` = dev integration token, `CRM_INTEGRATION_ID=13585`, `REPORT_KEY` (Preview's own), `WEBSITE_URL` = the Preview URL.
 - [ ] Create a Protection Bypass for Automation secret **for this rehearsal only**; append `&x-vercel-protection-bypass=<secret>` to the webhook URL in Preview builds only (count it in `MAX_CALLBACK_URL_BYTES`).
 - [ ] Pay a worst-case order (Task 5's `lock.test.ts` shape: 20 lines, long Cyrillic contact) with the test card. **Verify:** the order lands in the dev CRM; confirm or lower `MAX_CALLBACK_URL_BYTES` (8000) from what Vercel accepted.
+- [ ] **No-cookie return:** pay a test invoice and open the result link in a *different* browser (no `mono_inv_` cookie). Record how many seconds until mono's statement lists the payment and until the CRM order lands. **Verify:** the page shows «Перевіряємо оплату…» then «Дякуємо!», never «Оплату не знайдено»; if the statement lags past 15 min, raise `RECENT_S` in `app/checkout/result/page.tsx`.
 - [ ] Revoke the bypass secret.
 
 ## Task 5: Vercel Production env
@@ -55,7 +56,7 @@
 - [ ] Rebase on `master`, open a PR, merge (ask first), deploy.
 - [ ] Buy one cheap real work with a real card. **Verify:** paid CRM order in 34998 with `payment_type: "plata by mono"`, `order_text: "mono invoice …"`, reservation `mid: "34998"`; result page shows paid; cart cleared.
 - [ ] Owners confirm that order in HugeProfit («Підтвердити замовлення» → sale) the way they will handle real orders. **Verify:** `GET /bapi/remote_orders?order_id=<ref>` now shows a non-null `sales_id` (not verified in the rehearsal — the dev account's sale form posts to a real cash account).
-- [ ] Refund it in the mono cabinet; cancel the CRM sale. **Verify:** next day's report lists `full reversal (converted to sale)`, then nothing.
+- [ ] Refund it in the mono cabinet; return the CRM sale. **Verify:** next day's report lists «кошти повернуто повністю (замовлення вже переведено в продаж)» with «Зробіть це один раз» — the line repeats until the payment leaves the 7-day window (by design).
 
 ## Task 8: Rollback (keep ready, don't run)
 
