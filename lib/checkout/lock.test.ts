@@ -1,7 +1,7 @@
 // Run: npm test. Pure asserts over checkout line locking and the callback URL cap; no network.
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
-import { callbackUrl, lockLines, type FreshProduct } from '@/lib/checkout/lock'
+import { callbackUrl, lockLines, MAX_CALLBACK_URL_BYTES, type FreshProduct } from '@/lib/checkout/lock'
 import { encryptPayload } from '@/lib/mono/payload'
 
 const p = (id: string, price: number, available = 5): FreshProduct => ({ id, inStock: available > 0, available, price, name: 'W' + id })
@@ -26,7 +26,9 @@ assert.equal(fail(lockLines([{ workId: '1', qty: 1, price: 5 }, { workId: '2', q
 
 const origin = 'https://www.pich.co.ua'
 assert.equal(callbackUrl(origin, 'x'.repeat(100)), `${origin}/api/checkout/mono-callback?p=${'x'.repeat(100)}`)
-assert.equal(callbackUrl(origin, 'x'.repeat(8000)), null)
+const envelopeAtLimit = 'x'.repeat(MAX_CALLBACK_URL_BYTES - Buffer.byteLength(`${origin}/api/checkout/mono-callback?p=`))
+assert.equal(Buffer.byteLength(callbackUrl(origin, envelopeAtLimit)!), MAX_CALLBACK_URL_BYTES)
+assert.equal(callbackUrl(origin, envelopeAtLimit + 'x'), null)
 
 // The largest valid order fits under the provisional cap.
 const ring = { active: 'k1', keys: { k1: randomBytes(32) } }

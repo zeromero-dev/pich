@@ -40,6 +40,7 @@ assert.equal(classifyExisting([{ ...ours, price: 59.96 }], 13585, expected, '516
 assert.equal(classifyExisting([{ ...ours, order_id: '999' }], 13585, expected, '51630'), 'absent')
 assert.equal(classifyExisting([ours, { ...ours, order_id: '999' }], 13585, expected, '51630'), 'recorded')
 assert.equal(classifyExisting([{ ...ours, info: { is_paid: true, order_text: 'mono invoice other' } }], 13585, expected, '51630'), 'conflict')
+assert.equal(classifyExisting([{ ...ours, info: { is_paid: true, order_text: 'mono invoice inv10' } }], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([{ ...ours, info: { is_paid: false, order_text: 'mono invoice inv1' } }], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([{ ...ours, currency: 'USD' }], 13585, expected, '51630'), 'conflict')
 assert.equal(classifyExisting([withLine({ quantity: 2 })], 13585, expected, '51630'), 'conflict')

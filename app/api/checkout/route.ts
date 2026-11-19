@@ -6,7 +6,7 @@ import { resolveDelivery } from '@/lib/checkout/delivery'
 import { callbackUrl, lockLines } from '@/lib/checkout/lock'
 import { checkoutEnabled, createInvoice, payloadKeyring } from '@/lib/mono/client'
 import { encryptPayload, newReference, resultToken } from '@/lib/mono/payload'
-import { isAllowedPageUrl } from '@/lib/mono/rules'
+import { isAllowedPageUrl, siteInvoiceDestination } from '@/lib/mono/rules'
 import type { OrderContact } from '@/lib/mono/types'
 import { WEBSITE_URL } from '@/lib/site'
 
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     invoice = await createInvoice({
       amountKop: lock.totalKop,
       reference,
-      destination: `Замовлення Plai Pich #${reference}`,
+      destination: siteInvoiceDestination(reference),
       redirectUrl: `${WEBSITE_URL}/checkout/result?ref=${reference}&t=${resultToken(reference, ring, Math.floor(Date.now() / 1000))}`,
       webHookUrl,
     })

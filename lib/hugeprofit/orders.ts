@@ -13,15 +13,16 @@ import type { OrderContact } from '@/lib/mono/types'
 export type { CrmRemoteOrder, OrderDelivery, OrderLine, PaymentInfo } from './order-rules'
 export type { OrderContact } from '@/lib/mono/types'
 
-type RemoteOrderResponse = { success?: boolean; reservedProducts?: unknown }
-
 export async function createRemoteOrder(
   reference: string,
   lines: OrderLine[],
   contact: OrderContact,
   payment: PaymentInfo,
 ): Promise<{ reservedProducts: unknown }> {
-  const body = await crmPost<RemoteOrderResponse>('remote_orders', buildOrderPayload(reference, lines, contact, payment))
+  const body = await crmPost<{ success?: unknown; reservedProducts?: unknown } | null>(
+    'remote_orders', buildOrderPayload(reference, lines, contact, payment),
+  )
+  if (body?.success !== true) throw new CrmError('CRM remote_orders did not confirm the write')
   return { reservedProducts: body.reservedProducts }
 }
 

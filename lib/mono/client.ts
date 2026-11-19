@@ -102,7 +102,9 @@ export async function createInvoice(r: {
 export async function getInvoiceStatus(invoiceId: string): Promise<InvoiceStatus> {
   const json = await monoFetch(`invoice/status?invoiceId=${encodeURIComponent(invoiceId)}`)
   const parsed = invoiceStatusSchema.safeParse(json)
-  if (!parsed.success) throw new MonoError('mono invoice/status returned an unexpected shape')
+  if (!parsed.success || parsed.data.invoiceId !== invoiceId) {
+    throw new MonoError('mono invoice/status returned an unexpected invoice')
+  }
   return parsed.data
 }
 

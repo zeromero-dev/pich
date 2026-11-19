@@ -34,10 +34,10 @@
 ## Task 4: Vercel Preview rehearsal
 
 - [ ] Push `feat/plata-by-mono` (ask first — it is the first push of this branch). Preview env: `MONO_TOKEN` = test token, `MONO_TEST_MERCHANT_ID=test_4U18rFLZus`, `MONO_PAYLOAD_KEYS` (Preview's own), `CRM_WAREHOUSE_ID=51630`, `HUGEPROFIT_API_KEY` = dev integration token, `CRM_INTEGRATION_ID=13585`, `REPORT_KEY` (Preview's own), `WEBSITE_URL` = the Preview URL.
-- [ ] Create a Protection Bypass for Automation secret **for this rehearsal only**; append `&x-vercel-protection-bypass=<secret>` to the webhook URL in Preview builds only (count it in `MAX_CALLBACK_URL_BYTES`).
-- [ ] Pay a worst-case order (Task 5's `lock.test.ts` shape: 20 lines, long Cyrillic contact) with the test card. **Verify:** the order lands in the dev CRM; confirm or lower `MAX_CALLBACK_URL_BYTES` (8000) from what Vercel accepted.
+- [ ] Create a Protection Bypass for Automation secret **for this rehearsal only**. In a temporary Preview build, append `&x-vercel-protection-bypass=<secret>` to the webhook URL before checking its byte length.
+- [ ] Pay a representative large order (Task 5's `lock.test.ts` shape: 20 lines, long Cyrillic contact) with the test card. For the limit rehearsal, append an inert `&pad=` parameter to the same callback URL and size its value so `Buffer.byteLength` of the full URL, including the bypass parameter, is exactly `MAX_CALLBACK_URL_BYTES` (currently 8,000). **Verify:** record only the byte count, confirm the order lands in the dev CRM, and confirm a URL one byte longer is rejected before invoice creation. If delivery fails at the cap, lower it to a size that passes the same check.
 - [ ] **No-cookie return:** pay a test invoice and open the result link in a *different* browser (no `mono_inv_` cookie). Record how many seconds until mono's statement lists the payment and until the CRM order lands. **Verify:** the page shows «Перевіряємо оплату…» then «Дякуємо!», never «Оплату не знайдено»; if the statement lags past 15 min, raise `RECENT_S` in `app/checkout/result/page.tsx`.
-- [ ] Revoke the bypass secret.
+- [ ] Remove the temporary Preview-only bypass and padding code, then revoke the bypass secret.
 
 ## Task 5: Vercel Production env
 
@@ -49,6 +49,7 @@
 
 - [ ] Owners name an operator and a backup, the daily check time, and the refund period (default 7 days). Hand them the link `https://www.pich.co.ua/api/payment-report?key=<REPORT_KEY>` and the procedure (spec "Operator procedure"; checkout.md).
 - [ ] With the test token (local or Preview): pay a test invoice, wait 8+ days, refund it with `POST /api/merchant/invoice/cancel`, then open the default 7-day report. **Verify:** whether the refund is listed. If not, widen the default window in `reportWindow` (`lib/mono/report.ts`) to the agreed refund period (≤31 days) and commit.
+- [ ] Open the report after a site purchase and a payment taken outside the site. **Verify:** the site invoice carries `Замовлення Plai Pich #<reference>` in the statement's `destination`, and the outside payment does not receive a refund instruction. If the report asks you to continue, follow its `&resume=` instruction until the window is covered.
 
 ## Task 7: Merge, deploy, one real purchase
 

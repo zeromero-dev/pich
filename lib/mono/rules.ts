@@ -14,11 +14,18 @@ export function resolvePaymentMode(i: {
   testMerchantId?: string
   warehouseId?: string
 }): PaymentMode | null {
-  const is = (id: string | undefined) => !!id && i.merchantId === id
+  if (!i.merchantId) return null
+  const isTest = i.merchantId.startsWith('test_')
   if (i.vercelEnv === 'production') {
-    return is(i.liveMerchantId) && i.warehouseId === '34998' ? 'live' : null
+    return !isTest && i.merchantId === i.liveMerchantId && i.warehouseId === '34998' ? 'live' : null
   }
-  return is(i.testMerchantId) && i.warehouseId === '51630' ? 'test' : null
+  return isTest && i.merchantId === i.testMerchantId && i.warehouseId === '51630' ? 'test' : null
+}
+
+export const SITE_REFERENCE = /^\d{15}$/
+
+export function siteInvoiceDestination(reference: string): string {
+  return `Замовлення Plai Pich #${reference}`
 }
 
 /** `pay.monobank.ua` seen in the 2026-11-18 probe; `pay.mbnk.biz` in mono's docs example. */
@@ -53,6 +60,12 @@ type Status = {
   cancelList?: unknown[]
 }
 
+type InvoiceIdentity = Pick<Status, 'invoiceId' | 'reference' | 'ccy' | 'amount'>
+
+export function sameInvoice(a: InvoiceIdentity, b: InvoiceIdentity): boolean {
+  return a.invoiceId === b.invoiceId && a.reference === b.reference && a.ccy === b.ccy && a.amount === b.amount
+}
+
 /** The signed event must be a full, unrefunded success for exactly what the payload locked (spec Money rule 4). */
 export function checkSignedEvent(body: Status, payload: { reference: string; totalKop: number }): 'ok' | string {
   if (body.status !== 'success') return 'not success'
@@ -71,14 +84,19 @@ export function checkSignedEvent(body: Status, payload: { reference: string; tot
  * evidence: the signed success stands, so no delivery attempt is spent on a 503.
  */
 export function adverseEvidence(read: Status, signed: Status): 'ok' | string {
-  if (read.invoiceId !== signed.invoiceId || read.reference !== signed.reference || read.ccy !== signed.ccy || read.amount !== signed.amount) {
-    return 'status read mismatch'
-  }
+  if (!sameInvoice(read, signed)) return 'status read mismatch'
   if (read.status === 'reversed' || read.status === 'failure') return `status ${read.status}`
-  // finalAmount is 0 before settlement (probe 2026-11-18), so it only means "refunded" on a success.
-  if (read.status === 'success' && read.finalAmount !== undefined && read.finalAmount < read.amount) return 'refunded'
   if (read.cancelList && read.cancelList.length > 0) return 'cancelList present'
-  return 'ok'
+  if (read.status === 'success') {
+    return read.finalAmount === undefined || read.finalAmount === read.amount ? 'ok' : 'status finalAmount differs'
+  }
+  if (read.status === 'created' || read.status === 'processing') {
+    // Before settlement mono may send 0; an intermediate nonzero value can't be treated as a full charge.
+    const canBeUnsettled = read.finalAmount === undefined || read.finalAmount === 0 || read.finalAmount === read.amount
+    const older = !read.modifiedDate || Date.parse(read.modifiedDate) < Date.parse(signed.modifiedDate ?? '')
+    if (canBeUnsettled && older) return 'ok'
+  }
+  return `status ${read.status}`
 }
 
 /** Our HugeProfit integration id. A missing or garbled one would make every lookup "absent": fail closed. */

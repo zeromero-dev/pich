@@ -1,7 +1,9 @@
-import { timingSafeEqual } from 'node:crypto'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { formatKop } from '@/lib/format'
-import { orderHealth, paymentMismatch, type CrmRemoteOrder } from '@/lib/hugeprofit/order-rules'
+import { invoiceIdFromOrderNote, orderHealth, paymentMismatch, type CrmRemoteOrder } from '@/lib/hugeprofit/order-rules'
 import { toKop } from '@/lib/mono/money'
+import { sameInvoice, SITE_REFERENCE, siteInvoiceDestination } from '@/lib/mono/rules'
+import type { InvoiceStatus } from '@/lib/mono/types'
 
 /**
  * Pure rules for the daily reconciliation report (spec "Zero deliveries are possible").
@@ -26,8 +28,10 @@ function dayStart(value: string): number | null {
   return Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value ? null : ms / 1000
 }
 
+type ReportWindow = { fromUnix: number; toUnix: number }
+
 /** Default: the last 7 days. `to` is inclusive (through the end of that UTC day). */
-export function reportWindow(from: string | null, to: string | null, now: Date): { fromUnix: number; toUnix: number } | null {
+export function reportWindow(from: string | null, to: string | null, now: Date): ReportWindow | null {
   const nowUnix = Math.floor(now.getTime() / 1000)
   if (!from && !to) return { fromUnix: nowUnix - 7 * DAY, toUnix: nowUnix }
   const fromUnix = from ? dayStart(from) : null
@@ -37,58 +41,98 @@ export function reportWindow(from: string | null, to: string | null, now: Date):
   return fromUnix < toUnix && toUnix - fromUnix <= MAX_SPAN ? { fromUnix, toUnix } : null
 }
 
-const SITE_REFERENCE = /^\d{15}$/
+export function reportStatementId(sortedInvoiceIds: string[]): string {
+  return createHash('sha256').update(JSON.stringify(sortedInvoiceIds)).digest('base64url')
+}
+
+export function reportContinuation(window: ReportWindow, statementId: string, after: string): string {
+  return `${window.fromUnix}.${window.toUnix}.${statementId}.${Buffer.from(after).toString('base64url')}`
+}
+
+export function parseReportContinuation(value: string, now: Date): { window: ReportWindow; statementId: string; after: string } | null {
+  const match = /^(\d{1,12})\.(\d{1,12})\.([\w-]{43})\.([\w-]*)$/.exec(value)
+  if (!match) return null
+  const fromUnix = Number(match[1])
+  const toUnix = Number(match[2])
+  if (fromUnix >= toUnix || toUnix - fromUnix > MAX_SPAN || toUnix > Math.floor(now.getTime() / 1000)) return null
+  const after = Buffer.from(match[4], 'base64url').toString('utf8')
+  if (Buffer.from(after).toString('base64url') !== match[4]) return null
+  return { window: { fromUnix, toUnix }, statementId: match[3], after }
+}
+
 const SALE = ' (замовлення вже переведено в продаж)'
 const MISMATCH = 'замовлення в CRM не позначене як оплата цього інвойсу'
+const OUTSIDE = 'оплата не з сайту (без номера замовлення)'
+const UNKNOWN_SOURCE = 'не підтверджено, що оплата з сайту'
+const UNCHECKED = 'не вдалося перевірити — відкрийте звірку ще раз пізніше'
 
-export type Finding ={ invoiceId: string; reference: string; amountKop: number; problem: string }
+export type Finding = { invoiceId: string; reference: string; amountKop: number; problem: string; refund?: { chargedKop: number; remainingKop: number } }
 
-type Item = { invoiceId: string; status: string; amount: number; reference?: string; cancelList?: unknown[] }
-type Current = { status: string; finalAmount?: number; cancelList?: unknown[] } | null
+type Item = Pick<InvoiceStatus, 'invoiceId' | 'status' | 'amount' | 'ccy' | 'reference' | 'cancelList' | 'destination'>
+
+export function siteOrderReference(item: Item): string | undefined {
+  const ref = item.reference
+  return ref && SITE_REFERENCE.test(ref) && item.destination === siteInvoiceDestination(ref) ? ref : undefined
+}
+
+export function uncheckedFinding(item: Item): Finding {
+  return { invoiceId: item.invoiceId, reference: siteOrderReference(item) ?? '', amountKop: item.amount, problem: UNCHECKED }
+}
 
 /** `ours` is already filtered to our integration; `current` is the invoice's live status, read only when needed. */
-export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current, warehouseId: string): Finding[] {
+export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: InvoiceStatus | null, warehouseId: string): Finding[] {
+  const reference = siteOrderReference(item)
   const finding = (problem: string, amountKop = item.amount): Finding => ({
     invoiceId: item.invoiceId,
-    reference: item.reference ?? '',
+    reference: reference ?? '',
     amountKop,
     problem,
   })
+  if (!reference) return [finding(!item.destination && SITE_REFERENCE.test(item.reference ?? '') ? UNKNOWN_SOURCE : OUTSIDE)]
+  if (current && !sameInvoice(current, item)) return [uncheckedFinding(item)]
   const status = current?.status ?? item.status
-  // In progress = neither completed nor failed (a status-less entry counts, so we never prompt a second refund).
-  const cancels = (current?.cancelList ?? item.cancelList ?? []).filter((c) => {
-    const s = (c as { status?: unknown } | null)?.status
-    return s !== 'failure' && s !== 'success'
+  const remaining = status === 'reversed' ? 0 : status === 'success' ? current?.finalAmount ?? item.amount : item.amount
+  if (!Number.isSafeInteger(remaining) || remaining < 0 || remaining > item.amount) return [uncheckedFinding(item)]
+  const refunded = remaining < item.amount
+  const withBalance = (problem: string, amountKop = item.amount): Finding => ({
+    ...finding(problem, amountKop),
+    ...(refunded ? { refund: { chargedKop: item.amount, remainingKop: remaining } } : {}),
   })
-  // Site invoices carry a 15-digit reference (newReference); anything else was taken outside the site.
-  if (!SITE_REFERENCE.test(item.reference ?? '')) return [finding('оплата не з сайту (без номера замовлення)')]
+  const statementCancels = item.cancelList ?? []
+  const liveCancels = current?.cancelList
+  const cancellations = (liveCancels ?? statementCancels).map((entry) => (entry as { status?: unknown } | null)?.status)
+  if (status !== 'reversed' && statementCancels.length > 0 && liveCancels?.length === 0) return [uncheckedFinding(item)]
+  if (item.status === 'success' && status !== 'success' && status !== 'reversed') return [uncheckedFinding(item)]
+  // A status-less statement entry may still be in progress.
+  const pending = cancellations.some((state) => state !== 'failure' && state !== 'success')
+  const sale = ours.length === 1 && ours[0].sales_id != null ? SALE : ''
+  if (pending && remaining > 0) return [withBalance(`повернення коштів в обробці${sale}`)]
+  if (status === 'success' && current?.finalAmount === undefined && cancellations.includes('success')) return [uncheckedFinding(item)]
   if (ours.length === 0) {
-    if (item.status !== 'success' || status !== 'success') return []
-    // After a partial refund only the balance is still held: that is what to refund.
-    return [finding(cancels.length > 0 ? 'повернення коштів в обробці' : 'оплачено, але замовлення в CRM немає', current?.finalAmount ?? item.amount)]
+    return status === 'success' && remaining > 0 ? [withBalance('оплачено, але замовлення в CRM немає', remaining)] : []
   }
-  if (ours.length > 1) return [finding('кілька замовлень у CRM на одну оплату')]
-
+  if (ours.length > 1) return [withBalance('кілька замовлень у CRM на одну оплату')]
   const order = ours[0]
-  const sale = order.sales_id != null ? SALE : ''
-  // Unverified whether a sale keeps these fields (cutover Task 7): sold orders are not flagged.
-  const problems: string[] = sale === '' && paymentMismatch(order, item.invoiceId) ? [MISMATCH] : []
-  const partial = status !== 'reversed' && current?.finalAmount !== undefined && current.finalAmount < item.amount
-  // After a partial refund the operator removes lines, so the CRM total rightly stops matching the payment.
-  if (!partial && toKop(order.price) !== item.amount) problems.push('сума в CRM не збігається з оплатою')
+  // A sale may lose payment marks (cutover Task 7), but a note naming a different invoice is a conflict.
+  const notedInvoiceId = invoiceIdFromOrderNote(order.info?.order_text)
+  const mismatch = sale ? notedInvoiceId !== undefined && notedInvoiceId !== item.invoiceId : paymentMismatch(order, item.invoiceId)
+  if (refunded && mismatch) return [withBalance(MISMATCH)]
+  if (remaining === 0) return [withBalance(`кошти повернуто повністю${sale}`)]
+  if (status !== 'success') return [uncheckedFinding(item)]
+  if (refunded && sale) return [withBalance(`кошти повернуто частково${sale}`)]
+
+  const problems: string[] = mismatch ? [MISMATCH] : []
+  if (toKop(order.price) !== remaining) problems.push('сума в CRM не збігається з оплатою')
   problems.push(...orderHealth(order, warehouseId))
-  if (status === 'reversed') problems.push(`кошти повернуто повністю${sale}`)
-  else if (partial) problems.push(`кошти повернуто частково${sale}`)
-  else if (cancels.length > 0) problems.push(`повернення коштів в обробці${sale}`)
-  return problems.map((problem) => finding(problem))
+  if (refunded) problems.push(`кошти повернуто частково${sale}`)
+  return problems.map((problem) => withBalance(problem))
 }
 
 const iso = (unix: number) => new Date(unix * 1000).toISOString().slice(0, 16).replace('T', ' ')
 
-const FIX_ORDER = 'Відкрийте замовлення в HugeProfit і виправте ціни й кількість у рядках, щоб сума збігалася з оплатою.'
+const FIX_ORDER = 'Перевірте платіж у mono й виправте замовлення в HugeProfit відповідно до товарів, які покупець отримає, та суми, яка залишилась після повернень.'
 const DEVELOPER = 'Повідомте розробнику: сайт не зміг прочитати це замовлення з CRM. Саме замовлення не чіпайте.'
-// Refund lines stay while the payment is in the 7-day window, whatever the operator does in HugeProfit.
-const ONCE = ' Зробіть це один раз: рядок повторюватиметься, доки оплата не вийде за межі 7 днів звірки. Повторно нічого не робіть.'
+const ONCE = ' Зробіть це один раз. Рядок повторюватиметься, доки оплата входить у період звірки.'
 const IN_PROGRESS =
   'Поки нічого не робіть: повернення ще обробляється, зазвичай наступного дня рядок зміниться на повне або часткове повернення. Якщо не змінюється понад день — перевірте платіж у кабінеті mono.'
 
@@ -96,31 +140,33 @@ const IN_PROGRESS =
    7-day window, so a one-off action says so (ONCE). */
 const ACTIONS: Record<string, string> = {
   [MISMATCH]:
-    'Відкрийте замовлення в HugeProfit: воно має бути позначене оплаченим, у гривнях, а в примітці — номер інвойсу mono з цього рядка. Якщо хтось змінив це вручну — поверніть як було. Якщо не змінював ніхто — повідомте розробнику.',
+    'Звірте інвойс у mono із замовленням у HugeProfit. Підтвердьте, що інвойс належить цьому замовленню, перш ніж змінювати статус оплати, резерв чи саме замовлення. Якщо зв’язок не вдається підтвердити, повідомте розробнику.',
   'оплачено, але замовлення в CRM немає':
-    'Поверніть кошти: у кабінеті mono (web.monobank.ua) знайдіть платіж за номером інвойсу і зробіть повернення. Після повернення рядок зникне. Що саме купили і хто, з цих даних не видно. Якщо покупець напише вам і ви створите замовлення в HugeProfit вручну — кошти НЕ повертайте; тоді рядок лишатиметься, доки оплата не вийде за межі 7 днів звірки.',
-  'оплата не з сайту (без номера замовлення)':
+    'Поверніть кошти лише після перевірки. У кабінеті mono (web.monobank.ua) знайдіть інвойс і звірте суму, яка залишилась до повернення. Якщо замовлення створили в HugeProfit вручну — кошти НЕ повертайте. Інакше поверніть лише залишок. Після повного повернення цей рядок зникне.',
+  [OUTSIDE]:
     'Це оплата не через сайт: наприклад, за посиланням, створеним вручну в кабінеті mono. Якщо ви про неї знаєте — нічого не робіть. Якщо ні — перевірте платіж у кабінеті mono.',
+  [UNKNOWN_SOURCE]:
+    'Перевірте, звідки надійшла оплата, у кабінеті mono. Поки не підтвердите походження платежу, не повертайте кошти й не змінюйте замовлення.',
   'кілька замовлень у CRM на одну оплату':
-    'Залиште в HugeProfit одне замовлення з цим номером, решту видаліть — інакше товар зарезервовано кілька разів.',
+    'Звірте платіж у mono та замовлення в HugeProfit за цим номером. З’ясуйте, яке замовлення відповідає оплаті, перш ніж змінювати резерви чи видаляти дублікати.',
   'сума в CRM не збігається з оплатою': FIX_ORDER,
   'сума замовлення не збігається із сумою рядків': FIX_ORDER,
   'не вдається прочитати суми рядків': DEVELOPER,
   'товар не зарезервовано':
-    'Зарезервуйте товари цього замовлення в HugeProfit на складі магазину, інакше їх можуть продати вдруге.',
+    'Зарезервуйте в HugeProfit на складі магазину товари, які ще має отримати покупець.',
   'товар зарезервовано не на тому складі':
     'Перенесіть резерв цього замовлення в HugeProfit на склад магазину.',
   'кошти повернуто повністю':
-    'Покупцю вже повернули гроші. Видаліть замовлення в HugeProfit, щоб звільнити резерв.' + ONCE,
+    'Покупцю вже повернули гроші. Скасуйте замовлення в HugeProfit, щоб звільнити резерв.' + ONCE,
   [`кошти повернуто повністю${SALE}`]:
-    'Покупцю вже повернули гроші, а замовлення вже стало продажем. Оформіть повернення цього продажу в HugeProfit, щоб товар повернувся на склад.' + ONCE,
+    'Покупцю вже повернули гроші. Звірте інвойс mono з продажем у HugeProfit. Після підтвердження оформіть повернення саме цього продажу, щоб товар повернувся на склад.' + ONCE,
   'кошти повернуто частково':
-    'Частину грошей повернули. Приберіть з замовлення в HugeProfit товари, за які повернули кошти.' + ONCE,
+    'Звірте всі часткові повернення в mono з товарами, які вже прибрали з замовлення. Внесіть у HugeProfit лише нові зміни, щоб сума дорівнювала залишку в цьому рядку.',
   [`кошти повернуто частково${SALE}`]:
-    'Частину грошей повернули, а замовлення вже стало продажем. Оформіть у HugeProfit повернення тих товарів, за які повернули кошти.' + ONCE,
+    'Звірте інвойс mono з продажем у HugeProfit, а потім звірте часткові повернення в обох системах. Оформіть повернення лише тих товарів, які ще не повернули в обліку.',
   'повернення коштів в обробці': IN_PROGRESS,
   [`повернення коштів в обробці${SALE}`]: IN_PROGRESS,
-  'не вдалося перевірити — відкрийте звірку ще раз пізніше':
+  [UNCHECKED]:
     'Відкрийте це посилання ще раз за кілька хвилин. Якщо повторюється — повідомте розробнику.',
 }
 
@@ -128,13 +174,21 @@ export function actionFor(problem: string): string {
   return ACTIONS[problem] ?? 'Повідомте розробнику: для цього випадку немає інструкції.'
 }
 
-export function renderReport(window: { fromUnix: number; toUnix: number }, checked: number, findings: Finding[]): string {
+export function renderReport(
+  window: ReportWindow, checked: number, findings: Finding[], next?: { remaining: number; continuation: string }, resumed = false,
+): string {
   const head = `Звірка оплат plata by mono: ${iso(window.fromUnix)} — ${iso(window.toUnix)} (UTC). Перевірено: ${checked}.`
-  if (findings.length === 0) return `${head}\n\nВсе гаразд.`
-  const order = (ref: string) => (SITE_REFERENCE.test(ref) ? `, замовлення №${ref}` : '')
-  const lines = findings.map(
-    (f, i) =>
-      `${i + 1}. ${f.problem} — інвойс mono ${f.invoiceId}${order(f.reference)}, ${formatKop(f.amountKop)}\n   Що робити: ${actionFor(f.problem)}`,
-  )
-  return `${head}\n\nПотребує уваги (${findings.length}):\n\n${lines.join('\n\n')}`
+  const lines = findings.map((f, i) => {
+    const order = f.reference ? `, замовлення №${f.reference}` : ''
+    const amounts = f.refund
+      ? `сплачено ${formatKop(f.refund.chargedKop)}, повернуто ${formatKop(f.refund.chargedKop - f.refund.remainingKop)}, залишок ${formatKop(f.refund.remainingKop)}`
+      : formatKop(f.amountKop)
+    return `${i + 1}. ${f.problem} — інвойс mono ${f.invoiceId}${order}, ${amounts}\n   Що робити: ${actionFor(f.problem)}`
+  })
+  const results = findings.length > 0 ? `Потребує уваги (${findings.length}):\n\n${lines.join('\n\n')}` : ''
+  const progress = next
+    ? `Залишилось перевірити: ${next.remaining}. Щоб продовжити, додайте до початкового посилання цей параметр (або замініть попередній &resume):\n&resume=${encodeURIComponent(next.continuation)}`
+    : ''
+  const clean = resumed ? 'У цій частині звірки все гаразд.' : 'Все гаразд.'
+  return [head, progress, results || (next ? '' : clean)].filter(Boolean).join('\n\n')
 }

@@ -96,9 +96,15 @@ function reservationProblems(order: CrmRemoteOrder, warehouseId: string): string
   return [...problems]
 }
 
-/** Not marked as this invoice's payment: unpaid, not UAH, or the invoice id missing from the note. */
+export function invoiceIdFromOrderNote(note: unknown): string | undefined {
+  if (typeof note !== 'string') return undefined
+  const matches = [...note.matchAll(/^mono invoice (\S+)[ \t]*$/gm)]
+  return matches.length === 1 ? matches[0][1] : undefined
+}
+
+/** Not marked as this invoice's payment: unpaid, not UAH, or the exact invoice id missing from the note. */
 export function paymentMismatch(order: CrmRemoteOrder, invoiceId: string): boolean {
-  return !(order.info?.is_paid === true && (order.info.order_text ?? '').includes(invoiceId) && isUah(order.currency))
+  return !(order.info?.is_paid === true && invoiceIdFromOrderNote(order.info.order_text) === invoiceId && isUah(order.currency))
 }
 
 /** The lookup returns other integrations' orders too; exact order_id in case the CRM filter is ever loose. */

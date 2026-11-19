@@ -25,6 +25,8 @@ assert.equal(resolvePaymentMode({ ...base, vercelEnv: undefined, merchantId: nul
 // unset env never matches
 assert.equal(resolvePaymentMode({ vercelEnv: undefined, merchantId: 'test_4U18rFLZus', warehouseId: '51630' }), null)
 assert.equal(resolvePaymentMode({ testMerchantId: '', vercelEnv: undefined, merchantId: '', warehouseId: '51630' }), null)
+assert.equal(resolvePaymentMode({ vercelEnv: 'production', merchantId: 'test_4U18rFLZus', liveMerchantId: 'test_4U18rFLZus', warehouseId: '34998' }), null)
+assert.equal(resolvePaymentMode({ vercelEnv: 'preview', merchantId: 'live_1', testMerchantId: 'live_1', warehouseId: '51630' }), null)
 
 assert.equal(isAllowedPageUrl('https://pay.monobank.ua/abc'), true)
 assert.equal(isAllowedPageUrl('https://pay.mbnk.biz/abc'), true)
@@ -91,7 +93,13 @@ assert.notEqual(adverseEvidence({ ...signed, invoiceId: 'other' }, signed), 'ok'
 assert.notEqual(adverseEvidence({ ...signed, amount: 1 }, signed), 'ok')
 assert.notEqual(adverseEvidence({ ...signed, reference: 'other' }, signed), 'ok')
 // A lagging `processing` read carries finalAmount 0 (seen in the 2026-11-18 probe) — not a refund.
-assert.equal(adverseEvidence({ ...signed, status: 'processing', finalAmount: 0 }, signed), 'ok')
+assert.equal(adverseEvidence({ ...signed, status: 'processing', finalAmount: 0, modifiedDate: undefined }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, status: 'processing', modifiedDate: '2026-11-18T19:00:00Z' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, status: 'created', modifiedDate: signed.modifiedDate }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, status: 'hold' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, status: 'expired' }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, finalAmount: 5997.5 }, signed), 'ok')
+assert.notEqual(adverseEvidence({ ...signed, finalAmount: 6000 }, signed), 'ok')
 
 /* Final review fix: CRM_INTEGRATION_ID must fail closed. */
 import { parseIntegrationId } from '@/lib/mono/rules'

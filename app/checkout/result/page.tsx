@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { toResultStatus, type ResultStatus } from '@/lib/checkout/attempt'
 import { lookupRemoteOrders } from '@/lib/hugeprofit/orders'
-import { ourOrders } from '@/lib/hugeprofit/order-rules'
+import { invoiceIdFromOrderNote, ourOrders } from '@/lib/hugeprofit/order-rules'
 import { getInvoiceStatus, getStatement, payloadKeyring } from '@/lib/mono/client'
 import { resultTokenIssuedAt } from '@/lib/mono/payload'
-import { parseIntegrationId } from '@/lib/mono/rules'
+import { parseIntegrationId, SITE_REFERENCE } from '@/lib/mono/rules'
 import { ResultView } from '@/components/checkout/result-view'
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ const MAX_SPAN = 31 * DAY // mono statement limit
  * browser's cookie, else mono's statement, else our CRM order's note; its live status tells paid from refunded.
  */
 async function resultStatus(ref: string, token: unknown): Promise<ResultStatus> {
-  if (!/^\d{15}$/.test(ref)) return 'unknown'
+  if (!SITE_REFERENCE.test(ref)) return 'unknown'
   const ring = payloadKeyring()
   const issuedAt = ring ? resultTokenIssuedAt(ref, token, ring) : null
   if (issuedAt === null) return 'unknown'
@@ -36,14 +36,17 @@ async function resultStatus(ref: string, token: unknown): Promise<ResultStatus> 
     const read = cookieId ? await getInvoiceStatus(cookieId).catch(() => null) : null
     if (read?.reference === ref) return toResultStatus(read, ref)
     const from = Math.max(Math.min(issuedAt, now) - DAY, now - MAX_SPAN)
-    let invoiceId = (await getStatement(from, now)).find((item) => item.reference === ref)?.invoiceId
+    const statement = await getStatement(from, now).catch(() => null)
+    const statementIds = new Set(statement?.filter((item) => item.reference === ref).map((item) => item.invoiceId))
+    if (statementIds.size > 1) return 'pending'
+    let invoiceId = statementIds.values().next().value
     if (!invoiceId) {
       // Statement lag, or older than its 31-day window: the webhook's order notes the invoice.
       const integrationId = parseIntegrationId(process.env.CRM_INTEGRATION_ID)
-      const orders = integrationId === null ? [] : ourOrders(await lookupRemoteOrders(ref), integrationId, ref)
-      invoiceId = orders[0]?.info?.order_text?.match(/mono invoice (\S+)/)?.[1]
-      if (orders.length > 0 && !invoiceId) return 'paid' // note edited by hand; the webhook writes paid orders only
-      if (!invoiceId) return now - issuedAt < RECENT_S ? 'pending' : 'notfound'
+      if (integrationId === null) return 'pending'
+      const orders = ourOrders(await lookupRemoteOrders(ref), integrationId, ref)
+      invoiceId = orders.length === 1 ? invoiceIdFromOrderNote(orders[0].info?.order_text) : undefined
+      if (!invoiceId) return !statement || orders.length > 0 || now - issuedAt < RECENT_S ? 'pending' : 'notfound'
     }
     return toResultStatus(await getInvoiceStatus(invoiceId), ref)
   } catch {

@@ -33,12 +33,13 @@ export type CheckoutPayload = z.infer<typeof checkoutPayloadSchema>
 
 /** Webhook body and `invoice/status` response share this shape. */
 export const invoiceStatusSchema = z.looseObject({
-  invoiceId: z.string(),
+  invoiceId: z.string().min(1),
   status: z.string(),
   amount: z.number(),
   ccy: z.number(),
   finalAmount: z.number().optional(),
   reference: z.string().optional(),
+  destination: z.string().nullish(),
   modifiedDate: z.string().optional(),
   cancelList: z.array(z.unknown()).optional(),
 })

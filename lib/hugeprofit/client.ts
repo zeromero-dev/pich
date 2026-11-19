@@ -110,6 +110,7 @@ export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
     },
     body: JSON.stringify(payload),
     cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
   })
 
   const text = await res.text()
@@ -123,7 +124,7 @@ export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
   } catch {
     throw new CrmError(`CRM ${path} returned non-JSON`)
   }
-  if (body.success === false) {
+  if (body?.success === false) {
     throw new CrmError(`CRM ${path} failed: ${body.error ?? 'unknown error'}`)
   }
   return body
