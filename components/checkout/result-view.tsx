@@ -6,7 +6,6 @@ import { m } from 'motion/react'
 import { spring } from '@/lib/motion'
 import { useCart, useLocale, type CartItem } from '@/components/providers'
 import { PillLink } from '@/components/pill-button'
-import { LogoMark } from '@/components/logo'
 import {
   ATTEMPT_KEY,
   CART_KEY,
@@ -83,7 +82,6 @@ export function ResultView({ status, reference, token }: { status: ResultStatus;
           {secondary.label}
         </PillLink>
       )}
-      {status === 'paid' && <LogoMark className="mt-16 h-9 w-auto text-ink-faint" />}
     </main>
   )
 }
