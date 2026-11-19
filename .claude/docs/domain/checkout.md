@@ -72,7 +72,7 @@ Order {                               // what we create in the CRM
    encrypted (lib/mono/payload.ts, MONO_PAYLOAD_KEYS) into webHookUrl = /api/checkout/mono-callback?p=…,
    capped at 8000 bytes (provisional)
 6. POST mono invoice/create { amount: totalKop, ccy: 980, reference, destination, redirectUrl:
-   /checkout/result?ref=…, webHookUrl } — never retried; pageUrl must be https on pay.monobank.ua / pay.mbnk.biz
+   /checkout/result?ref=…&t=<signed ref>, webHookUrl } — never retried; pageUrl must be https on pay.monobank.ua / pay.mbnk.biz
 7. 200 { pageUrl, reference } + HttpOnly cookie mono_inv_<reference>=<invoiceId>; the browser stores
    { reference, cart fingerprint } in sessionStorage and goes to pageUrl
 8. mono POSTs every status change to mono-callback: X-Sign (ECDSA over the raw body) verified, then only
@@ -80,8 +80,10 @@ Order {                               // what we create in the CRM
    (recorded → 200) → fresh mono status (any reversal/refund/cancellation → reconciliation) → stock re-check
    → POST /bapi/remote_orders with the LOCKED prices, info.is_paid: true, payment_type "plata by mono",
    order_text "mono invoice <invoiceId>" → reservedProducts must cover every line
-9. /checkout/result?ref= shows mono's status for that attempt; the cart is cleared only on a full success
-   for the same attempt whose cart is unchanged
+9. /checkout/result?ref=&t= shows mono's status for that attempt (cookie); without the cookie (other browser,
+   bank app) a valid `t` (HMAC of ref, `resultToken`) allows a lookup: our CRM order → paid; else mono's
+   statement (2 days) paid → pending, refunded → reversed; else «Оплату не знайдено». No valid `t` → unknown.
+   The cart is cleared only on a full success for the same attempt whose cart is unchanged
 ```
 
 Responses to mono: 200 for handled or unfixable-by-retry (logged `[mono-callback] reconcile` with invoice id, reference, amounts, product ids — never buyer data or the URL); 503 for transient failures (CRM/mono read failed, write outcome unknown, payment mode check failed) — mono retries, three attempts in all.

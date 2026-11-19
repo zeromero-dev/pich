@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, randomInt } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { checkoutPayloadSchema, type CheckoutPayload } from '@/lib/mono/types'
 
 /**
@@ -60,4 +60,23 @@ export function decryptPayload(envelope: string, ring: Keyring): CheckoutPayload
 export function newReference(): string {
   const block = () => String(randomInt(0, 10_000_000)).padStart(7, '0')
   return `${randomInt(1, 10)}${block()}${block()}`
+}
+
+/* Result-link token `keyId.mac`: only links our checkout issued make /checkout/result call the CRM and mono.
+   HKDF subkey, so the AES key is never used directly as an HMAC key. */
+function resultMac(reference: string, key: Buffer): string {
+  const subkey = Buffer.from(hkdfSync('sha256', key, '', 'result-link', 32))
+  return createHmac('sha256', subkey).update(reference).digest().subarray(0, 16).toString('base64url')
+}
+
+export function resultToken(reference: string, ring: Keyring): string {
+  return `${ring.active}.${resultMac(reference, ring.keys[ring.active])}`
+}
+
+export function resultTokenValid(reference: string, token: string | null | undefined, ring: Keyring): boolean {
+  const [keyId, mac, ...rest] = (token ?? '').split('.')
+  if (!keyId || !mac || rest.length > 0 || !Object.hasOwn(ring.keys, keyId)) return false
+  const given = Buffer.from(mac)
+  const expected = Buffer.from(resultMac(reference, ring.keys[keyId]))
+  return given.length === expected.length && timingSafeEqual(given, expected)
 }

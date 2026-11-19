@@ -2,8 +2,8 @@ import { toKop } from '@/lib/mono/money'
 
 /** Pure rules for /checkout/result (spec flow step 8): which payment attempt, and whether to clear the cart. */
 
-/** `unknown`: this browser can't tell (no attempt cookie, or not this attempt's invoice) — never "a few seconds". */
-export type ResultStatus = 'paid' | 'pending' | 'failed' | 'expired' | 'reversed' | 'unknown'
+/** `unknown`: no attempt cookie and no valid signed link. `notfound`: signed link, but no order and no paid operation yet. */
+export type ResultStatus = 'paid' | 'pending' | 'failed' | 'expired' | 'reversed' | 'unknown' | 'notfound'
 
 export function toResultStatus(
   read: { status: string; amount: number; finalAmount?: number; reference?: string } | null,
@@ -18,6 +18,14 @@ export function toResultStatus(
   if (read.status === 'expired') return 'expired'
   if (read.status === 'reversed') return 'reversed'
   return 'pending'
+}
+
+/** Signed link without the cookie: our CRM order count, else this reference's item in mono's statement (paid operations only). */
+export function statusFromLookup(orders: number, paidItem: { status: string; cancelList?: unknown[] } | undefined): ResultStatus {
+  if (orders > 0) return 'paid'
+  if (!paidItem) return 'notfound'
+  if (paidItem.status === 'reversed' || (paidItem.cancelList?.length ?? 0) > 0) return 'reversed'
+  return 'pending' // paid, order not written yet: never tell this buyer "not found"
 }
 
 /** localStorage key of the cart (components/providers.tsx). */
@@ -49,7 +57,7 @@ export function cartClearDecision(
   const mine = attempt?.reference === ref
   return {
     clear: mine && status === 'paid' && attempt.fingerprint === currentFingerprint,
-    dropAttempt: mine && status !== 'pending' && status !== 'unknown',
+    dropAttempt: mine && status !== 'pending' && status !== 'unknown' && status !== 'notfound',
   }
 }
 

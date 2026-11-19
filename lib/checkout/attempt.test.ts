@@ -1,6 +1,6 @@
 // Run: npm test. Pure asserts over the payment-attempt marker and result status; no network.
 import assert from 'node:assert/strict'
-import { cartClearDecision, cartFingerprint, migrateCart, toResultStatus } from '@/lib/checkout/attempt'
+import { cartClearDecision, cartFingerprint, migrateCart, statusFromLookup, toResultStatus } from '@/lib/checkout/attempt'
 
 const R = '123456789012345'
 assert.equal(toResultStatus({ status: 'success', amount: 5997, finalAmount: 5997, reference: R }, R), 'paid')
@@ -43,3 +43,12 @@ assert.equal(lineUnitKop({ price: 19.99 }), 1999)
 assert.equal(lineUnitKop({ price: 10.005 }), 1001) // display fallback only; the server refuses it
 
 assert.deepEqual(cartClearDecision('unknown', R, attempt, fp), { clear: false, dropAttempt: false })
+
+// No cookie: our CRM order, else mono's statement (paid operations only), else not found.
+assert.equal(statusFromLookup(1, undefined), 'paid')
+assert.equal(statusFromLookup(1, { status: 'success', cancelList: [] }), 'paid')
+assert.equal(statusFromLookup(0, { status: 'success' }), 'pending') // paid, order not created yet: never "not found"
+assert.equal(statusFromLookup(0, { status: 'success', cancelList: [{}] }), 'reversed')
+assert.equal(statusFromLookup(0, { status: 'reversed' }), 'reversed')
+assert.equal(statusFromLookup(0, undefined), 'notfound')
+assert.deepEqual(cartClearDecision('notfound', R, attempt, fp), { clear: false, dropAttempt: false })
