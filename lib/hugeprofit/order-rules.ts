@@ -70,7 +70,7 @@ export function buildOrderPayload(reference: string, lines: OrderLine[], contact
 export type CrmRemoteOrder = {
   integration_id: number
   order_id: string
-  sales_id: number | null
+  sales_id?: number | null
   price: number
   currency: string
   info?: { is_paid?: boolean; order_text?: string }
@@ -87,7 +87,7 @@ export type Expected = {
 const isUah = (currency: string) => currency === 'UAH' || currency === 'грн'
 
 function reservationProblems(order: CrmRemoteOrder, warehouseId: string): string[] {
-  if (order.sales_id !== null) return [] // converted to a sale: the CRM released the reservation by design
+  if (order.sales_id != null) return [] // converted to a sale: the CRM released the reservation by design
   const problems = new Set<string>()
   for (const line of order.order_data ?? []) {
     if (line.is_reserved !== true) problems.add('товар не зарезервовано')

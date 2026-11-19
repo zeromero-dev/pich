@@ -21,15 +21,13 @@ export function toResultStatus(
 }
 
 /**
- * Signed link without the cookie: our CRM order count, else this reference's item in mono's statement (paid
+ * Signed link without the cookie and no CRM order yet: this reference's item in mono's statement (paid
  * operations only). `recent`: the link is fresh, so an empty statement may just be lagging — never "not found".
  */
 export function statusFromLookup(
-  orders: number,
   paidItem: { status: string; cancelList?: unknown[] } | undefined,
   recent: boolean,
 ): ResultStatus {
-  if (orders > 0) return 'paid'
   if (!paidItem) return recent ? 'pending' : 'notfound'
   if (paidItem.status === 'reversed' || (paidItem.cancelList?.length ?? 0) > 0) return 'reversed'
   return 'pending' // paid, order not written yet: never tell this buyer "not found"

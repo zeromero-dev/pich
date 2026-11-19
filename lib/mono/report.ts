@@ -55,11 +55,15 @@ export function findingsFor(item: Item, ours: CrmRemoteOrder[], current: Current
   const status = current?.status ?? item.status
   // Site invoices carry a 15-digit reference (newReference); anything else was taken outside the site.
   if (!SITE_REFERENCE.test(item.reference ?? '')) return [finding('оплата не з сайту (без номера замовлення)')]
-  if (ours.length === 0) return item.status === 'success' && status === 'success' ? [finding('оплачено, але замовлення в CRM немає')] : []
+  if (ours.length === 0) {
+    if (item.status !== 'success' || status !== 'success') return []
+    const refunding = (current?.cancelList ?? item.cancelList ?? []).length > 0
+    return [finding(refunding ? 'повернення коштів в обробці' : 'оплачено, але замовлення в CRM немає')]
+  }
   if (ours.length > 1) return [finding('кілька замовлень у CRM на одну оплату')]
 
   const order = ours[0]
-  const sale = order.sales_id !== null ? SALE : ''
+  const sale = order.sales_id != null ? SALE : ''
   const problems: string[] = []
   const partial = status !== 'reversed' && current?.finalAmount !== undefined && current.finalAmount < item.amount
   // After a partial refund the operator removes lines, so the CRM total rightly stops matching the payment.

@@ -94,3 +94,6 @@ assert.match(actionFor('кошти повернуто повністю (замо
 assert.match(actionFor('кошти повернуто частково'), /один раз/)
 assert.match(actionFor('не вдається прочитати суми рядків'), /розробник/)
 assert.match(actionFor('повернення коштів в обробці'), /кабінеті mono/)
+
+// Review fix: no order, but a refund already started — don't ask for a second refund.
+assert.deepEqual(problems(item, [], { status: 'success', cancelList: [{}] }, '51630'), ['повернення коштів в обробці'])

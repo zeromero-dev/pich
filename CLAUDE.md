@@ -39,7 +39,7 @@ npm run dev        # dev server at http://localhost:3000 (regenerates AGENTS.md 
 npx react-doctor@latest   # ALWAYS before `npm run build`: fix every finding, or record a deliberate exception with its reason in doctor.config.mjs
 npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
-npm test           # asserts over lib/artist-roster.ts (runs via npx tsx, no install)
+npm test           # plain asserts: artist roster, mono payment rules, CRM order rules, checkout result (npx tsx, no install)
 ```
 
 Config and secrets live in `.env.local` (gitignored via `.env*`). `.env.example`

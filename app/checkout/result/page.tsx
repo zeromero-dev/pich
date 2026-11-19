@@ -34,12 +34,11 @@ async function resultStatus(ref: string, token: unknown): Promise<ResultStatus> 
   const issuedAt = ring ? resultTokenIssuedAt(ref, token, ring) : null
   if (issuedAt === null || integrationId === null) return 'unknown'
   try {
-    const orders = ourOrders(await lookupRemoteOrders(ref), integrationId, ref).length
-    if (orders > 0) return 'paid'
+    if (ourOrders(await lookupRemoteOrders(ref), integrationId, ref).length > 0) return 'paid'
     const now = Math.floor(Date.now() / 1000)
     const from = Math.max(Math.min(issuedAt, now) - DAY, now - MAX_SPAN)
     const paid = (await getStatement(from, now)).find((item) => item.reference === ref)
-    return statusFromLookup(orders, paid, now - issuedAt < RECENT_S)
+    return statusFromLookup(paid, now - issuedAt < RECENT_S)
   } catch {
     return 'pending'
   }

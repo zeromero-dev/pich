@@ -45,13 +45,11 @@ assert.equal(lineUnitKop({ price: 10.005 }), 1001) // display fallback only; the
 assert.deepEqual(cartClearDecision('unknown', R, attempt, fp), { clear: false, dropAttempt: false })
 
 // No cookie: our CRM order, else mono's statement (paid operations only), else not found.
-assert.equal(statusFromLookup(1, undefined, false), 'paid')
-assert.equal(statusFromLookup(1, { status: 'success', cancelList: [] }, false), 'paid')
-assert.equal(statusFromLookup(0, { status: 'success' }, false), 'pending') // paid, order not created yet: never "not found"
-assert.equal(statusFromLookup(0, { status: 'success', cancelList: [{}] }, false), 'reversed')
-assert.equal(statusFromLookup(0, { status: 'reversed' }, false), 'reversed')
-assert.equal(statusFromLookup(0, undefined, false), 'notfound')
+assert.equal(statusFromLookup({ status: 'success' }, false), 'pending') // paid, order not created yet: never "not found"
+assert.equal(statusFromLookup({ status: 'success', cancelList: [{}] }, false), 'reversed')
+assert.equal(statusFromLookup({ status: 'reversed' }, false), 'reversed')
+assert.equal(statusFromLookup(undefined, false), 'notfound')
 assert.deepEqual(cartClearDecision('notfound', R, attempt, fp), { clear: false, dropAttempt: false })
 
 // Review fix: mono's statement may lag a fresh payment — within the recent window, nothing found is still "pending".
-assert.equal(statusFromLookup(0, undefined, true), 'pending')
+assert.equal(statusFromLookup(undefined, true), 'pending')

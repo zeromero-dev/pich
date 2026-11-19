@@ -89,3 +89,6 @@ assert.match(json, /"delivery_operator":"nova_poshta"/)
 
 import { ourOrders } from '@/lib/hugeprofit/order-rules'
 assert.deepEqual(ourOrders([ours, { ...ours, integration_id: 999 }, { ...ours, order_id: '999' }], 13585, '123456789012345'), [ours])
+
+// Review fix: a response without sales_id is not a sale — the reservation checks still run.
+assert.deepEqual(orderHealth({ ...withLine({ is_reserved: false }), sales_id: undefined }, '51630'), ['товар не зарезервовано'])
