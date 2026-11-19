@@ -70,7 +70,7 @@ Order {                               // what we create in the CRM
    a CRM price that isn't whole kopecks (the CRM stores four decimals) → 400 "invalid", logged
 5. reference = 15 random digits; the order { lines with unitPriceKop, totalKop, contact } is AES-256-GCM
    encrypted (lib/mono/payload.ts, MONO_PAYLOAD_KEYS) into webHookUrl = /api/checkout/mono-callback?p=…,
-   capped at 8000 bytes (provisional)
+   capped at 8000 bytes by default (`MONO_CALLBACK_MAX_BYTES`), including any Preview bypass parameter
 6. POST mono invoice/create { amount: totalKop, ccy: 980, reference, destination, redirectUrl:
    /checkout/result?ref=…&t=<signed ref>, webHookUrl } — never retried; pageUrl must be https on pay.monobank.ua / pay.mbnk.biz
 7. 200 { pageUrl, reference } + HttpOnly cookie mono_inv_<reference>=<invoiceId>; the browser stores
@@ -84,7 +84,7 @@ Order {                               // what we create in the CRM
    bank app) the invoice id comes from mono's statement (from a day before the link's signed issue time,
    ≤31 days); either way its live invoice/status decides (paid / refunded). Not in the statement (lag, or past its 31 days):
    the invoice noted in our CRM order (`mono invoice <id>`). An order with no usable invoice ID stays pending.
-   Neither an invoice nor an order found → pending for 15 min after issue (`RECENT_S`, statement lag unverified),
+   Neither an invoice nor an order found → pending for `MONO_RESULT_PENDING_MINUTES` after issue (default 15),
    then «Оплату не знайдено». `t` = `keyId.issuedAt.mac`, required before any mono or CRM call. No valid `t` → unknown.
    The cart is cleared only on a full success for the same attempt whose cart is unchanged
 ```
@@ -97,7 +97,7 @@ Responses to mono: 200 for handled or unfixable-by-retry (logged `[mono-callback
 
 `app/api/checkout/mono-callback/route.ts` is the only place a CRM order is created for a paid checkout. `app/api/payment-report/route.ts` (`?key=REPORT_KEY`, optional `&from=&to=`, ≤31 days — mono's statement limit) lists paid invoices with no CRM order (balance still held after a partial refund), orders not marked as this invoice's payment (not checked once sold), mismatched or unreserved orders, refunds and reversals (a failed cancellation is none) — each line followed by «Що робити:» (`actionFor`, `lib/mono/report.ts`). It is the record: Vercel Hobby keeps logs for one hour.
 
-The report recognizes site invoices by the reference and `Замовлення Plai Pich #<reference>` in the statement's `destination`. It verifies those invoices against live mono status. Pending cancellations take priority over CRM changes. For a partial refund, the report shows the original charge, the amount refunded, and the remaining balance. When a window takes more than one request, the operator copies the displayed `&resume=` parameter into the report URL and reads each part. If an invoice appears or disappears between parts, the report asks the operator to restart that window.
+The report recognizes site invoices by the reference and `Замовлення Plai Pich #<reference>` in the statement's `destination`. It verifies those invoices against live mono status. Pending cancellations take priority over CRM changes. For a partial refund, the report shows the original charge, the amount refunded, and the remaining balance. Set `REPORT_WINDOW_DAYS` to cover the shop's refund period (7 by default). When a window takes more than one request, the operator copies the displayed `&resume=` parameter into the report URL and reads each part. If an invoice appears or disappears between parts, the report asks the operator to restart that window.
 
 **Verified against mono's test API 2026-11-18** (probe + Task 3/8): test merchant `test_4U18rFLZus`; `reference` ≤1000 chars and `destination` ≤280; a 4030-char webhook URL delivered intact for created/processing/success, each X-Sign valid; the `processing` webhook carries `finalAmount: 0`; statement items carry `invoiceId, status, maskedPan, approvalCode, rrn, date, paymentScheme, amount, profit, ccy, reference, destination`; a statement window over 31 days answers 400.
 

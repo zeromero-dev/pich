@@ -3,7 +3,7 @@
  * `toKop`, the only kopeck→decimal one is `fromKop`; floats are never summed.
  */
 
-// ponytail: placeholder (₴1 000 000) until the acquiring terminal limit is confirmed — cutover plan.
+// Bound for stored amounts. A terminal's lower limit applies only when creating an invoice.
 export const MAX_TOTAL_KOP = 100_000_000
 
 /** Exact for CRM prices: four decimals, ≤15 significant digits (spec Money rule 1). */

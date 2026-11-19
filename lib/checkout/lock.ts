@@ -40,10 +40,10 @@ export function lockLines(items: { workId: string; qty: number; price: number }[
   return { ok: true, lines, totalKop: total }
 }
 
-// ponytail: provisional cap, confirmed by the cutover plan's Preview rehearsal (Vercel itself allows 14 KB).
 export const MAX_CALLBACK_URL_BYTES = 8000
 
-export function callbackUrl(origin: string, envelope: string): string | null {
-  const url = `${origin}/api/checkout/mono-callback?p=${envelope}`
-  return Buffer.byteLength(url) > MAX_CALLBACK_URL_BYTES ? null : url
+export function callbackUrl(origin: string, envelope: string, maxBytes = MAX_CALLBACK_URL_BYTES, bypassSecret?: string): string | null {
+  const bypass = bypassSecret ? `&x-vercel-protection-bypass=${encodeURIComponent(bypassSecret)}` : ''
+  const url = `${origin}/api/checkout/mono-callback?p=${envelope}${bypass}`
+  return Buffer.byteLength(url) > maxBytes ? null : url
 }

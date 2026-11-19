@@ -3,6 +3,18 @@ import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
 import { isAllowedPageUrl, resolvePaymentMode } from '@/lib/mono/rules'
 import { verifySignature } from '@/lib/mono/signature'
+import { boundedInteger, invoiceLimitKop } from '@/lib/mono/config'
+
+assert.equal(invoiceLimitKop(undefined, 'production'), null)
+assert.equal(invoiceLimitKop(undefined, 'preview'), 100_000_000)
+assert.equal(invoiceLimitKop('9750000', 'production'), 9_750_000)
+assert.equal(invoiceLimitKop('100000001', 'production'), null)
+assert.equal(invoiceLimitKop('1e5', 'production'), null)
+assert.equal(invoiceLimitKop('0', 'production'), null)
+assert.equal(boundedInteger(undefined, 31, 7), 7)
+assert.equal(boundedInteger('31', 31, 7), 31)
+assert.equal(boundedInteger('32', 31, 7), null)
+assert.equal(boundedInteger('', 31, 7), null)
 
 /* Payment mode: exactly two allowed combinations, every identity positively matched. */
 const base = { liveMerchantId: 'live_1', testMerchantId: 'test_4U18rFLZus' }

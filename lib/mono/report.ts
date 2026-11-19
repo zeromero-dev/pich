@@ -31,9 +31,9 @@ function dayStart(value: string): number | null {
 type ReportWindow = { fromUnix: number; toUnix: number }
 
 /** Default: the last 7 days. `to` is inclusive (through the end of that UTC day). */
-export function reportWindow(from: string | null, to: string | null, now: Date): ReportWindow | null {
+export function reportWindow(from: string | null, to: string | null, now: Date, defaultDays = 7): ReportWindow | null {
   const nowUnix = Math.floor(now.getTime() / 1000)
-  if (!from && !to) return { fromUnix: nowUnix - 7 * DAY, toUnix: nowUnix }
+  if (!from && !to) return { fromUnix: nowUnix - defaultDays * DAY, toUnix: nowUnix }
   const fromUnix = from ? dayStart(from) : null
   const toStart = to ? dayStart(to) : null
   if (fromUnix === null || (to && toStart === null)) return null

@@ -70,21 +70,17 @@ export function CheckoutView() {
             setQty(line.workId, line.available)
           }
         }
-        setSubmitError(
-          body?.error === 'unavailable'
-            ? t.checkout.errorUnavailable
-            : body?.error === 'insufficient'
-              ? t.checkout.errorInsufficient
-              : body?.error === 'repriced'
-                ? t.checkout.errorRepriced
-                : body?.error === 'payments_disabled'
-                  ? t.checkout.errorPaymentsDisabled
-                  : body?.error === 'delivery'
-                    ? t.checkout.errorDelivery
-                    : body?.error === 'delivery_unavailable'
-                      ? t.checkout.errorDeliveryUnavailable
-                      : t.checkout.errorGeneric,
-        )
+        const errors = {
+          unavailable: t.checkout.errorUnavailable,
+          insufficient: t.checkout.errorInsufficient,
+          repriced: t.checkout.errorRepriced,
+          amount_limit: t.checkout.errorAmountLimit,
+          payments_disabled: t.checkout.errorPaymentsDisabled,
+          delivery: t.checkout.errorDelivery,
+          delivery_unavailable: t.checkout.errorDeliveryUnavailable,
+        }
+        const code = body?.error as keyof typeof errors
+        setSubmitError(Object.hasOwn(errors, code) ? errors[code] : t.checkout.errorGeneric)
         setSubmitting(false)
         return
       }

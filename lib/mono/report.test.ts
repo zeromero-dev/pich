@@ -10,6 +10,10 @@ assert.deepEqual(reportWindow(null, null, now), {
   fromUnix: Date.parse('2026-11-11T10:00:00Z') / 1000,
   toUnix: Date.parse('2026-11-18T10:00:00Z') / 1000,
 })
+assert.deepEqual(reportWindow(null, null, now, 14), {
+  fromUnix: Date.parse('2026-11-04T10:00:00Z') / 1000,
+  toUnix: Date.parse('2026-11-18T10:00:00Z') / 1000,
+})
 assert.deepEqual(reportWindow('2026-11-01', '2026-11-10', now), {
   fromUnix: Date.parse('2026-11-01T00:00:00Z') / 1000,
   toUnix: Date.parse('2026-11-11T00:00:00Z') / 1000, // `to` is inclusive: through the end of that day

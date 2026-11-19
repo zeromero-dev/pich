@@ -29,6 +29,10 @@ assert.equal(callbackUrl(origin, 'x'.repeat(100)), `${origin}/api/checkout/mono-
 const envelopeAtLimit = 'x'.repeat(MAX_CALLBACK_URL_BYTES - Buffer.byteLength(`${origin}/api/checkout/mono-callback?p=`))
 assert.equal(Buffer.byteLength(callbackUrl(origin, envelopeAtLimit)!), MAX_CALLBACK_URL_BYTES)
 assert.equal(callbackUrl(origin, envelopeAtLimit + 'x'), null)
+const bypassUrl = callbackUrl(origin, 'envelope', MAX_CALLBACK_URL_BYTES, 'preview+&? секрет')!
+assert.equal(new URL(bypassUrl).searchParams.get('x-vercel-protection-bypass'), 'preview+&? секрет')
+assert.equal(callbackUrl(origin, 'envelope', Buffer.byteLength(bypassUrl), 'preview+&? секрет'), bypassUrl)
+assert.equal(callbackUrl(origin, 'envelope', Buffer.byteLength(bypassUrl) - 1, 'preview+&? секрет'), null)
 
 // The largest valid order fits under the provisional cap.
 const ring = { active: 'k1', keys: { k1: randomBytes(32) } }

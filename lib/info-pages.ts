@@ -8,6 +8,8 @@ export type InfoPage = {
   sections: { heading?: string; paragraphs: (string | string[])[] }[]
 }
 
+const dataController = process.env.PRIVACY_DATA_CONTROLLER?.trim()
+
 export const infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage> = {
   delivery: {
     title: 'Доставка та оплата',
@@ -109,8 +111,8 @@ export const infoPages: Record<'delivery' | 'returns' | 'privacy', InfoPage> = {
       {
         heading: 'Загальні положення',
         paragraphs: [
-          // PLACEHOLDER: names no data controller yet — add the legal entity once the owners confirm it.
           'Ця політика пояснює, які персональні дані збирає мистецька крамничка ПІЧ (вул. Григорія Сковороди, 25, Вінниця; далі — «ми») під час користування сайтом, з якою метою та як ми їх захищаємо.',
+          ...(dataController ? [`Володілець персональних даних — ${dataController}.`] : []),
           'Ми обробляємо персональні дані відповідно до Закону України «Про захист персональних даних». Оформлюючи замовлення, ви погоджуєтеся з обробкою своїх даних на умовах цієї політики.',
         ],
       },

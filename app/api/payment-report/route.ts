@@ -2,6 +2,7 @@ import { SHOP_WAREHOUSE_ID } from '@/lib/hugeprofit/client'
 import { lookupRemoteOrders } from '@/lib/hugeprofit/orders'
 import { ourOrders } from '@/lib/hugeprofit/order-rules'
 import { getInvoiceStatus, getStatement } from '@/lib/mono/client'
+import { boundedInteger } from '@/lib/mono/config'
 import { parseIntegrationId } from '@/lib/mono/rules'
 import {
   findingsFor, keyMatches, parseReportContinuation, renderReport, reportContinuation, reportStatementId,
@@ -29,8 +30,10 @@ export async function GET(request: Request) {
   const resume = params.get('resume')
   const continuation = resume === null ? null : parseReportContinuation(resume, now)
   if (resume !== null && !continuation) return reply('Невірний параметр продовження. Відкрийте початкове посилання на звірку.', 400)
-  const window = continuation?.window ?? reportWindow(params.get('from'), params.get('to'), now)
-  if (!window) return reply('Період: &from=YYYY-MM-DD&to=YYYY-MM-DD, не довше 31 дня; без них — останні 7 днів.', 400)
+  const defaultDays = boundedInteger(process.env.REPORT_WINDOW_DAYS, 31, 7)
+  if (defaultDays === null) return reply('REPORT_WINDOW_DAYS має бути цілим числом від 1 до 31.', 503)
+  const window = continuation?.window ?? reportWindow(params.get('from'), params.get('to'), now, defaultDays)
+  if (!window) return reply(`Період: &from=YYYY-MM-DD&to=YYYY-MM-DD, не довше 31 дня. Без дат звіряємо останні ${defaultDays} дн.`, 400)
 
   const integrationId = parseIntegrationId(process.env.CRM_INTEGRATION_ID)
   if (integrationId === null) return reply('CRM_INTEGRATION_ID не налаштовано — звірка неможлива.', 503)

@@ -1,4 +1,5 @@
 import 'server-only'
+import { boundedInteger } from '@/lib/mono/config'
 import { parseKeyring, type Keyring } from '@/lib/mono/payload'
 import { parseIntegrationId, resolvePaymentMode, type PaymentMode } from '@/lib/mono/rules'
 import { verifySignature } from '@/lib/mono/signature'
@@ -71,6 +72,10 @@ export async function paymentMode(): Promise<PaymentMode | null> {
 export async function checkoutEnabled(): Promise<boolean> {
   if (!process.env.MONO_TOKEN || !payloadKeyring() || process.env.PAYMENTS_PAUSED === '1') return false
   if (parseIntegrationId(process.env.CRM_INTEGRATION_ID) === null) return false
+  if (process.env.VERCEL_ENV === 'production') {
+    if (process.env.WEBSITE_URL !== 'https://www.pich.co.ua' || !process.env.PRIVACY_DATA_CONTROLLER?.trim()) return false
+    if (!process.env.REPORT_KEY || boundedInteger(process.env.REPORT_WINDOW_DAYS, 31, 7) === null) return false
+  }
   return (await paymentMode()) !== null
 }
 

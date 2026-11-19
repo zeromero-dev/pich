@@ -4,6 +4,7 @@ import { toResultStatus, type ResultStatus } from '@/lib/checkout/attempt'
 import { lookupRemoteOrders } from '@/lib/hugeprofit/orders'
 import { invoiceIdFromOrderNote, ourOrders } from '@/lib/hugeprofit/order-rules'
 import { getInvoiceStatus, getStatement, payloadKeyring } from '@/lib/mono/client'
+import { boundedInteger } from '@/lib/mono/config'
 import { resultTokenIssuedAt } from '@/lib/mono/payload'
 import { parseIntegrationId, SITE_REFERENCE } from '@/lib/mono/rules'
 import { ResultView } from '@/components/checkout/result-view'
@@ -14,9 +15,7 @@ export const metadata: Metadata = {
 }
 
 const DAY = 86_400
-// Statement lag on a fresh payment (unverified, cutover Task 4). Longer would tell a buyer whose payment
-// failed "don't pay again" (pending copy); «не знайдено» covers both cases.
-const RECENT_S = 15 * 60
+const DEFAULT_PENDING_MINUTES = 15
 const MAX_SPAN = 31 * DAY // mono statement limit
 
 /**
@@ -46,7 +45,8 @@ async function resultStatus(ref: string, token: unknown): Promise<ResultStatus> 
       if (integrationId === null) return 'pending'
       const orders = ourOrders(await lookupRemoteOrders(ref), integrationId, ref)
       invoiceId = orders.length === 1 ? invoiceIdFromOrderNote(orders[0].info?.order_text) : undefined
-      if (!invoiceId) return !statement || orders.length > 0 || now - issuedAt < RECENT_S ? 'pending' : 'notfound'
+      const pendingMinutes = boundedInteger(process.env.MONO_RESULT_PENDING_MINUTES, DAY / 60, DEFAULT_PENDING_MINUTES) ?? DEFAULT_PENDING_MINUTES
+      if (!invoiceId) return !statement || orders.length > 0 || now - issuedAt < pendingMinutes * 60 ? 'pending' : 'notfound'
     }
     return toResultStatus(await getInvoiceStatus(invoiceId), ref)
   } catch {

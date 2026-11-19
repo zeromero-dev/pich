@@ -58,14 +58,11 @@ export async function POST(request: Request) {
   // Other statuses never touch the CRM; refunds and reversals surface in the payment report.
   if (body.status !== 'success') return ok()
 
-  const mode = await paymentMode()
-  if (!mode) {
+  if (!(await paymentMode())) {
     console.error('[mono-callback] payment mode check failed', { invoiceId: body.invoiceId })
     return retry()
   }
   const p = new URL(request.url).searchParams.get('p') ?? ''
-  // Test mode only: what Task 10's replay rehearsals need. Never in live mode.
-  if (mode === 'test') console.info('[mono-callback] replay', { p, raw: raw.toString('utf8'), xSign })
 
   const ring = payloadKeyring()
   const payload: CheckoutPayload | null = ring ? decryptPayload(p, ring) : null

@@ -3,8 +3,9 @@ import { getFreshProduct } from '@/lib/hugeprofit'
 import type { OrderDelivery } from '@/lib/hugeprofit/orders'
 import { checkoutRequestSchema } from '@/lib/checkout/schema'
 import { resolveDelivery } from '@/lib/checkout/delivery'
-import { callbackUrl, lockLines } from '@/lib/checkout/lock'
+import { callbackUrl, lockLines, MAX_CALLBACK_URL_BYTES } from '@/lib/checkout/lock'
 import { checkoutEnabled, createInvoice, payloadKeyring } from '@/lib/mono/client'
+import { boundedInteger, invoiceLimitKop } from '@/lib/mono/config'
 import { encryptPayload, newReference, resultToken } from '@/lib/mono/payload'
 import { isAllowedPageUrl, siteInvoiceDestination } from '@/lib/mono/rules'
 import type { OrderContact } from '@/lib/mono/types'
@@ -21,8 +22,10 @@ function badRequest(error: string, extra: Record<string, unknown> = {}) {
 }
 
 export async function POST(request: Request) {
-  // 503, not 500: the cart is valid, the site just cannot take money now — never throw at a buyer.
-  if (!(await checkoutEnabled())) {
+  const vercelEnv = process.env.VERCEL_ENV
+  const maxTotalKop = invoiceLimitKop(process.env.MONO_MAX_TOTAL_KOP, vercelEnv)
+  const maxCallbackBytes = boundedInteger(process.env.MONO_CALLBACK_MAX_BYTES, MAX_CALLBACK_URL_BYTES, MAX_CALLBACK_URL_BYTES)
+  if (maxTotalKop === null || maxCallbackBytes === null || !(await checkoutEnabled())) {
     return NextResponse.json({ error: 'payments_disabled' }, { status: 503 })
   }
 
@@ -73,12 +76,15 @@ export async function POST(request: Request) {
     console.error('[checkout] invalid CRM price', { productIds: lock.productIds })
     return badRequest('invalid')
   }
+  if (lock.totalKop > maxTotalKop) return badRequest('amount_limit')
 
   const ring = payloadKeyring()!
   const reference = newReference()
   const webHookUrl = callbackUrl(
     WEBSITE_URL,
     encryptPayload({ v: 1, reference, lines: lock.lines, totalKop: lock.totalKop, contact }, ring),
+    maxCallbackBytes,
+    vercelEnv === 'preview' ? process.env.MONO_PREVIEW_BYPASS_SECRET : undefined,
   )
   if (!webHookUrl) {
     console.error('[checkout] callback URL over the cap', { reference })
