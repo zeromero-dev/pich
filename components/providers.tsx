@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { LazyMotion, domMax } from 'motion/react'
 import { dictionaries, type Dictionary, type Locale } from '@/lib/i18n'
+import { CART_KEY, lineUnitKop, migrateCart } from '@/lib/checkout/attempt'
 import type { Product } from '@/lib/data'
 
 /* -------------------------------------------------------------------------- */
@@ -43,7 +44,7 @@ export type CartItem = {
 type CartContextValue = {
   items: CartItem[]
   count: number
-  subtotal: number
+  subtotalKop: number
   isOpen: boolean
   bump: number // increments to trigger the badge pop
   open: () => void
@@ -62,8 +63,7 @@ export function useCart() {
   return ctx
 }
 
-/* v3: snapshots gained `available`; v2 lines lack it and would clamp to NaN. */
-const CART_KEY = 'plai-pich-cart-v3'
+/* CART_KEY v3 (lib/checkout/attempt.ts): snapshots gained `available`; v2 lines lack it and would clamp to NaN. */
 const LOCALE_KEY = 'plai-pich-locale'
 
 function clampQty(qty: number, product: Product): number {
@@ -84,7 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const savedLocale = localStorage.getItem(LOCALE_KEY) as Locale | null
       if (savedLocale === 'uk' || savedLocale === 'en') setLocaleState(savedLocale)
       const savedCart = localStorage.getItem(CART_KEY)
-      if (savedCart) setItems(JSON.parse(savedCart))
+      if (savedCart) setItems(migrateCart(JSON.parse(savedCart)))
     } catch {
       /* ignore */
     }
@@ -153,11 +153,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const cartValue = useMemo<CartContextValue>(() => {
     const count = items.reduce((n, i) => n + i.qty, 0)
-    const subtotal = items.reduce((n, i) => n + i.qty * i.product.price, 0)
+    const subtotalKop = items.reduce((n, i) => n + i.qty * lineUnitKop(i.product), 0)
     return {
       items,
       count,
-      subtotal,
+      subtotalKop,
       isOpen,
       bump,
       open: () => setIsOpen(true),

@@ -1,4 +1,5 @@
 import 'server-only'
+import { paymentMode } from '@/lib/mono/client'
 
 /**
  * Thin authed wrapper over the HUGEPROFIT REST API. Server-only: importing this
@@ -55,6 +56,7 @@ export async function crmFetch<T>(
   params: Record<string, string | number> = {},
   revalidate: number | 0 = CATALOG_REVALIDATE,
 ): Promise<T> {
+  const checkoutRead = revalidate === 0 // bounded: it runs inside checkout and the webhook
   // Dev reads fresh so CRM edits show on reload; production keeps the cache.
   if (process.env.NODE_ENV === 'development') revalidate = 0
   // Every read stays inside the configured warehouse: `products` without
@@ -79,6 +81,7 @@ export async function crmFetch<T>(
     // header need force-cache explicitly (see docs/functions/fetch).
     cache: revalidate === 0 ? 'no-store' : 'force-cache',
     ...(revalidate === 0 ? {} : { next: { revalidate, tags: [CRM_TAG] } }),
+    ...(checkoutRead ? { signal: AbortSignal.timeout(10_000) } : {}),
   })
 
   if (!res.ok) {
@@ -94,10 +97,9 @@ export async function crmFetch<T>(
 
 /** Writes are never cached and never retried — a retry could double-create an order. */
 export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
-  // Sandbox money must never create orders on the production deployment, whose
-  // warehouse holds real works. Every write passes here, so this covers them all.
-  if (process.env.LIQPAY_SANDBOX === '1' && process.env.VERCEL_ENV === 'production') {
-    throw new CrmError(`refusing a CRM write (${path}) — LIQPAY_SANDBOX=1 on the production deployment`)
+  // Fail closed: an order write needs a positively matched payment mode (live+34998 or test+51630).
+  if (path === 'remote_orders' && !(await paymentMode())) {
+    throw new CrmError('refusing a CRM order write — payment mode check failed')
   }
 
   const res = await fetch(`${BASE}/${path}`, {
@@ -108,21 +110,39 @@ export async function crmPost<T>(path: string, payload: unknown): Promise<T> {
     },
     body: JSON.stringify(payload),
     cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
   })
 
   const text = await res.text()
   if (!res.ok) {
-    throw new CrmError(`CRM ${path} responded ${res.status}: ${text.slice(0, 200)}`, res.status)
+    throw new CrmError(`CRM ${path} responded ${res.status}`, res.status)
   }
 
   let body: T & { success?: boolean; error?: string }
   try {
     body = JSON.parse(text)
   } catch {
-    throw new CrmError(`CRM ${path} returned non-JSON: ${text.slice(0, 200)}`)
+    throw new CrmError(`CRM ${path} returned non-JSON`)
   }
-  if (body.success === false) {
+  if (body?.success === false) {
     throw new CrmError(`CRM ${path} failed: ${body.error ?? 'unknown error'}`)
   }
   return body
+}
+
+/** Uncached GET for remote orders: not a warehouse-scoped read, so crmFetch's warehouse rule does not apply. */
+export async function crmFetchUncached<T>(path: 'remote_orders', params: Record<string, string>): Promise<T> {
+  const url = new URL(`${BASE}/${path}`)
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
+  const res = await fetch(url, {
+    headers: { Authorization: token(), 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!res.ok) throw new CrmError(`CRM ${path} responded ${res.status}`, res.status)
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new CrmError(`CRM ${path} returned non-JSON`)
+  }
 }

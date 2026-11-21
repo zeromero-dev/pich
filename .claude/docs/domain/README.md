@@ -2,7 +2,7 @@
 
 Spec-driven domain reference. Each doc covers one bounded context: its **model and business rules**, its **use cases**, its **boundary** (where data enters/leaves and which module owns that), and **open decisions**. Facts are tagged by source ("from the code", "from the API docs", "assumption"). When something specified here gets built, move it to fact.
 
-Style rule for these docs: abstract the *rules*, not the code. Boundaries are named by real module paths (`lib/data.ts`, planned `lib/hugeprofit/`), not invented interfaces. Payment in [checkout.md](checkout.md) used to be the one deliberate exception to that (a spec'd swap point, provider undecided) — LiqPay is now the concrete, built provider, so that doc names real module paths too.
+These docs describe the store's rules and point to the modules that enforce them. [Checkout](checkout.md) documents the plata by mono payment flow.
 
 UI, styling, and motion live in `../ui-ux-guidelines.md` — never here.
 
@@ -12,7 +12,7 @@ UI, styling, and motion live in `../ui-ux-guidelines.md` — never here.
 |---------|-----|-----------------|-----------------|
 | Catalog | [catalog.md](catalog.md) | HUGEPROFIT CRM | `lib/hugeprofit/` (live since 2026-08-12) |
 | Cart | [cart.md](cart.md) | The buyer's browser (a draft, never authoritative) | `components/providers.tsx` + localStorage |
-| Ordering | [checkout.md](checkout.md) | CRM (orders) + LiqPay (payment) | `app/api/checkout/` + `app/api/checkout/liqpay-callback/` |
+| Ordering | [checkout.md](checkout.md) | CRM (orders) + plata by mono (payment) | `app/api/checkout/`, `app/api/checkout/mono-callback/`, `app/api/payment-report/` |
 | Events | [events.md](events.md) | Notion «Події» database (read-only) | `lib/events.ts` |
 | Artists & Content | [artists.md](artists.md) | Roster: CRM brands. Bios: this repo | `lib/hugeprofit/` + `lib/artists.ts` |
 | Locale | [i18n.md](i18n.md) | `lib/i18n.ts` (cross-cutting concern, not a true context) | `lib/i18n.ts` |
@@ -28,7 +28,7 @@ Ukrainian terms are primary — they appear in the UI and in conversations with 
 | Митець / мисткиня | Artist | Creator of works; exhibits at the center. |
 | Подія | Event | Store event: fair, exhibition, meeting with an artist. Published in Notion «Події»; this app only displays it, and past events stay up as news. |
 | Кошик | Cart | The buyer's draft order. Client-side only. |
-| Замовлення | Order | Created in the CRM at checkout; the CRM is the order system of record. |
+| Замовлення | Order | Created in HugeProfit after Mono confirms payment. HugeProfit is the order system of record. |
 
 ## Cross-context rules
 

@@ -5,7 +5,9 @@
 //   node scripts/crm-scope.mjs
 import { readFileSync } from 'node:fs'
 
-const env = Object.fromEntries(
+// Production can supply both variables in the process without changing .env.local.
+const usesProcessEnv = process.env.HUGEPROFIT_API_KEY !== undefined || process.env.CRM_WAREHOUSE_ID !== undefined
+const env = usesProcessEnv ? process.env : Object.fromEntries(
   readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
     .split('\n')
     .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
@@ -13,43 +15,48 @@ const env = Object.fromEntries(
 )
 
 const token = env.HUGEPROFIT_API_KEY
-if (!token) throw new Error('HUGEPROFIT_API_KEY missing from .env.local')
+if (!token) throw new Error('HUGEPROFIT_API_KEY is required')
 
 const configured = Number(env.CRM_WAREHOUSE_ID)
-if (!Number.isInteger(configured) || configured <= 0) {
-  throw new Error('CRM_WAREHOUSE_ID missing or invalid in .env.local')
+if (!Number.isSafeInteger(configured) || configured <= 0) {
+  throw new Error('CRM_WAREHOUSE_ID must be a positive integer')
 }
 
 async function crm(path) {
   const res = await fetch(`https://crm.h-profit.com/bapi/${path}`, {
     headers: { Authorization: token, 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(10_000),
   })
-  const text = await res.text()
-  try {
-    return { status: res.status, body: JSON.parse(text) }
-  } catch {
-    return { status: res.status, body: text.slice(0, 200) }
-  }
+  const body = res.ok ? await res.json().catch(() => null) : null
+  return { status: res.status, body }
 }
 
 const ref = await crm('reference_info?types=warehouses')
-const warehouses = ref.body?.data?.warehouses ?? []
-if (!warehouses.length) {
+const warehouses = new Map([[configured, 'configured warehouse']])
+const listed = ref.body?.data?.warehouses
+if (Array.isArray(listed) && listed.length > 0) {
+  for (const warehouse of listed) {
+    const id = Number(warehouse?.id)
+    if (Number.isSafeInteger(id) && id > 0) warehouses.set(id, warehouse.name)
+  }
+} else {
   console.log(`reference_info returned no warehouses (status ${ref.status}) — token may be scoped or invalid`)
 }
 
 console.log('products readable per warehouse:')
-const reachable = []
-for (const w of warehouses) {
-  const { status, body } = await crm(`products?limit=500&warehouse_id=${w.id}`)
-  const rows = Array.isArray(body?.data) ? body.data.length : `error (${status})`
-  if (Array.isArray(body?.data) && body.data.length > 0) reachable.push(w)
-  console.log(`  ${w.id}  ${String(rows).padStart(4)} rows  ${w.name}${w.id === configured ? '   <-- CRM_WAREHOUSE_ID' : ''}`)
+const reachable = new Set()
+for (const [id, name] of warehouses) {
+  const { status, body } = await crm(`products?limit=500&warehouse_id=${id}`)
+  const data = body?.success !== false && Array.isArray(body?.data) ? body.data : null
+  if (data?.length > 0) reachable.add(id)
+  console.log(`  ${id}  ${data ? data.length : `error (${status})`} rows  ${name}${id === configured ? '   <-- CRM_WAREHOUSE_ID' : ''}`)
 }
 
-const others = reachable.filter((w) => w.id !== configured)
-console.log(
-  others.length
-    ? `\nVERDICT: this token also reads ${others.map((w) => `${w.id} (${w.name})`).join(', ')} beyond CRM_WAREHOUSE_ID=${configured}.\nScope it in the CRM integration settings if that should be impossible rather than merely unused.`
-    : `\nVERDICT: this token reads only CRM_WAREHOUSE_ID=${configured}. The boundary is the CRM's, not just this code's.`,
-)
+if (!reachable.has(configured)) {
+  console.error(`\nCould not verify product access in CRM_WAREHOUSE_ID=${configured}. Check the token, warehouse, and catalog.`)
+  process.exitCode = 1
+} else {
+  console.log(`\nVerified product access in CRM_WAREHOUSE_ID=${configured}. Confirm the reservation warehouse in the CRM integration settings.`)
+  reachable.delete(configured)
+  if (reachable.size > 0) console.log(`Also read products in ${[...reachable].join(', ')}.`)
+}

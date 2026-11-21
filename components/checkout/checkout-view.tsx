@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { formatPrice } from '@/lib/format'
+import { formatKop } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
+import { ATTEMPT_KEY, cartFingerprint, lineUnitKop } from '@/lib/checkout/attempt'
 import { PillButton, PillLink } from '@/components/pill-button'
 import { TextField } from '@/components/checkout/text-field'
 import { DeliveryFields } from '@/components/checkout/delivery-fields'
@@ -18,27 +19,9 @@ import {
 } from '@/lib/checkout/form'
 import type { FieldId } from '@/lib/checkout/schema'
 
-function redirectToLiqPay(checkoutUrl: string, data: string, signature: string) {
-  const form = document.createElement('form')
-  form.method = 'POST'
-  form.action = checkoutUrl
-  for (const [name, value] of [
-    ['data', data],
-    ['signature', signature],
-  ]) {
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = name
-    input.value = value
-    form.appendChild(input)
-  }
-  document.body.appendChild(form)
-  form.submit()
-}
-
 export function CheckoutView() {
   const { t } = useLocale()
-  const { items, subtotal, setQty } = useCart()
+  const { items, subtotalKop, setQty } = useCart()
   const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
   const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
   // Errors show after a field's first blur, then track every change: "reward early, punish late".
@@ -87,28 +70,31 @@ export function CheckoutView() {
             setQty(line.workId, line.available)
           }
         }
-        setSubmitError(
-          body?.error === 'unavailable'
-            ? t.checkout.errorUnavailable
-            : body?.error === 'insufficient'
-              ? t.checkout.errorInsufficient
-              : body?.error === 'repriced'
-                ? t.checkout.errorRepriced
-                : body?.error === 'payments_disabled'
-                  ? t.checkout.errorPaymentsDisabled
-                  : body?.error === 'delivery'
-                    ? t.checkout.errorDelivery
-                    : body?.error === 'delivery_unavailable'
-                      ? t.checkout.errorDeliveryUnavailable
-                      : t.checkout.errorGeneric,
-        )
+        const errors = {
+          unavailable: t.checkout.errorUnavailable,
+          insufficient: t.checkout.errorInsufficient,
+          repriced: t.checkout.errorRepriced,
+          amount_limit: t.checkout.errorAmountLimit,
+          payments_disabled: t.checkout.errorPaymentsDisabled,
+          delivery: t.checkout.errorDelivery,
+          delivery_unavailable: t.checkout.errorDeliveryUnavailable,
+        }
+        const code = body?.error as keyof typeof errors
+        setSubmitError(Object.hasOwn(errors, code) ? errors[code] : t.checkout.errorGeneric)
         setSubmitting(false)
         return
       }
 
-      // Full-page navigation to LiqPay — cart stays in localStorage until
-      // /checkout/result clears it on confirmed payment.
-      redirectToLiqPay(body.checkoutUrl, body.data, body.signature)
+      // Cart stays in localStorage until /checkout/result sees this attempt paid.
+      const fingerprint = cartFingerprint(
+        items.map(({ product, qty }) => ({ productId: product.id, qty, unitPriceKop: lineUnitKop(product) })),
+      )
+      try {
+        sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({ reference: body.reference, fingerprint }))
+      } catch {
+        /* private mode: the cart just isn't auto-cleared */
+      }
+      window.location.assign(body.pageUrl)
     } catch {
       setSubmitError(t.checkout.errorGeneric)
       setSubmitting(false)
@@ -157,18 +143,18 @@ export function CheckoutView() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{product.name}</p>
                 <p className="text-xs text-ink-soft">
-                  {qty} × {formatPrice(product.price)}
+                  {qty} × {formatKop(lineUnitKop(product))}
                 </p>
               </div>
               <span className="text-sm font-semibold text-ink tabular-nums">
-                {formatPrice(product.price * qty)}
+                {formatKop(lineUnitKop(product) * qty)}
               </span>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex items-center justify-between border-t border-hairline pt-4">
           <span className="text-sm text-ink-soft">{t.cart.subtotal}</span>
-          <span className="text-xl font-semibold text-ink tabular-nums">{formatPrice(subtotal)}</span>
+          <span className="text-xl font-semibold text-ink tabular-nums">{formatKop(subtotalKop)}</span>
         </div>
       </section>
 
