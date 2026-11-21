@@ -10,6 +10,7 @@
   --color-surface: #ffffff; /* page background */
   --color-surface-alt: #f7f7f7; /* alternating sections, card backdrops, skeletons */
   --color-ink: #111111; /* primary text, primary buttons */
+  --color-ink-hover: #2a2a2a; /* hover on ink-filled buttons */
   --color-ink-soft: #555555; /* secondary text */
   --color-ink-faint: #a3a3a3; /* placeholders, disabled */
   --color-hairline: #11111114; /* borders — 8% ink, never solid gray lines */
@@ -38,6 +39,29 @@
 
   html {
     color-scheme: light;
+    /* Drawer and menu lock scroll; without this the page jumps by a scrollbar width. */
+    scrollbar-gutter: stable;
+  }
+
+  /* Tailwind 4 preflight resets buttons to cursor: default. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  /* Own rule: an unknown -webkit- pseudo would void the whole list in Firefox. */
+  ::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 
   body {
@@ -57,10 +81,6 @@
     background: var(--color-ink);
     color: var(--color-surface);
   }
-}
-
-@utility tabular-nums {
-  font-variant-numeric: tabular-nums;
 }
 
 /* Slow shimmer for content skeletons (never spinners for content, §4). */
