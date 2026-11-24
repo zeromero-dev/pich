@@ -10,21 +10,23 @@ assert.equal(sha256('a@b.ua'), createHash('sha256').update('a@b.ua').digest('hex
 
 type Ev = { user_data: Record<string, unknown>; custom_data: Record<string, unknown>; [k: string]: unknown }
 const input = {
-  orderId: 1731400000000,
+  orderId: '412345678901234',
   lines: [
-    { productId: '11', price: 1200, qty: 1 },
-    { productId: '22', price: 450, qty: 2 },
+    { productId: '11', unitPriceKop: 120000, qty: 1 },
+    { productId: '22', unitPriceKop: 45050, qty: 2 },
   ],
-  contact: { name: 'A B', email: '', phone: '+380501234567', city: 'c', address: 'a' },
+  totalKop: 210100,
+  contact: { name: 'A B', email: '', phone: '+380501234567', city: 'c', address: 'a', delivery: 'pickup' as const },
   meta: { fbp: 'fb.1.2.3', userAgent: 'UA/1' },
   eventTime: 1731400001,
   sourceUrl: 'https://x.test/checkout',
 }
 const ev = buildPurchaseEvent(input) as Ev
 assert.equal(ev.event_name, 'Purchase')
-assert.equal(ev.event_id, '1731400000000')
+assert.equal(ev.event_id, '412345678901234')
 assert.equal(ev.action_source, 'website')
-assert.equal(ev.custom_data.value, 2100)
+assert.equal(ev.custom_data.value, 2101)
+assert.deepEqual((ev.custom_data.contents as { item_price: number }[]).map((c) => c.item_price), [1200, 450.5])
 assert.equal(ev.custom_data.currency, 'UAH')
 assert.deepEqual(ev.custom_data.content_ids, ['11', '22'])
 assert.equal(ev.user_data.em, undefined)

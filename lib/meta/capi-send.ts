@@ -1,6 +1,6 @@
 import 'server-only'
 
-/** Fire-and-forget to the Conversions API; never throws, so the LiqPay webhook is unaffected. */
+/** Fire-and-forget to the Conversions API; never throws, so the mono webhook is unaffected. */
 export async function sendPurchase(event: object, opts: { testEventCode?: string }): Promise<void> {
   const pixelId = process.env.META_PIXEL_ID
   const token = process.env.META_CAPI_TOKEN

@@ -2,9 +2,15 @@
 
 # Plai Pich
 
-Plai Pich is a local art center — a place for people to gather and display their art. This repo is its website: a landing page, an online shop (крамничка), an events page, and artist pages. There is **no own database and no S3** — the HUGEPROFIT CRM (`https://crm.h-profit.com`) is the single backend: it holds products, prices, stock, images, and receives orders. Events and artist photos/bios are edited by the manager in Notion («Plai Pich — сайт», two databases; events detached from the calendar, per the client brief).
+Plai Pich is a local art center and shop. This repo powers the storefront, events, and artist pages. HugeProfit holds products, prices, stock, images, and orders. The manager publishes events and edits artist profiles on the private Notion «Сайт» page.
 
-**Current state (2026-08-12): catalog and artists are live.** (Counts below are from 2026-08-12; the production site showed 65 works on 2026-11-12.) Shop, product pages, the artist pages, landing and sitemap read the real CRM through `lib/hugeprofit/` (252 sellable works of 258, 5-min ISR). The homepage (since 2026-10-25) is Hero → «Категорії» → «Новинки» → static «Події» block → artists, the three rows being scroll-snap carousels. Search, tree-aware category filters, price sort and the in-stock toggle all run client-side over that one cached list. Checkout takes payment on LiqPay's hosted page, and only LiqPay's webhook creates the CRM order, paid (built 2026-08-16; sandbox-verified end to end 2026-11-05 — going live is `docs/plans/2026-09-09-liqpay-production-cutover.md`). Since 2026-10-29 checkout offers pickup / Nova Poshta branch / parcel locker / courier, picked from live NP lookups and re-checked server-side (`lib/checkout/`, `lib/nova-poshta/`). Співпраця page built. Delivery/returns text is the owners' (2026-10-29); privacy is a generic template we wrote at their request, naming no legal entity yet (`lib/info-pages.ts`). Contacts in `lib/contacts.ts`: email + Instagram only (no Telegram, 2026-10-29). `grep -rn PLACEHOLDER app components lib` lists what's left. Still missing: most artist photos/bios (Notion «Митці» rows exist, mostly unfilled). Footer address (вул. Григорія Сковороди, 25, Вінниця) and hours (щодня 12:00–21:00, corrected 2026-10-29) are real since 2026-09-06, and the footer carries the UCORD / Swiss Confederation / NIRAS funding notice (`public/images/sponsors/`, text in `lib/i18n.ts`). The homepage «Події» block uses a real fair photo (`public/images/events/events-teaser.jpg`, downscaled to 1600px by hand — no Vercel optimisation); all other local photography is one temporary interior photo, `public/images/template.jpg`, until real photos arrive; the older mock images under `public/images/` are unreferenced. UI conventions: `lib/motion.ts` (motion tokens; components import `m` from `motion/react`, never `motion` — `components/providers.tsx` wraps the tree in `LazyMotion strict`, so a stray `motion.` throws), `lib/i18n.ts` (UA/EN dictionaries + client-side locale switch), `lib/format.ts` (₴/date formatting), monochrome tokens in `app/globals.css`.
+**Current implementation.** The storefront reads products, prices, and stock from HugeProfit. Catalog reads use five-minute caching. Shop search, category filters, price sort, and stock filters run in the browser. The homepage shows Hero, «Категорії», «Новинки», «Події», and artists in that order.
+
+Checkout uses plata by mono and creates the paid CRM order from Mono's signed webhook. Buyers choose pickup or Nova Poshta delivery to a branch, locker, or courier address. [Production cutover](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) covers configuration and the first live payment. The public privacy policy displays the controller from `PRIVACY_DATA_CONTROLLER`. Meta Pixel, Conversions API Purchase and the `/feed.xml` catalog feed run only after cookie consent (see «Meta» below).
+
+The Notion «Сайт» page contains the live «Події» and «Митці» databases, the «Оновити сайт» link, and the shop's payment reconciliation instructions. Many artist profiles still have space for photos and bios. Email and Instagram come from `lib/contacts.ts`. The footer includes the shop's address, hours, and funding notice.
+
+UI conventions live in `lib/motion.ts`, `lib/i18n.ts`, `lib/format.ts`, and `app/globals.css`. Components use `m` from `motion/react` under `LazyMotion strict`. The homepage event teaser uses `public/images/events/events-teaser.jpg`.
 
 ## Stack
 
@@ -20,7 +26,7 @@ Plai Pich is a local art center — a place for people to gather and display the
 3. **Product search** — implemented in-app (the CRM API has no search endpoint)
 4. **Events** — BUILT: store events from the Notion «Події» database (`lib/events.ts` via `lib/notion.ts`; PoC on branch `feat/notion-poc`, replaced the Google Sheet), «Майбутні»/«Минулі» split, permanent `/events/[slug]` pages.
 5. **Artist pages** — BUILT: roster = CRM brands with works + every Notion «Митці» row (artists without works too, `rosterOf` in `lib/artists.ts`), per-artist pages at `/artists/<CRM brand id>` (or `ar-<n>` for Notion-only rows) — IDs only, names never in artist/event URLs. Photo + bio come from the Notion «Митці» database keyed by CRM brand id (`lib/artists.ts`), still unwritten
-6. **Online payment** — BUILT: LiqPay hosted checkout (decided 2026-08-16). Payment runs before order creation: the CRM order is created only in the `liqpay-callback` webhook. Live-mode switch-over: `docs/plans/2026-09-09-liqpay-production-cutover.md`.
+6. **Online payment** — BUILT: plata by mono hosted checkout (decided 2026-11-18, replacing LiqPay; design `.claude/docs/specs/2026-11-18-plata-by-mono-design.md`). Payment runs before order creation: the CRM order is created only in the `mono-callback` webhook. Live-mode switch-over: `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md`.
 
 ## Principles
 
@@ -39,7 +45,7 @@ npm run dev        # dev server at http://localhost:3000 (regenerates AGENTS.md 
 npx react-doctor@latest   # ALWAYS before `npm run build`: fix every finding, or record a deliberate exception with its reason in doctor.config.mjs
 npm run build      # production build (also the de-facto typecheck)
 npm run lint       # eslint
-npm test           # asserts over lib/artist-roster.ts (runs via npx tsx, no install)
+npm test           # plain asserts: artist roster, mono payment rules, CRM order rules, checkout result (npx tsx, no install)
 ```
 
 Config and secrets live in `.env.local` (gitignored via `.env*`). `.env.example`
@@ -56,12 +62,22 @@ NOTION_TOKEN=...                  # server-only — Notion integration secret (r
 NOTION_EVENTS_DATA_SOURCE=...     # «Події» data source id (••• → Manage data sources → Copy ID); unset = no events
 NOTION_ARTISTS_DATA_SOURCE=...    # «Митці» data source id; unset = no bios, sync answers 500
 SYNC_KEY=...                      # server-only — key in the Notion «Оновити сайт» link; unset = link always 403
-LIQPAY_PUBLIC_KEY=...             # server-only — LiqPay sandbox or live public key
-LIQPAY_PRIVATE_KEY=...            # server-only — never exposed to the client
-LIQPAY_SANDBOX=1                  # "1" routes payments through LiqPay's sandbox
+MONO_TOKEN=...                    # server-only — plata by mono X-Token: test token locally/Preview, owners' token in Production
+MONO_TEST_MERCHANT_ID=test_4U18rFLZus  # local/Preview only — test merchant id (GET /api/merchant/details)
+MONO_MERCHANT_ID=...              # Production only — owners' merchant id; its match makes payments live
+MONO_MAX_TOTAL_KOP=...            # required in Production — confirmed per-payment cap in kopecks, ≤100000000
+PRIVACY_DATA_CONTROLLER=...       # required in Production — public legal name rendered in the privacy policy
+MONO_PAYLOAD_KEYS=...             # server-only — {"active":"k1","keys":{"k1":"<base64 32 bytes>"}}; distinct per environment
+CRM_INTEGRATION_ID=13585          # our HugeProfit integration id (13585 = dev integration, reserves into 51630)
+REPORT_KEY=...                    # server-only — key in the daily payment report link (/api/payment-report); not SYNC_KEY
+REPORT_WINDOW_DAYS=7              # optional — report lookback (1–31 days)
+MONO_CALLBACK_MAX_BYTES=8000      # optional — full callback URL cap, including any Preview bypass parameter
+MONO_RESULT_PENDING_MINUTES=15    # optional — result page wait for missing invoice data (1–1440 minutes)
+MONO_PREVIEW_BYPASS_SECRET=...    # Preview only — Vercel automation bypass secret for the rehearsal
+PAYMENTS_PAUSED=1                 # optional — stops new invoices; callbacks and the report keep working
 META_PIXEL_ID=...                 # public value (the server layout injects it); unset = no pixel. Production: 1142689438442400
 META_CAPI_TOKEN=...               # server-only — Conversions API token scoped to our pixel; unset = no server-side Purchase
-META_TEST_EVENT_CODE=...          # optional — only lets sandbox payments send a test Purchase; rotates in Events Manager «Тестування подій»
+META_TEST_EVENT_CODE=...          # optional — only lets test-mode payments send a test Purchase; rotates in Events Manager «Тестування подій»
 ```
 
 `WEBSITE_URL` is the absolute origin baked into `metadataBase`, the sitemap, the
@@ -75,10 +91,10 @@ visibly. **It must be set in the Vercel project settings, not just locally.**
 
 - **Consent first**: `components/consent.tsx` + `lib/consent.ts` — bottom bar, choice in localStorage (`plai-pich-consent-v1`, 12 months), footer «Налаштування cookie» reopens it. Nothing Meta loads before «Прийняти».
 - **Pixel**: `components/meta-pixel.tsx` + `lib/meta/pixel.ts` — PageView per route, ViewContent, AddToCart, InitiateCheckout. Events fired before `fbq` exists are queued; a first-time Accept clears the pre-consent ones. Domain-verification tag in `app/layout.tsx` (`metadata.other`).
-- **Purchase via Conversions API**: sent from `app/api/checkout/liqpay-callback/route.ts` after `createRemoteOrder`, only when the signed payload carries `meta` (i.e. the buyer accepted). `lib/meta/capi.ts` builds (pure, hashed email/phone), `lib/meta/capi-send.ts` sends (Graph v27.0). LiqPay `success` sends the real event; `sandbox` sends only when `META_TEST_EVENT_CODE` is set.
+- **Purchase via Conversions API**: sent from `app/api/checkout/mono-callback/route.ts` once that delivery has written the CRM order, only when the encrypted payload carries `meta` (i.e. the buyer accepted); `event_id` = the 15-digit reference. `lib/meta/capi.ts` builds (pure, hashed email/phone), `lib/meta/capi-send.ts` sends (Graph v27.0). Live payment mode sends the real event; test mode sends only when `META_TEST_EVENT_CODE` is set. Over the callback URL cap, checkout drops `meta` rather than the sale.
 - **Feed**: `app/feed.xml/route.ts` + `lib/meta/feed.ts` — RSS from `getCatalog()`; see `.claude/docs/domain/catalog.md` for the exclusion rule. Connect only `https://www.pich.co.ua/feed.xml`, never a local/tunnel feed (dev warehouse = mock products).
 - **Env**: `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE` (see Development Commands). Must also be set in Vercel Production.
-- Account (Meta, 2026-11-12): dataset «Мистецька крамничка Піч» in the "Plai Business Manager" portfolio, which also holds other projects' pixels — never touch those. Domain `pich.co.ua` is Not Verified; no Commerce catalog yet (create it after the feed is live). Design: `docs/superpowers/specs/2026-11-12-meta-pixel-design.md` («Deploy steps»).
+- Account (Meta, 2026-11-12): dataset «Мистецька крамничка Піч» in the "Plai Business Manager" portfolio, which also holds other projects' pixels — never touch those. Domain `pich.co.ua` is Not Verified; no Commerce catalog yet (create it after the feed is live). Design: `.claude/docs/specs/2026-11-12-meta-pixel-design.md` («Deploy steps»).
 
 ## Architecture
 
@@ -92,7 +108,9 @@ lib/artists.ts       # BUILT: layers Notion photo + bio onto the CRM-derived ros
 lib/hugeprofit/      # BUILT: typed CRM client — client.ts (authed fetch), map.ts (CRM→domain), index.ts (catalog API)
 lib/notion.ts        # BUILT: Notion data-source query (ids from env), cached 5 min
 lib/events.ts        # BUILT: Notion «Події» → events (URL = Notion «ID» number). Every page URL is an ID: /shop/<CRM product id>, /artists/<CRM brand id | ar-n>, /events/<n>
-app/api/checkout/    # BUILT: validate fresh stock + price → redirect to LiqPay → webhook → POST /bapi/remote_orders (paid)
+app/api/checkout/    # BUILT: validate fresh stock + price → mono invoice → mono-callback webhook → POST /bapi/remote_orders (paid)
+app/api/payment-report/  # BUILT: daily payment report (mono statement vs CRM), Ukrainian plain text
+lib/mono/            # BUILT: plata by mono — money.ts (kopecks), payload.ts (AES-GCM order in the webhook URL), rules.ts, client.ts, report.ts
 lib/hugeprofit/orders.ts  # BUILT: order payload mapping + crmPost with payment tracking
 app/api/update-site/      # BUILT: «Оновити сайт» — CRM → «Митці» sync by brand id (add rows, fill CRM ID; never renames or deletes), expire caches, plain-text report of what to fix. ?key=SYNC_KEY link only (no cron)
 app/api/notion-file/[id]/  # BUILT: 302 to a freshly signed Notion «Фото» URL (Notion signs uploads for ~1 h), CDN-cached until just before expiry
@@ -103,9 +121,9 @@ lib/nova-poshta/          # BUILT: NP API client, address lookups; app/api/nova-
 
 - **Catalog & search**: fetch the full product list server-side and cache it (Next fetch cache / ISR, ~5 min revalidate). Search and category filtering run over that cached list — an art-center catalog is small enough that this beats building infrastructure. Revisit only if the catalog outgrows one page (`limit` default is 500).
 - **Cart**: client-side only (localStorage / context). No server session.
-- **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to LiqPay's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. `order_id` is `Date.now()` (the API documents an int, so no UUID).
+- **Checkout**: Route Handler validates fresh stock and price against CRM data (uncached), rejects sold/repriced works, computes the total server-side, then redirects to plata by mono's hosted payment page. Webhook creates the CRM order with `info.is_paid: true` on successful payment. Money is integer kopecks end to end (`lib/mono/money.ts`). `order_id` = mono `reference` = a random 15-digit string.
 - **i18n**: UA (default) + EN via App Router locale segments; UI strings in per-locale dictionaries. Product names/descriptions come from the CRM in whatever language they're entered — don't promise translated catalog content.
-- **Events & artist bios**: read-only query of the Notion «Plai Pich — сайт» page's two databases, revalidated every 5 min (uncached in `next dev`); editing happens in Notion. Notion-uploaded photos go through `/api/notion-file/[id]`, because Notion's signed URLs expire after ~1 h. Every Notion and cached CRM fetch is tagged (`notion`, `crm`) so «Оновити сайт» can expire them at once.
+- **Events and artists**: the site queries «Події» and «Митці» on the private Notion «Сайт» page, revalidated every five minutes in production. Managers edit the content in Notion. «Оновити сайт» syncs missing artist rows and CRM IDs and expires the `notion` and `crm` caches. Uploaded photos use `/api/notion-file/[id]` to refresh Notion's signed URLs.
 
 ## Knowledge Base
 
@@ -122,7 +140,11 @@ All AI context docs live under `.claude/docs/` — don't scatter `.md` files els
     ├── events.md         # store events from Notion «Події», columns, upcoming/past rules
     ├── artists.md        # Notion «Митці» + CRM brands roster, ID join, sync and its name matching
     └── i18n.md           # UI-bilingual rule, optional EN columns in Notion, formatting rules
+├── specs/                # design docs (YYYY-MM-DD-<topic>-design.md) — decision records: the why, rejected options
+└── plans/                # implementation and cutover plans (YYYY-MM-DD-<topic>.md)
 ```
+
+Specs and plans go in `.claude/docs/specs/` and `.claude/docs/plans/` — never `docs/superpowers/` (overrides the superpowers skills' default location).
 
 Domain docs record **what is built** vs **what is spec** — when you build something specified there, move it to fact. Doc style: business rules and use cases, boundaries named by real module paths; no invented interfaces (the payment provider is the one deliberate exception).
 
@@ -150,8 +172,10 @@ Endpoints we care about:
 
   Why not revisit it: **the project stays on the Vercel Hobby plan**, where blowing the Image Optimization quota does not bill you — it returns 402 and the browser renders `alt` text instead of the artwork. 298 CRM images × ~5 widths ≈ 1 500 transformations against a 5 000/month allowance, on a catalog that only grows. The shop grid is paginated instead (`PAGE_SIZE` in `components/shop/shop-view.tsx`), which caps what a scroll pulls. The CRM serves no resized variants, no WebP, and `Cache-Control: max-age=0` — all verified, don't re-probe.
 - **`AGENTS.md` is auto-(re)generated by `next dev`.** Commit it alongside your work; deleting it from a diff just recreates an uncommitted change.
-- **LiqPay webhook URL is unforgiving.** `server_url` is `${WEBSITE_URL}/api/checkout/liqpay-callback`; LiqPay caps it at 510 chars and does not get through a redirect. So `WEBSITE_URL` must be the exact canonical origin with **no trailing slash** — `pich.co.ua` (apex) and `…/` both answer 308 and the paid order is silently never created (seen 2026-11-05). The order itself travels in the payment's `info`, never in that URL: a one-item Cyrillic order overflowed 510 chars and every paid order failed as `payload signature mismatch`.
-- **Testing LiqPay locally needs a tunnel**, for two reasons: LiqPay's webhook can't reach `localhost`, and arriving at LiqPay *from* `localhost` makes their analytics store `localhost` in a cookie (`_pk_ref.*`) that their AWS firewall then answers with 403 on every `liqpay.ua` page — checkout and merchant cabinet alike — until cookies are cleared (verified 2026-11-05). Run `npx cloudflared tunnel --url http://localhost:3000`, browse the tunnel URL, and set both `WEBSITE_URL` and `DEV_ORIGIN` to it.
+- **The mono webhook URL carries the order.** `webHookUrl` is `${WEBSITE_URL}/api/checkout/mono-callback?p=<AES-GCM envelope>` (mono echoes back only `reference` ≤1000 and `destination` ≤280 chars; a 4030-char URL was delivered intact, 2026-11-18). So `WEBSITE_URL` must be the exact canonical origin with **no trailing slash** — a 308 is assumed fatal, as it was for LiqPay. Losing or rotating `MONO_PAYLOAD_KEYS` makes open invoices' orders unreadable: keep old keys in the ring until those invoices are settled.
+- **Testing payments locally needs a tunnel**: mono's webhook can't reach `localhost`. Run `npx cloudflared tunnel --url http://localhost:3000` (if the npm wrapper prints nothing, run the cached `cloudflared.exe` with `--logfile`), browse the tunnel URL, and set both `WEBSITE_URL` and `DEV_ORIGIN` to it. For protected Vercel previews use `MONO_PREVIEW_BYPASS_SECRET` during the rehearsal.
+- **Payment mode is matched, not flagged.** Live = Production + `MONO_MERCHANT_ID` + warehouse 34998; test = not Production + `MONO_TEST_MERCHANT_ID` + 51630. Anything else answers `payments_disabled` and `crmPost` refuses order writes. There is no `sandbox` status in mono — a test-token payment is a plain `success`.
+- **Vercel Hobby keeps runtime logs for one hour.** Webhook problems are therefore never only in logs: `/api/payment-report?key=REPORT_KEY` rebuilds them from mono's statement + the CRM. Someone must open it daily (owners' operator).
 - **Rate limits are undocumented.** Don't hammer the CRM per-request — the catalog cache is also our politeness layer.
 - **Next 16 makes fetch caching opt-in**, and a request carrying an `Authorization` header needs `cache: 'force-cache'` explicitly — `next.revalidate` alone is not enough. See `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md`.
 - **The API docs site mirrors cleanly.** `https://api-doc.h-profit.com/search/search_index.json` is the whole documentation (EN + UA + Types + Changelog) in one JSON — faster and more complete than scraping pages.
@@ -163,16 +187,15 @@ Endpoints we care about:
 - **Artist video** (brief §5): A YouTube/Instagram link in the Notion «Митці» database as a click-to-load embed (recommended), B self-hosted MP4 (not on Vercel Hobby bandwidth).
 - **«Кожна — єдина»** (`shop.lead`) is false for a craft catalog with a quantity selector. Not in the brief; ask the owners.
 
-### Before launch (client brief 2026-10, built 2026-10-25)
+### Production cutover
 
-- **Check `WEBSITE_URL` in Vercel Production before going live.** The live sitemap emitted `https://pich.co.ua/...` (apex, 308-redirects) on 2026-11-12, which suggests the variable is the apex — per the LiqPay gotcha above that breaks the webhook, and it would put redirecting links in the Meta feed. Unconfirmed; expected `https://www.pich.co.ua`. Pre-existing — confirm with the user before changing.
-- Meta: Vercel env above, then Ірина verifies the domain and creates the catalog from `/feed.xml` (see the design's «Deploy steps»). Not yet checked in a browser: Pixel Helper against `npm run build && npm start`, and a tunnel sandbox payment end to end.
-- `grep -rn PLACEHOLDER app components lib` — the privacy policy's data controller (legal entity not confirmed; `lib/info-pages.ts`).
-- Vercel (Production + Preview): add `NOTION_TOKEN`, `NOTION_EVENTS_DATA_SOURCE`, `NOTION_ARTISTS_DATA_SOURCE` (from Pich's official Notion workspace, not the personal PoC one) and `SYNC_KEY` (then replace `ВСТАВТЕ_КЛЮЧ` in the Notion page link with it), remove `EVENTS_SHEET_CSV_URL` / `GOOGLE_CALENDAR_API_KEY` / `GOOGLE_CALENDAR_ID`.
-- qty > 1 CRM reservation is unverified — see `.claude/docs/domain/checkout.md`.
-- UI labels we wrote (not in the brief) need owner review: «Незабаром»/«Відбулася», «Покупцям», «У кошику», the `insufficient` checkout error, the artist-without-works line (`about.noWorks`), the cookie bar text and buttons, the footer link «Налаштування cookie», and the new privacy paragraphs (cookie section, Meta Platforms as recipient — `lib/info-pages.ts`).
+- Follow the [Mono cutover plan](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) for the Production env values, shop warehouse, and live payment and refund checks.
+- The live site already reads the production Notion content. Preserve its Notion environment variables and existing «Оновити сайт» link during the payment cutover.
+- Multi-unit reservation passed the 2026-11-19 dev rehearsal. Verify converted-sales readback (`sales_id` and the invoice note) in the live smoke test.
+- Meta: Vercel Production `META_PIXEL_ID` + `META_CAPI_TOKEN` (no test code), then Ірина verifies the domain and creates the catalog from `https://www.pich.co.ua/feed.xml` (design «Deploy steps»). The mono-callback Purchase path is not yet exercised end to end (ported from LiqPay 2026-11-24).
+- Owners review the copy we wrote: the cookie bar text and buttons, the footer link «Налаштування cookie», and the privacy paragraphs (cookie section, Meta Platforms as recipient — `lib/info-pages.ts`).
 
-Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider is LiqPay (decided 2026-08-16).
+Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider: LiqPay (decided 2026-08-16), replaced by plata by mono on 2026-11-18 before LiqPay ever went live.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

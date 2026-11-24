@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.3 App Router (read `node_modules/next/dist/docs/` before Next-specific code: `02-components/script.md`, route handlers, metadata), React 19, TypeScript, zod, Node `crypto`. No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-11-12-meta-pixel-design.md`
+**Spec:** `.claude/docs/specs/2026-11-12-meta-pixel-design.md`
 
 ## Global Constraints
 

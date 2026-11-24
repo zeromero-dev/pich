@@ -10,9 +10,7 @@ import { ArtistsCarousel } from '@/components/landing/artists-carousel'
 
 // Organization goes on the homepage only — Google reads it there, and repeating
 // it site-wide would collide with the per-page Event/Product schemas.
-// No sameAs: the footer's social links are placeholders — invented
-// machine-readable business data is worse than none. Address and hours mirror
-// the footer (lib/i18n.ts, footer.street / footer.hoursValue).
+// Address and hours mirror the footer in lib/i18n.ts.
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',

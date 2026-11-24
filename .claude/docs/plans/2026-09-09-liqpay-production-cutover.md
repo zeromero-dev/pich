@@ -1,5 +1,7 @@
 # LiqPay Production Cutover Implementation Plan
 
+> **Superseded 2026-11-18** by plata by mono — see `.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md`. LiqPay never went live; its CRM pre-flight tasks carry over there.
+
 > Work through the tasks in order. Each task ends with a verify step and a commit. Tick `- [ ]` → `- [x]` as you go.
 
 **Goal:** Take the sandbox-verified LiqPay checkout live — real keys, real catalogue, one real purchase — and leave the site taking money for real works.
