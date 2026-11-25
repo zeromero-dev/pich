@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/providers'
+import { useConsent } from '@/components/consent'
 import { Logo } from '@/components/logo'
 import { NAV } from '@/lib/nav'
 import { CONTACTS } from '@/lib/contacts'
@@ -32,6 +33,7 @@ const SOCIALS = [
 
 export function Footer() {
   const { t } = useLocale()
+  const { enabled, reopen } = useConsent()
   const year = new Date().getFullYear()
 
   const nav = NAV.map((item) => ({ href: item.href, label: t.nav[item.key] }))
@@ -119,6 +121,17 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              {enabled && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={reopen}
+                    className="text-sm text-ink-soft transition-colors hover:text-ink"
+                  >
+                    {t.footer.cookieSettings}
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { getFreshProduct } from '@/lib/hugeprofit'
 import { SHOP_WAREHOUSE_ID } from '@/lib/hugeprofit/client'
 import { classifyExisting, reservationComplete, type OrderLine } from '@/lib/hugeprofit/order-rules'
@@ -7,6 +7,10 @@ import { getInvoiceStatus, paymentMode, payloadKeyring, verifyWebhook } from '@/
 import { decryptPayload } from '@/lib/mono/payload'
 import { MAX_WEBHOOK_BYTES, adverseEvidence, checkSignedEvent, parseIntegrationId, screenRequest } from '@/lib/mono/rules'
 import { invoiceStatusSchema, type CheckoutPayload, type InvoiceStatus } from '@/lib/mono/types'
+import type { PaymentMode } from '@/lib/mono/rules'
+import { buildPurchaseEvent } from '@/lib/meta/capi'
+import { sendPurchase } from '@/lib/meta/capi-send'
+import { WEBSITE_URL } from '@/lib/site'
 
 /**
  * plata by mono webhook — the only place a CRM order is created for a paid checkout.
@@ -20,6 +24,23 @@ const ok = () => new NextResponse(null, { status: 200 })
 const retry = () => new NextResponse(null, { status: 503 })
 
 type Ctx = { invoiceId?: string; reference?: string; expectedKop?: number; reportedKop?: number; productIds?: string[] }
+
+/** Only for orders this delivery wrote. Test-mode payments send only as test events, and only with a test code. */
+function trackPurchase(payload: CheckoutPayload, mode: PaymentMode) {
+  const testEventCode = process.env.META_TEST_EVENT_CODE
+  if (!payload.meta || (mode === 'test' && !testEventCode)) return
+  const event = buildPurchaseEvent({
+    orderId: payload.reference,
+    lines: payload.lines,
+    totalKop: payload.totalKop,
+    contact: payload.contact,
+    meta: payload.meta,
+    eventTime: Math.floor(Date.now() / 1000),
+    sourceUrl: `${WEBSITE_URL}/checkout`,
+  })
+  // after(): mono gets its answer without waiting on Meta (sendPurchase never throws).
+  after(() => sendPurchase(event, mode === 'test' ? { testEventCode } : {}))
+}
 
 function reconcile(reason: string, ctx: Ctx) {
   console.error('[mono-callback] reconcile', { reason, ccy: 980, ...ctx })
@@ -58,7 +79,8 @@ export async function POST(request: Request) {
   // Other statuses never touch the CRM; refunds and reversals surface in the payment report.
   if (body.status !== 'success') return ok()
 
-  if (!(await paymentMode())) {
+  const mode = await paymentMode()
+  if (!mode) {
     console.error('[mono-callback] payment mode check failed', { invoiceId: body.invoiceId })
     return retry()
   }
@@ -136,7 +158,10 @@ export async function POST(request: Request) {
     // Outcome unknown: look again, never write twice in one delivery.
     try {
       const after = await existing()
-      if (after === 'recorded') return ok()
+      if (after === 'recorded') {
+        trackPurchase(payload, mode)
+        return ok()
+      }
       if (after !== 'absent') return reconcile(`order after failed write ${after}`, ctx)
     } catch {
       /* fall through to retry */
@@ -144,6 +169,8 @@ export async function POST(request: Request) {
     return retry()
   }
 
+  // Paid and recorded either way; an incomplete reservation is the operator's, not the ad report's.
+  trackPurchase(payload, mode)
   if (!reservationComplete(reservedProducts, lines, warehouseId)) return reconcile('unreserved', ctx)
   return ok()
 }

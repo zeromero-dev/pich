@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { formatKop } from '@/lib/format'
@@ -17,11 +17,20 @@ import {
   type ContactState,
   type DeliveryState,
 } from '@/lib/checkout/form'
+import { trackInitiateCheckout, readMetaCookies } from '@/lib/meta/pixel'
+import { useConsent } from '@/components/consent'
 import type { FieldId } from '@/lib/checkout/schema'
 
 export function CheckoutView() {
   const { t } = useLocale()
   const { items, subtotalKop, setQty } = useCart()
+  const { granted } = useConsent()
+  const checkoutTracked = useRef(false)
+  useEffect(() => {
+    if (checkoutTracked.current || items.length === 0) return
+    checkoutTracked.current = true
+    trackInitiateCheckout(items, subtotalKop / 100)
+  }, [items, subtotalKop])
   const [contact, setContact] = useState<ContactState>(EMPTY_CONTACT)
   const [delivery, setDelivery] = useState<DeliveryState>(EMPTY_DELIVERY)
   // Errors show after a field's first blur, then track every change: "reward early, punish late".
@@ -60,6 +69,7 @@ export function CheckoutView() {
             price: product.price,
           })),
           ...toRequest(contact, delivery),
+          meta: granted ? readMetaCookies() : undefined,
         }),
       })
       const body = await res.json()

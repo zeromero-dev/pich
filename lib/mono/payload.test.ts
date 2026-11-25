@@ -88,3 +88,11 @@ assert.equal(resultTokenIssuedAt(REF, tok, { active: 'k9', keys: { k9: randomByt
   const short = Buffer.from(tag, 'base64url').subarray(0, 12).toString('base64url')
   assert.equal(decryptPayload([kid, iv, body, short].join('.'), ring), null)
 }
+
+// Meta match data round-trips, and a bad value drops to absent instead of losing the paid order.
+{
+  const meta = { fbp: 'fb.1.2.3', fbc: 'fb.1.2.abc', userAgent: 'UA/1', ip: '203.0.113.7' }
+  assert.deepEqual(decryptPayload(encryptPayload({ ...p, meta }, ring), ring)?.meta, meta)
+  const bad = decryptPayload(encryptPayload({ ...p, meta: { fbc: 'x'.repeat(600) } }, ring), ring)
+  assert.ok(bad && bad.meta === undefined && bad.reference === p.reference)
+}

@@ -85,6 +85,11 @@ Order {                               // what we create in the CRM
    Neither an invoice nor an order found → pending for `MONO_RESULT_PENDING_MINUTES` after issue (default 15),
    then «Оплату не знайдено». `t` = `keyId.issuedAt.mac`, required before any mono or CRM call. No valid `t` → unknown.
    The cart is cleared only on a full success for the same attempt whose cart is unchanged
+10. Meta Purchase: if the payload carries `meta` (buyer accepted cookies: `_fbp`/`_fbc` from the form, user agent
+   + IP added by /api/checkout inside the encrypted payload; dropped first if the URL would exceed its cap),
+   mono-callback sends Purchase to Meta's Conversions API (lib/meta/capi.ts, capi-send.ts) after this delivery
+   wrote the CRM order, event_id = reference. Live mode sends the real event; test mode only with
+   META_TEST_EVENT_CODE. Scheduled with `after()`; failure is logged and never changes the webhook's answer
 ```
 
 Responses to mono: 200 for handled or unfixable-by-retry (logged `[mono-callback] reconcile` with invoice id, reference, amounts, product ids — never buyer data or the URL); 503 for transient failures (CRM/mono read failed, write outcome unknown, payment mode check failed) — mono retries, three attempts in all.

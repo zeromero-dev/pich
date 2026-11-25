@@ -6,7 +6,7 @@ Plai Pich is a local art center and shop. This repo powers the storefront, event
 
 **Current implementation.** The storefront reads products, prices, and stock from HugeProfit. Catalog reads use five-minute caching. Shop search, category filters, price sort, and stock filters run in the browser. The homepage shows Hero, «Категорії», «Новинки», «Події», and artists in that order.
 
-Checkout uses plata by mono and creates the paid CRM order from Mono's signed webhook. Buyers choose pickup or Nova Poshta delivery to a branch, locker, or courier address. [Production cutover](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) covers configuration and the first live payment. The public privacy policy displays the controller from `PRIVACY_DATA_CONTROLLER`.
+Checkout uses plata by mono and creates the paid CRM order from Mono's signed webhook. Buyers choose pickup or Nova Poshta delivery to a branch, locker, or courier address. [Production cutover](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) covers configuration and the first live payment. The public privacy policy displays the controller from `PRIVACY_DATA_CONTROLLER`. Meta Pixel, Conversions API Purchase and the `/feed.xml` catalog feed run only after cookie consent (see «Meta» below).
 
 The Notion «Сайт» page contains the live «Події» and «Митці» databases, the «Оновити сайт» link, and the shop's payment reconciliation instructions. Many artist profiles still have space for photos and bios. Email and Instagram come from `lib/contacts.ts`. The footer includes the shop's address, hours, and funding notice.
 
@@ -75,6 +75,9 @@ MONO_CALLBACK_MAX_BYTES=8000      # optional — full callback URL cap, includin
 MONO_RESULT_PENDING_MINUTES=15    # optional — result page wait for missing invoice data (1–1440 minutes)
 MONO_PREVIEW_BYPASS_SECRET=...    # Preview only — Vercel automation bypass secret for the rehearsal
 PAYMENTS_PAUSED=1                 # optional — stops new invoices; callbacks and the report keep working
+META_PIXEL_ID=...                 # public value (the server layout injects it); unset = no pixel. Production: 1142689438442400
+META_CAPI_TOKEN=...               # server-only — Conversions API token scoped to our pixel; unset = no server-side Purchase
+META_TEST_EVENT_CODE=...          # optional — only lets test-mode payments send a test Purchase; rotates in Events Manager «Тестування подій»
 ```
 
 `WEBSITE_URL` is the absolute origin baked into `metadataBase`, the sitemap, the
@@ -83,6 +86,15 @@ server-side, so it takes no `NEXT_PUBLIC_` prefix. It falls back to
 `http://localhost:3000` in dev and **throws at build time in production** — a
 wrong origin ships dead logo and preview URLs to Google rather than failing
 visibly. **It must be set in the Vercel project settings, not just locally.**
+
+## Meta (pixel, consent, Conversions API, feed) — BUILT 2026-11-12
+
+- **Consent first**: `components/consent.tsx` + `lib/consent.ts` — bottom bar, choice in localStorage (`plai-pich-consent-v1`, 12 months), footer «Налаштування cookie» reopens it. Nothing Meta loads before «Прийняти». Cookie bar, footer link and the privacy paragraphs (Meta Platforms as recipient, `lib/info-pages.ts`) approved by Roman 2026-11-24.
+- **Pixel**: `components/meta-pixel.tsx` + `lib/meta/pixel.ts` — PageView per route, ViewContent, AddToCart, InitiateCheckout. Events fired before `fbq` exists are queued; a first-time Accept clears the pre-consent ones. Domain-verification tag in `app/layout.tsx` (`metadata.other`).
+- **Purchase via Conversions API**: sent from `app/api/checkout/mono-callback/route.ts` once that delivery has written the CRM order, only when the encrypted payload carries `meta` (i.e. the buyer accepted); `event_id` = the 15-digit reference. `lib/meta/capi.ts` builds (pure, hashed email/phone), `lib/meta/capi-send.ts` sends (Graph v27.0). Live payment mode sends the real event; test mode sends only when `META_TEST_EVENT_CODE` is set. Over the callback URL cap, checkout drops `meta` rather than the sale.
+- **Feed**: `app/feed.xml/route.ts` + `lib/meta/feed.ts` — RSS from `getCatalog()`; see `.claude/docs/domain/catalog.md` for the exclusion rule. Connect only `https://www.pich.co.ua/feed.xml`, never a local/tunnel feed (dev warehouse = mock products).
+- **Env**: `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE` (see Development Commands). Must also be set in Vercel Production.
+- Account (Meta, 2026-11-12): dataset «Мистецька крамничка Піч» in the "Plai Business Manager" portfolio, which also holds other projects' pixels — never touch those. Domain `pich.co.ua` is Not Verified; no Commerce catalog yet (create it after the feed is live). Design: `.claude/docs/specs/2026-11-12-meta-pixel-design.md` («Deploy steps»).
 
 ## Architecture
 
@@ -152,7 +164,7 @@ Endpoints we care about:
 
 ## Key Gotchas
 
-- **The CRM `description` renders verbatim — and 171 of 258 descriptions are internal notes** (bank cards, IBANs, tax ids, legal names, phones, cost prices, pasted chat messages). Owners' decision 2026-08-12: they clean the field in the CRM, the site just displays it. So **anything typed into that field is published.** Don't add a sanitiser — it can't be done reliably and would read as safety it doesn't provide. It is kept out of `<meta description>`/JSON-LD deliberately. See `.claude/docs/domain/catalog.md` rule 3.
+- **The CRM `description` renders verbatim.** On 2026-08-12 171 of 258 were internal notes (bank cards, IBANs, tax ids, legal names, phones, cost prices, pasted chat messages); the owners have since cleaned the field — on 2026-11-12 all 65 works on the live site (www.pich.co.ua sitemap, 2026-11-12; the 252/258 counts are from 2026-08-12) were scanned for IBAN, cards, phones, ФОП, ІПН, рахунок, закуп with zero hits (3 have no description). Owners' decision 2026-08-12 stands: they clean the field in the CRM, the site just displays it. So **anything typed into that field is published** (and now also lands in the Meta feed). Don't add a sanitiser — it can't be done reliably and would read as safety it doesn't provide. It is kept out of `<meta description>`/JSON-LD deliberately. See `.claude/docs/domain/catalog.md` rule 3.
 - **`net_price` is the cost price.** It arrives inside every product's `stock[]` entry. Strip it in `lib/hugeprofit/` before data ever reaches a component or API response — leaking merchant margins to shoppers is the second-worst realistic bug this site can have. Customer price is `price` / `sale_price`.
 - **The CRM API has no text search and no webhooks.** Search is ours (over the cached catalog). Freshness is time-based revalidation only — treat displayed stock as advisory and re-check stock server-side at checkout.
 - **CRM token is server-only.** Any `fetch` to `crm.h-profit.com` from client code is a bug by definition.
@@ -180,6 +192,7 @@ Endpoints we care about:
 - Follow the [Mono cutover plan](.claude/docs/plans/2026-11-18-plata-by-mono-cutover.md) for the Production env values, shop warehouse, and live payment and refund checks.
 - The live site already reads the production Notion content. Preserve its Notion environment variables and existing «Оновити сайт» link during the payment cutover.
 - Multi-unit reservation passed the 2026-11-19 dev rehearsal. Verify converted-sales readback (`sales_id` and the invoice note) in the live smoke test.
+- Meta: Vercel Production `META_PIXEL_ID` + `META_CAPI_TOKEN` (no test code), then Ірина verifies the domain and creates the catalog from `https://www.pich.co.ua/feed.xml` (design «Deploy steps»). The mono-callback Purchase path is not yet exercised end to end (ported from LiqPay 2026-11-24).
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider: LiqPay (decided 2026-08-16), replaced by plata by mono on 2026-11-18 before LiqPay ever went live.
 

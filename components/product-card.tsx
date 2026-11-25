@@ -7,6 +7,7 @@ import { Check, Plus } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import { formatPrice } from '@/lib/format'
 import { useCart, useLocale } from '@/components/providers'
+import { trackAddToCart } from '@/lib/meta/pixel'
 import type { Product } from '@/lib/data'
 
 /* Touch devices have no hover: there the button is an always-visible round "+".
@@ -20,6 +21,7 @@ function AddToCart({ product }: { product: Product }) {
 
   const handleAdd = () => {
     add(product, 1)
+    trackAddToCart(product, 1)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }

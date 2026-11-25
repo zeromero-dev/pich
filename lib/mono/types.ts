@@ -19,6 +19,15 @@ const lockedLineSchema = z.object({
 })
 export type LockedLine = z.infer<typeof lockedLineSchema>
 
+/** Conversions API match data; its presence on a payload means the buyer consented to cookies. */
+export const metaMatchSchema = z.object({
+  fbp: z.string().max(200).optional(),
+  fbc: z.string().max(500).optional(),
+  userAgent: z.string().max(400).optional(),
+  ip: z.string().max(64).optional(),
+})
+export type MetaMatch = z.infer<typeof metaMatchSchema>
+
 /** What travels encrypted in the webhook URL (lib/mono/payload.ts). Validated again after decryption. */
 export const checkoutPayloadSchema = z
   .object({
@@ -27,6 +36,8 @@ export const checkoutPayloadSchema = z
     lines: z.array(lockedLineSchema).min(1).max(20),
     totalKop: z.int().positive(),
     contact: orderContactSchema,
+    // Tracking data must never make a paid order unreadable: a bad value drops to absent.
+    meta: metaMatchSchema.optional().catch(undefined),
   })
   .refine((p) => p.totalKop === totalKop(p.lines))
 export type CheckoutPayload = z.infer<typeof checkoutPayloadSchema>

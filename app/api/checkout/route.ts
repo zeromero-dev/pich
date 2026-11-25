@@ -8,7 +8,7 @@ import { checkoutEnabled, createInvoice, payloadKeyring } from '@/lib/mono/clien
 import { boundedInteger, invoiceLimitKop } from '@/lib/mono/config'
 import { encryptPayload, newReference, resultToken } from '@/lib/mono/payload'
 import { isAllowedPageUrl, siteInvoiceDestination } from '@/lib/mono/rules'
-import type { OrderContact } from '@/lib/mono/types'
+import type { MetaMatch, OrderContact } from '@/lib/mono/types'
 import { WEBSITE_URL } from '@/lib/site'
 
 /**
@@ -80,12 +80,20 @@ export async function POST(request: Request) {
 
   const ring = payloadKeyring()!
   const reference = newReference()
-  const webHookUrl = callbackUrl(
-    WEBSITE_URL,
-    encryptPayload({ v: 1, reference, lines: lock.lines, totalKop: lock.totalKop, contact }, ring),
-    maxCallbackBytes,
-    vercelEnv === 'preview' ? process.env.MONO_PREVIEW_BYPASS_SECRET : undefined,
-  )
+  const meta: MetaMatch | undefined = parsed.meta && {
+    ...parsed.meta,
+    userAgent: request.headers.get('user-agent')?.slice(0, 400),
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0].trim().slice(0, 64) || undefined,
+  }
+  const urlFor = (withMeta: boolean) =>
+    callbackUrl(
+      WEBSITE_URL,
+      encryptPayload({ v: 1, reference, lines: lock.lines, totalKop: lock.totalKop, contact, ...(withMeta && meta && { meta }) }, ring),
+      maxCallbackBytes,
+      vercelEnv === 'preview' ? process.env.MONO_PREVIEW_BYPASS_SECRET : undefined,
+    )
+  // A tracking cookie must never cost a sale: over the URL cap, drop the Meta data first.
+  const webHookUrl = urlFor(true) ?? (meta ? urlFor(false) : null)
   if (!webHookUrl) {
     console.error('[checkout] callback URL over the cap', { reference })
     return badRequest('invalid')
