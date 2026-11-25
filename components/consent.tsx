@@ -119,7 +119,8 @@ export function ConsentProvider({
   )
 }
 
-// z-[55]: above the sticky header (50), below the cart drawer (60).
+// Sticky, not fixed: it takes real space after the footer, so nothing scrolls under it.
+// z-[55]: above the sticky header (50), below the mobile menu (56) and the cart drawer (60).
 function ConsentBar() {
   const { t } = useLocale()
   const { accept, decline } = useConsent()
@@ -127,7 +128,7 @@ function ConsentBar() {
     <div
       role="region"
       aria-label={t.consent.label}
-      className="fixed inset-x-0 bottom-0 z-[55] border-t border-hairline bg-surface"
+      className="sticky bottom-0 z-[55] border-t border-hairline bg-surface"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:gap-6 md:px-6">
         <p className="text-sm leading-relaxed text-ink-soft text-pretty">

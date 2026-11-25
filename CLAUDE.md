@@ -89,7 +89,7 @@ visibly. **It must be set in the Vercel project settings, not just locally.**
 
 ## Meta (pixel, consent, Conversions API, feed) — BUILT 2026-11-12
 
-- **Consent first**: `components/consent.tsx` + `lib/consent.ts` — bottom bar, choice in localStorage (`plai-pich-consent-v1`, 12 months), footer «Налаштування cookie» reopens it. Nothing Meta loads before «Прийняти».
+- **Consent first**: `components/consent.tsx` + `lib/consent.ts` — bottom bar, choice in localStorage (`plai-pich-consent-v1`, 12 months), footer «Налаштування cookie» reopens it. Nothing Meta loads before «Прийняти». Cookie bar, footer link and the privacy paragraphs (Meta Platforms as recipient, `lib/info-pages.ts`) approved by Roman 2026-11-24.
 - **Pixel**: `components/meta-pixel.tsx` + `lib/meta/pixel.ts` — PageView per route, ViewContent, AddToCart, InitiateCheckout. Events fired before `fbq` exists are queued; a first-time Accept clears the pre-consent ones. Domain-verification tag in `app/layout.tsx` (`metadata.other`).
 - **Purchase via Conversions API**: sent from `app/api/checkout/mono-callback/route.ts` once that delivery has written the CRM order, only when the encrypted payload carries `meta` (i.e. the buyer accepted); `event_id` = the 15-digit reference. `lib/meta/capi.ts` builds (pure, hashed email/phone), `lib/meta/capi-send.ts` sends (Graph v27.0). Live payment mode sends the real event; test mode sends only when `META_TEST_EVENT_CODE` is set. Over the callback URL cap, checkout drops `meta` rather than the sale.
 - **Feed**: `app/feed.xml/route.ts` + `lib/meta/feed.ts` — RSS from `getCatalog()`; see `.claude/docs/domain/catalog.md` for the exclusion rule. Connect only `https://www.pich.co.ua/feed.xml`, never a local/tunnel feed (dev warehouse = mock products).
@@ -193,7 +193,6 @@ Endpoints we care about:
 - The live site already reads the production Notion content. Preserve its Notion environment variables and existing «Оновити сайт» link during the payment cutover.
 - Multi-unit reservation passed the 2026-11-19 dev rehearsal. Verify converted-sales readback (`sales_id` and the invoice note) in the live smoke test.
 - Meta: Vercel Production `META_PIXEL_ID` + `META_CAPI_TOKEN` (no test code), then Ірина verifies the domain and creates the catalog from `https://www.pich.co.ua/feed.xml` (design «Deploy steps»). The mono-callback Purchase path is not yet exercised end to end (ported from LiqPay 2026-11-24).
-- Owners review the copy we wrote: the cookie bar text and buttons, the footer link «Налаштування cookie», and the privacy paragraphs (cookie section, Meta Platforms as recipient — `lib/info-pages.ts`).
 
 Settled 2026-08-12 (don't reopen without the owners): no sales channel; `delivery_cost` always 0; order status stays `"pending"` with `info.is_paid` signalling payment; CRM `size` is centimetres. Payment provider: LiqPay (decided 2026-08-16), replaced by plata by mono on 2026-11-18 before LiqPay ever went live.
 

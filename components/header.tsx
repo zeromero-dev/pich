@@ -191,7 +191,7 @@ export function Header() {
             initial="hidden"
             animate="shown"
             exit="exit"
-            className="fixed inset-0 z-50 flex flex-col bg-surface md:hidden"
+            className="fixed inset-0 z-[56] flex flex-col bg-surface md:hidden"
           >
             <div className="flex h-16 items-center justify-between px-4">
               <Logo onClick={() => closeIfCurrent('/')} />
