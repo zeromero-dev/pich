@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
@@ -20,6 +20,8 @@ const LOCALE_OPTIONS: { value: Locale; label: string }[] = [
 
 function LocaleSwitch() {
   const { locale, setLocale } = useLocale()
+  // Per instance: the header and menu copies must not trade the pill between them.
+  const pillId = useId()
   return (
     <div
       role="group"
@@ -41,7 +43,10 @@ function LocaleSwitch() {
           >
             {active && (
               <m.span
-                layoutId="locale-pill"
+                layoutId={pillId}
+                // Measure on locale change only: navigation re-renders the sticky
+                // header mid scroll-to-top, which flew the pill in from the old offset.
+                layoutDependency={locale}
                 transition={spring.settle}
                 className="absolute inset-0 -z-10 rounded-full bg-ink"
               />
