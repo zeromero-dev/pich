@@ -31,7 +31,7 @@ function AddToCart({ product }: { product: Product }) {
       onClick={handleAdd}
       disabled={full}
       aria-label={`${full ? t.shop.inCart : t.shop.addToCart}: ${product.name}`}
-      className="absolute right-2 bottom-2 z-10 inline-flex size-10 items-center justify-center gap-2 rounded-full bg-ink text-sm font-medium text-surface shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition-[opacity,background-color] hover:bg-[#2a2a2a] disabled:cursor-default pointer-fine:inset-x-3 pointer-fine:bottom-3 pointer-fine:h-11 pointer-fine:w-auto pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100"
+      className="absolute right-2 bottom-2 z-10 inline-flex size-10 items-center justify-center gap-2 rounded-full bg-ink text-sm font-medium text-surface shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition-[opacity,background-color] hover:bg-ink-hover disabled:hover:bg-ink pointer-fine:inset-x-3 pointer-fine:bottom-3 pointer-fine:h-11 pointer-fine:w-auto pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100"
     >
       {done ? (
         <Check className="size-4" aria-hidden="true" />

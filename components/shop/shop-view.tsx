@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
-import { ChevronDown, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { spring } from '@/lib/motion'
 import type { CategoryFilter, Product } from '@/lib/data'
 import { useLocale } from '@/components/providers'
 import { ProductCard } from '@/components/product-card'
 import { PillButton } from '@/components/pill-button'
+import { Select } from '@/components/select'
 import { cn } from '@/lib/utils'
 
 export type SortKey = 'default' | 'priceAsc' | 'priceDesc'
@@ -129,23 +130,16 @@ export function ShopView({
             <label htmlFor="shop-sort" className="sr-only">
               {t.shop.sortLabel}
             </label>
-            <div className="relative grow sm:grow-0">
-              <select
+            <div className="grow sm:grow-0">
+              <Select
                 id="shop-sort"
                 value={sort}
-                onChange={(e) => {
-                  setSort(e.target.value as SortKey)
+                options={SORT_KEYS.map((key) => ({ value: key, label: t.shop.sort[key] }))}
+                onChange={(next) => {
+                  setSort(next)
                   resetPaging()
                 }}
-                className="h-11 w-full appearance-none rounded-full border border-ink/15 bg-surface pr-10 pl-4 text-sm text-ink outline-none focus:border-ink"
-              >
-                {SORT_KEYS.map((key) => (
-                  <option key={key} value={key}>
-                    {t.shop.sort[key]}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-ink-soft" />
+              />
             </div>
 
             <button

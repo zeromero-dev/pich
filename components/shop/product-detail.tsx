@@ -59,7 +59,7 @@ export function ProductDetail({
                   aria-label={`${product.name} — ${i + 1}`}
                   aria-current={i === active}
                   className={cn(
-                    'relative aspect-square w-20 overflow-hidden rounded-xl bg-surface-alt ring-2 transition-[--tw-ring-color]',
+                    'relative aspect-square w-20 overflow-hidden rounded-xl bg-surface-alt ring-2 transition-shadow',
                     i === active ? 'ring-ink' : 'ring-transparent hover:ring-ink/20',
                   )}
                 >

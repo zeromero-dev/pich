@@ -11,7 +11,7 @@ const pill = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-ink text-surface hover:bg-[#2a2a2a]',
+        primary: 'bg-ink text-surface hover:bg-ink-hover',
         secondary: 'border border-ink/15 text-ink hover:bg-surface-alt',
         ghost: 'text-ink-soft hover:text-ink hover:bg-surface-alt',
       },
